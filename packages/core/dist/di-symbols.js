@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SEP9_VALIDATION_SERVICE = exports.ENCRYPTION_SERVICE = exports.ANCHOR_RPC_SERVICE = exports.SEP31_TRANSACTION_SERVICE = exports.STELLAR_SERVICE = exports.NAME_MATCHING_SERVICE = exports.BANK_VAULT_SERVICE = exports.ORACLE_SERVICE = exports.NINEPAY_MOCK = exports.NINEPAY_GATEWAY = exports.DATABASE_POOL = void 0;
+exports.DATABASE_POOL = Symbol('DATABASE_POOL');
+exports.NINEPAY_GATEWAY = Symbol('NINEPAY_GATEWAY');
+exports.NINEPAY_MOCK = Symbol('NINEPAY_MOCK');
+exports.ORACLE_SERVICE = Symbol('ORACLE_SERVICE');
+exports.BANK_VAULT_SERVICE = Symbol('BANK_VAULT_SERVICE');
+exports.NAME_MATCHING_SERVICE = Symbol('NAME_MATCHING_SERVICE');
+exports.STELLAR_SERVICE = Symbol('STELLAR_SERVICE');
+exports.SEP31_TRANSACTION_SERVICE = Symbol('SEP31_TRANSACTION_SERVICE');
+exports.ANCHOR_RPC_SERVICE = Symbol('ANCHOR_RPC_SERVICE');
+exports.ENCRYPTION_SERVICE = Symbol('ENCRYPTION_SERVICE');
+exports.SEP9_VALIDATION_SERVICE = Symbol('SEP9_VALIDATION_SERVICE');
+//# sourceMappingURL=di-symbols.js.map

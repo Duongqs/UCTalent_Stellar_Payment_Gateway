@@ -1,0 +1,11 @@
+export declare const DATABASE_POOL: unique symbol;
+export declare const NINEPAY_GATEWAY: unique symbol;
+export declare const NINEPAY_MOCK: unique symbol;
+export declare const ORACLE_SERVICE: unique symbol;
+export declare const BANK_VAULT_SERVICE: unique symbol;
+export declare const NAME_MATCHING_SERVICE: unique symbol;
+export declare const STELLAR_SERVICE: unique symbol;
+export declare const SEP31_TRANSACTION_SERVICE: unique symbol;
+export declare const ANCHOR_RPC_SERVICE: unique symbol;
+export declare const ENCRYPTION_SERVICE: unique symbol;
+export declare const SEP9_VALIDATION_SERVICE: unique symbol;

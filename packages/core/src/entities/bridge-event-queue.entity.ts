@@ -1,0 +1,22 @@
+import { Column, Entity, Index } from 'typeorm';
+import { BaseEntity } from './base.entity';
+
+@Entity({ name: 'bridge_events_queue' })
+@Index(['txHash'], { unique: true })
+@Index(['status'])
+export class BridgeEventQueueEntity extends BaseEntity {
+  @Column({ type: 'integer' })
+  ledger: number;
+
+  @Column({ name: 'tx_hash', type: 'varchar' })
+  txHash: string;
+
+  @Column({ name: 'contract_id', type: 'varchar' })
+  contractId: string;
+
+  @Column({ name: 'payload_json', type: 'jsonb' })
+  payloadJson: Record<string, any>;
+
+  @Column({ type: 'varchar', default: 'pending' })
+  status: 'pending' | 'completed' | 'failed';
+}

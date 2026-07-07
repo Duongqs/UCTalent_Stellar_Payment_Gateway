@@ -3,5 +3,5 @@ export interface Sep9ValidationResult {
     errors: string[];
 }
 export declare class Sep9ValidationService {
-    static validate(payload: Record<string, any>): Sep9ValidationResult;
+    validate(payload: Record<string, any>): Sep9ValidationResult;
 }
