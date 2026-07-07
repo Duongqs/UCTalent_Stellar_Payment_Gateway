@@ -1,7 +1,3 @@
-jest.mock('uuid', () => ({
-  v4: () => 'mock-uuid-123'
-}));
-
 jest.mock('@stellar/stellar-sdk', () => ({
   rpc: {
     Server: jest.fn().mockImplementation(() => ({
@@ -39,40 +35,23 @@ jest.mock('axios', () => {
   };
 });
 
+const mockQuery = jest.fn();
+const mockQueryAll = jest.fn();
+const mockAuditLog = jest.fn();
+const mockDecrypt = jest.fn();
+const mockBankProfileModel = {
+  findByCustomerId: jest.fn(),
+};
+
 jest.mock('@uc/core', () => {
   const original = jest.requireActual('@uc/core');
   return {
     ...original,
-    query: jest.fn(),
-    queryAll: jest.fn(),
-    auditLog: jest.fn(),
-    decrypt: jest.fn(),
-    BankProfileModel: {
-      findByCustomerId: jest.fn(),
-    },
-  };
-});
-
-jest.mock('@uc/banking', () => {
-  const original = jest.requireActual('@uc/banking');
-  return {
-    ...original,
-    NinePayGatewayService: {
-      disburse: jest.fn(),
-    },
-    getSafeFxRate: jest.fn(),
-  };
-});
-
-jest.mock('@uc/stellar', () => {
-  const original = jest.requireActual('@uc/stellar');
-  return {
-    ...original,
-    AnchorRpcService: {
-      notifyOnchainFundsReceived: jest.fn(),
-      notifyOffchainFundsPending: jest.fn(),
-      notifyOffchainFundsAvailable: jest.fn(),
-    },
+    query: (...args: any[]) => mockQuery(...args),
+    queryAll: (...args: any[]) => mockQueryAll(...args),
+    auditLog: (...args: any[]) => mockAuditLog(...args),
+    decrypt: (...args: any[]) => mockDecrypt(...args),
+    BankProfileModel: mockBankProfileModel,
   };
 });
 
@@ -81,8 +60,7 @@ import { AppModule } from '../src/app.module';
 import { DisbursementPollerService } from '../src/disbursement/disbursement-poller.service';
 import { EventConsumerService } from '../src/soroban-listener/event-consumer.service';
 import { SorobanListenerService } from '../src/soroban-listener/soroban-listener.service';
-import { query, BankProfileModel, decrypt } from '@uc/core';
-import { NinePayGatewayService, getSafeFxRate } from '@uc/banking';
+import { NinePayGatewayService, OracleService } from '@uc/banking';
 import { AnchorRpcService } from '@uc/stellar';
 import axios from 'axios';
 
@@ -91,15 +69,45 @@ describe('Worker E2E / Integration Flow Tests', () => {
   let pollerService: DisbursementPollerService;
   let consumerService: EventConsumerService;
   let listenerService: SorobanListenerService;
+  let mockNinePayGateway: Record<string, jest.Mock>;
+  let mockOracleService: Record<string, jest.Mock>;
+  let mockAnchorRpc: Record<string, jest.Mock>;
 
   beforeAll(async () => {
     process.env.ENCRYPTION_SECRET = 'a_very_secure_secret_key_that_is_at_least_32_bytes_long!';
     process.env.SEP31_WEBHOOK_URL = 'http://localhost:3000/api/webhooks/sdp';
     process.env.CROSS_BORDER_WEBHOOK_SECRET = 'uctalent-dev-secret';
 
+    mockNinePayGateway = {
+      lookupAccount: jest.fn(),
+      disburse: jest.fn(),
+    };
+
+    mockOracleService = {
+      getSafeFxRate: jest.fn(),
+      invalidateCache: jest.fn(),
+      getCircuitBreakerState: jest.fn().mockReturnValue('CLOSED'),
+      resetCircuitBreaker: jest.fn(),
+    };
+
+    mockAnchorRpc = {
+      notifyOnchainFundsReceived: jest.fn(),
+      notifyOffchainFundsPending: jest.fn(),
+      notifyOffchainFundsAvailable: jest.fn(),
+      notifyTransactionError: jest.fn(),
+      patchTransaction: jest.fn(),
+    };
+
     moduleRef = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(NinePayGatewayService)
+      .useValue(mockNinePayGateway)
+      .overrideProvider(OracleService)
+      .useValue(mockOracleService)
+      .overrideProvider(AnchorRpcService)
+      .useValue(mockAnchorRpc)
+      .compile();
 
     pollerService = moduleRef.get<DisbursementPollerService>(DisbursementPollerService);
     consumerService = moduleRef.get<EventConsumerService>(EventConsumerService);
@@ -128,7 +136,7 @@ describe('Worker E2E / Integration Flow Tests', () => {
         },
       });
 
-      (query as jest.Mock).mockImplementation(async (sql: string, params: any[]) => {
+      mockQuery.mockImplementation(async (sql: string, params: any[]) => {
         if (sql.includes('processing_lock')) {
           return { id: 'tx-456' };
         }
@@ -138,7 +146,7 @@ describe('Worker E2E / Integration Flow Tests', () => {
         return null;
       });
 
-      (BankProfileModel.findByCustomerId as jest.Mock).mockResolvedValue({
+      mockBankProfileModel.findByCustomerId.mockResolvedValue({
         id: 'bank-profile-id',
         is_verified: true,
         encrypted_account: 'enc-acc-123',
@@ -146,27 +154,31 @@ describe('Worker E2E / Integration Flow Tests', () => {
         bank_code: '970436',
       });
 
-      (decrypt as jest.Mock).mockImplementation((val) => {
+      mockDecrypt.mockImplementation((val: string) => {
         if (val === 'enc-acc-123') return '1012345678';
         if (val === 'enc-name-123') return 'NGUYEN VAN A';
         return val;
       });
 
-      (getSafeFxRate as jest.Mock).mockResolvedValue({
+      mockOracleService.getSafeFxRate.mockResolvedValue({
         rate: 25400,
-        method: 'mock-fx',
+        rawRates: { mock: 25400 },
+        usedSources: ['mock'],
+        droppedSources: [],
+        cachedAt: new Date(),
+        method: 'single',
       });
 
-      (NinePayGatewayService.disburse as jest.Mock).mockResolvedValue({ success: true });
+      mockNinePayGateway.disburse.mockResolvedValue({ success: true });
 
       await pollerService.pollPendingTransactions();
 
-      expect(AnchorRpcService.notifyOnchainFundsReceived).toHaveBeenCalledWith(
+      expect(mockAnchorRpc.notifyOnchainFundsReceived).toHaveBeenCalledWith(
         'tx-456',
         '100',
         'stellar-hash-abc'
       );
-      expect(NinePayGatewayService.disburse).toHaveBeenCalledWith(
+      expect(mockNinePayGateway.disburse).toHaveBeenCalledWith(
         2286000,
         'tx-456',
         '970436',
@@ -175,13 +187,13 @@ describe('Worker E2E / Integration Flow Tests', () => {
         'NGUYEN VAN A',
         expect.any(Object)
       );
-      expect(AnchorRpcService.notifyOffchainFundsPending).toHaveBeenCalled();
+      expect(mockAnchorRpc.notifyOffchainFundsPending).toHaveBeenCalled();
     });
   });
 
   describe('EventConsumerService', () => {
     it('should consume queue items and send signed webhooks', async () => {
-      (query as jest.Mock).mockImplementation(async (sql: string) => {
+      mockQuery.mockImplementation(async (sql: string) => {
         if (sql.includes('SELECT id, ledger')) {
           return {
             id: 'event-id-99',
@@ -207,7 +219,7 @@ describe('Worker E2E / Integration Flow Tests', () => {
         })
       );
 
-      expect(query).toHaveBeenCalledWith(
+      expect(mockQuery).toHaveBeenCalledWith(
         expect.stringContaining("SET status = 'completed'"),
         ['event-id-99']
       );

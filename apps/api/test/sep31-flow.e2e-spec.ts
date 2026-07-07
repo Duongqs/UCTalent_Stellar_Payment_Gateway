@@ -1,21 +1,10 @@
-jest.mock('uuid', () => ({
-  v4: () => 'mock-uuid-123'
-}));
-
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { 
-  CustomerModel, 
-  BankProfileModel, 
-  query, 
-  queryAll, 
-  auditLog, 
-  decrypt 
-} from '@uc/core';
-import { NinePayGatewayService, NinePayMockService, getSafeFxRate } from '@uc/banking';
+import { NinePayGatewayService, OracleService } from '@uc/banking';
 import { Sep31TransactionService, AnchorRpcService } from '@uc/stellar';
+import { Sep9ValidationService, query as rawQuery } from '@uc/core';
 import * as crypto from 'crypto';
 
 function mockIpnBody(payload: any) {
@@ -28,70 +17,88 @@ function mockIpnBody(payload: any) {
   return { result: resultB64, checksum };
 }
 
+const mockQuery = jest.fn();
+const mockQueryAll = jest.fn();
+const mockAuditLog = jest.fn();
+const mockCustomerModel = {
+  findById: jest.fn(),
+  findByAccount: jest.fn(),
+  createOrUpdate: jest.fn(),
+};
+const mockBankProfileModel = {
+  create: jest.fn(),
+  findByCustomerId: jest.fn(),
+  findByRefId: jest.fn(),
+  markVerified: jest.fn(),
+};
+
 jest.mock('@uc/core', () => {
   const original = jest.requireActual('@uc/core');
   return {
     ...original,
-    query: jest.fn(),
-    queryAll: jest.fn(),
-    auditLog: jest.fn(),
-    decrypt: jest.fn(),
-    CustomerModel: {
-      findById: jest.fn(),
-      findByAccount: jest.fn(),
-      createOrUpdate: jest.fn(),
-    },
-    BankProfileModel: {
-      create: jest.fn(),
-      findByCustomerId: jest.fn(),
-      findByRefId: jest.fn(),
-      markVerified: jest.fn(),
-    },
-  };
-});
-
-jest.mock('@uc/banking', () => {
-  const original = jest.requireActual('@uc/banking');
-  return {
-    ...original,
-    NinePayGatewayService: {
-      lookupAccount: jest.fn(),
-      disburse: jest.fn(),
-    },
-    NinePayMockService: {
-      simulateDisbursement: jest.fn(),
-    },
-    getSafeFxRate: jest.fn(),
-    getCircuitBreakerState: jest.fn().mockReturnValue('CLOSED'),
-  };
-});
-
-jest.mock('@uc/stellar', () => {
-  const original = jest.requireActual('@uc/stellar');
-  return {
-    ...original,
-    Sep31TransactionService: {
-      createTransaction: jest.fn(),
-    },
-    AnchorRpcService: {
-      notifyOnchainFundsReceived: jest.fn(),
-      notifyOffchainFundsPending: jest.fn(),
-      notifyOffchainFundsAvailable: jest.fn(),
-      notifyTransactionError: jest.fn(),
-    },
+    query: (...args: any[]) => mockQuery(...args),
+    queryAll: (...args: any[]) => mockQueryAll(...args),
+    auditLog: (...args: any[]) => mockAuditLog(...args),
+    decrypt: jest.fn().mockReturnValue('decrypted-value'),
+    CustomerModel: mockCustomerModel,
+    BankProfileModel: mockBankProfileModel,
   };
 });
 
 describe('E2E Flow Tests', () => {
   let app: INestApplication;
+  let mockNinePayGateway: Record<string, jest.Mock>;
+  let mockOracleService: Record<string, jest.Mock>;
+  let mockSep31Service: Record<string, jest.Mock>;
+  let mockAnchorRpc: Record<string, jest.Mock>;
+  let mockSep9Validation: Record<string, jest.Mock>;
 
   beforeAll(async () => {
     process.env.ENCRYPTION_SECRET = 'a_very_secure_secret_key_that_is_at_least_32_bytes_long!';
     process.env.NINEPAY_CHECKSUM_KEY = 'test-key';
 
+    mockNinePayGateway = {
+      lookupAccount: jest.fn(),
+      disburse: jest.fn(),
+    };
+
+    mockOracleService = {
+      getSafeFxRate: jest.fn(),
+      invalidateCache: jest.fn(),
+      getCircuitBreakerState: jest.fn().mockReturnValue('CLOSED'),
+      resetCircuitBreaker: jest.fn(),
+    };
+
+    mockSep31Service = {
+      createTransaction: jest.fn(),
+    };
+
+    mockAnchorRpc = {
+      notifyOnchainFundsReceived: jest.fn(),
+      notifyOffchainFundsPending: jest.fn(),
+      notifyOffchainFundsAvailable: jest.fn(),
+      notifyTransactionError: jest.fn(),
+      patchTransaction: jest.fn(),
+    };
+
+    mockSep9Validation = {
+      validate: jest.fn(),
+    };
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(NinePayGatewayService)
+      .useValue(mockNinePayGateway)
+      .overrideProvider(OracleService)
+      .useValue(mockOracleService)
+      .overrideProvider(Sep31TransactionService)
+      .useValue(mockSep31Service)
+      .overrideProvider(AnchorRpcService)
+      .useValue(mockAnchorRpc)
+      .overrideProvider(Sep9ValidationService)
+      .useValue(mockSep9Validation)
+      .compile();
 
     app = moduleFixture.createNestApplication();
     await app.init();
@@ -105,10 +112,9 @@ describe('E2E Flow Tests', () => {
     jest.clearAllMocks();
   });
 
-  // ─── SEP-12 CUSTOMER Webhook Tests ────────────────────────────────────
   describe('Customer KYC Controller', () => {
     it('GET /customer unknown id → NEEDS_INFO', async () => {
-      (CustomerModel.findById as jest.Mock).mockResolvedValue(null);
+      mockCustomerModel.findById.mockResolvedValue(null);
 
       const res = await request(app.getHttpServer())
         .get('/customer?id=unknown-uuid&type=sep31-receiver');
@@ -118,8 +124,8 @@ describe('E2E Flow Tests', () => {
       expect(res.body.fields).toHaveProperty('first_name');
     });
 
-    it('PUT /customer creates or updates KYC and returns status accepted', async () => {
-      (CustomerModel.createOrUpdate as jest.Mock).mockResolvedValue({
+    it('PUT /customer creates or updates KYC', async () => {
+      mockCustomerModel.createOrUpdate.mockResolvedValue({
         id: 'new-cust-uuid',
         status: 'ACCEPTED',
       });
@@ -140,10 +146,15 @@ describe('E2E Flow Tests', () => {
     });
 
     it('PUT /customer rejects invalid inputs', async () => {
+      mockSep9Validation.validate.mockReturnValue({
+        isValid: false,
+        errors: ["Field 'firstName' must be snake_case."],
+      });
+
       const res = await request(app.getHttpServer())
         .put('/customer')
         .send({
-          firstName: 'A', // invalid field (not snake_case)
+          firstName: 'A',
           type: 'sep31-receiver',
         });
 
@@ -151,12 +162,15 @@ describe('E2E Flow Tests', () => {
     });
   });
 
-  // ─── SEP-38 RATE Oracle Tests ──────────────────────────────────────────
   describe('Rate Controller', () => {
     it('GET /rate calculates rate correctly', async () => {
-      (getSafeFxRate as jest.Mock).mockResolvedValue({
+      mockOracleService.getSafeFxRate.mockResolvedValue({
         rate: 25400,
-        method: 'mock-fx',
+        rawRates: { mock: 25400 },
+        usedSources: ['mock'],
+        droppedSources: [],
+        cachedAt: new Date(),
+        method: 'single',
       });
 
       const res = await request(app.getHttpServer())
@@ -168,10 +182,9 @@ describe('E2E Flow Tests', () => {
     });
   });
 
-  // ─── BANK VAULT Tests ────────────────────────────────────────────────
   describe('Bank Vault Controller', () => {
     it('POST /api/v1/bank-vault/inquiry lookup account', async () => {
-      (NinePayGatewayService.lookupAccount as jest.Mock).mockResolvedValue('NGUYEN VAN A');
+      mockNinePayGateway.lookupAccount.mockResolvedValue('NGUYEN VAN A');
 
       const res = await request(app.getHttpServer())
         .post('/api/v1/bank-vault/inquiry')
@@ -185,10 +198,9 @@ describe('E2E Flow Tests', () => {
     });
   });
 
-  // ─── SEP-31 TRANSACTION Tests ────────────────────────────────────────
   describe('SEP-31 Controller', () => {
     it('POST /sep31/initiate create transaction', async () => {
-      (Sep31TransactionService.createTransaction as jest.Mock).mockResolvedValue({
+      mockSep31Service.createTransaction.mockResolvedValue({
         id: 'stellar-tx-id',
         stellar_account: 'GABC',
         stellar_memo: '12345',
@@ -209,11 +221,10 @@ describe('E2E Flow Tests', () => {
     });
   });
 
-  // ─── 9PAY IPN Webhook Tests ──────────────────────────────────────────
   describe('IPN Controller', () => {
     it('POST /ipn callback triggers SUCCESS process', async () => {
-      (query as jest.Mock).mockImplementation(async (sql: string) => {
-        if (sql.includes('disbursement_audit_log')) return null; // no duplicate
+      mockQuery.mockImplementation(async (sql: string) => {
+        if (sql.includes('disbursement_audit_log')) return null;
         return { rows: [] };
       });
 
@@ -230,7 +241,7 @@ describe('E2E Flow Tests', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.message).toBe('Acknowledged');
-      expect(AnchorRpcService.notifyOffchainFundsAvailable).toHaveBeenCalledWith('tx-123', 'napas-123');
+      expect(mockAnchorRpc.notifyOffchainFundsAvailable).toHaveBeenCalledWith('tx-123', 'napas-123');
     });
   });
 });
