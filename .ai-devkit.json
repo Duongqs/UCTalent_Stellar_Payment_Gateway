@@ -1,0 +1,51 @@
+{
+  "version": "0.36.0",
+  "environments": [
+    "antigravity"
+  ],
+  "phases": [
+    "requirements",
+    "design",
+    "planning",
+    "implementation",
+    "testing",
+    "deployment",
+    "monitoring"
+  ],
+  "createdAt": "2026-06-01T10:06:24.577Z",
+  "updatedAt": "2026-06-01T10:06:32.507Z",
+  "skills": [
+    {
+      "registry": "codeaholicguy/ai-devkit",
+      "name": "dev-lifecycle"
+    },
+    {
+      "registry": "codeaholicguy/ai-devkit",
+      "name": "structured-debug"
+    },
+    {
+      "registry": "codeaholicguy/ai-devkit",
+      "name": "document-code"
+    },
+    {
+      "registry": "codeaholicguy/ai-devkit",
+      "name": "memory"
+    },
+    {
+      "registry": "codeaholicguy/ai-devkit",
+      "name": "simplify-implementation"
+    },
+    {
+      "registry": "codeaholicguy/ai-devkit",
+      "name": "technical-writer"
+    },
+    {
+      "registry": "codeaholicguy/ai-devkit",
+      "name": "verify"
+    },
+    {
+      "registry": "codeaholicguy/ai-devkit",
+      "name": "tdd"
+    }
+  ]
+}

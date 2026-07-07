@@ -1,0 +1,39 @@
+items:
+  - id: stellar:USDC:GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF
+    distribution_account: GBLSAHONJRODSFTLOV225NZR4LHICH63RIFQTQN37L5CRTR2IMQ5UEK7
+    significant_decimals: 2
+    sep31:
+      enabled: true
+      receive:
+        methods:
+          - "stellar"
+      sep12:
+        sender:
+          types:
+            sep31-sender:
+              description: "Enterprise client sending payment"
+        receiver:
+          types:
+            sep31-receiver:
+              description: "Freelancer receiving VND disbursement"
+    sep38:
+      enabled: true
+      exchangeable_assets:
+        - iso4217:VND
+
+  - id: iso4217:VND
+    significant_decimals: 0
+    quotes_supported: true
+    quotes_required: true
+    buy_delivery_methods:
+      - name: NAPAS
+        description: "Transfer VND to Vietnamese bank account"
+    sep31:
+      enabled: true
+      receive:
+        methods:
+          - "bank_account"
+    sep38:
+      enabled: true
+      exchangeable_assets:
+        - stellar:USDC:GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF

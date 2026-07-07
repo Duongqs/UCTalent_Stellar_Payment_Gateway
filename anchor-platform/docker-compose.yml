@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: anchor-platform-db
+    environment:
+      POSTGRES_USER: anchor
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: anchor_platform
+    ports:
+      - "5432:5432"
+    volumes:
+      - anchor-db-data:/var/lib/postgresql/data
+
+  sep-server:
+    image: stellar/anchor-platform:latest
+    container_name: sep-server
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+      - SEP_SERVER_PORT=8080
+    env_file:
+      - .env
+    ports:
+      - "8082:8080"
+    volumes:
+      - ./config:/config
+    command: --sep-server
+    depends_on:
+      - db
+
+  platform-server:
+    image: stellar/anchor-platform:latest
+    container_name: platform-server
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+      - PLATFORM_SERVER_PORT=8085
+    env_file:
+      - .env
+    ports:
+      - "8085:8085"
+    volumes:
+      - ./config:/config
+    command: --platform-server
+    depends_on:
+      - db
+
+  stellar-observer:
+    image: stellar/anchor-platform:latest
+    container_name: stellar-observer
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+    env_file:
+      - .env
+    volumes:
+      - ./config:/config
+    command: --stellar-observer
+    depends_on:
+      - db
+
+volumes:
+  anchor-db-data:

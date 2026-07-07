@@ -1,0 +1,544 @@
+warning: unused imports: `Symbol`, `contractclient`, and `contracttype`
+ --> contracts/uctalent-escrow/src/escrow.rs:2:84
+  |
+2 | ...ng, BytesN, Vec, Symbol, contractclient, contracttype};
+  |                     ^^^^^^  ^^^^^^^^^^^^^^  ^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused imports: `Events` and `TryIntoVal`
+ --> contracts/uctalent-escrow/src/test.rs:6:56
+  |
+6 |     testutils::{Address as _, Ledger as _, LedgerInfo, Events},
+  |                                                        ^^^^^^
+7 |     token::{Client as TokenClient, StellarAssetClient},
+8 |     Address, Env, BytesN, TryIntoVal,
+  |                           ^^^^^^^^^^
+
+warning: variable does not need to be mutable
+   --> contracts/uctalent-escrow/src/test.rs:426:9
+    |
+426 |     let mut ctx = TestCtx::new(10_000_000);
+    |         ----^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` on by default
+
+warning: function `sum_milestones` is never used
+  --> contracts/uctalent-escrow/src/factory.rs:79:4
+   |
+79 | fn sum_milestones(milestones: &soroban_sdk::Vec<i128>) -> i128 {
+   |    ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: `uctalent-escrow` (lib test) generated 4 warnings (run `cargo fix --lib -p uctalent-escrow --tests` to apply 3 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.18s
+     Running unittests src/lib.rs (/Users/admin/repos/uctalents/uc-cross-border/soroban/target/debug/deps/uctalent_escrow-b77020153868a5ea)
+
+running 12 tests
+test test::test_release_after_expiry_rejected - should panic ... ok
+test test::test_refund_after_expiry ... FAILED
+test test::test_refund_before_expiry_rejected - should panic ... ok
+test test::test_double_initialize_rejected - should panic ... ok
+test test::test_double_deposit_rejected - should panic ... ok
+test test::test_full_lifecycle ... FAILED
+test test::test_double_release_rejected - should panic ... ok
+test test::test_reverse_buffer_refund ... FAILED
+test test::test_oracle_integration_in_events ... FAILED
+test test::test_milestone_escrow_lifecycle ... FAILED
+test test::test_split_math_dust_goes_to_developer ... FAILED
+test test::test_unauthorized_signer_rejected - should panic ... ok
+
+failures:
+
+---- test::test_refund_after_expiry stdout ----
+
+thread 'test::test_refund_after_expiry' panicked at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host.rs:768:9:
+HostError: Error(Object, UnexpectedSize)
+
+Event log (newest first):
+   0: [Diagnostic Event] topics:[error, Error(Object, UnexpectedSize)], data:"escalating error to panic"
+   1: [Diagnostic Event] topics:[error, Error(Object, UnexpectedSize)], data:["contract call failed", create_escrow, [{anchor_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, bounty_amount: 5000, client: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, developer: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, developer_kyc_id: Bytes(0101010101010101010101010101010101010101010101010101010101010101), expiry_ledger: 50, platform_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4, platform_rate: 200, scout: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M, scout_kyc_id: Bytes(0202020202020202020202020202020202020202020202020202020202020202), scout_rate: 800, token: CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A}]]
+   2: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[error, Error(Object, UnexpectedSize)], data:"caught error from function"
+   3: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[error, Error(Object, UnexpectedSize)], data:"escalating error to panic"
+   4: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[error, Error(Object, UnexpectedSize)], data:["contract call failed", referral_init, [{anchor_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, bounty_amount: 5000, candidate: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, client: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, expiry_ledger: 50, platform_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4, platform_rate: 200, scout_rate: 800, token: CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A}]]
+   5: [Failed Diagnostic Event (not emitted)] contract:CAT5HPWZPV42PTN6O34QBJFT5L7ZD5TF7X4VRBJW7P4LHXYC7RNMS6YW, topics:[log], data:["VM call trapped with HostError", referral_init, Error(Object, UnexpectedSize)]
+   6: [Failed Diagnostic Event (not emitted)] contract:CAT5HPWZPV42PTN6O34QBJFT5L7ZD5TF7X4VRBJW7P4LHXYC7RNMS6YW, topics:[error, Error(Object, UnexpectedSize)], data:"escalating error to VM trap from failed host function call: map_unpack_to_linear_memory"
+   7: [Failed Diagnostic Event (not emitted)] contract:CAT5HPWZPV42PTN6O34QBJFT5L7ZD5TF7X4VRBJW7P4LHXYC7RNMS6YW, topics:[error, Error(Object, UnexpectedSize)], data:"differing host map and output slice lengths when unpacking map to linear memory"
+   8: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[fn_call, Bytes(27d3bed97d79a7cdbe76f900a4b3eaff91f665fdf9588536fbf8b3df02fc5ac9), referral_init], data:{anchor_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, bounty_amount: 5000, candidate: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, client: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, expiry_ledger: 50, platform_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4, platform_rate: 200, scout_rate: 800, token: CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A}
+   9: [Diagnostic Event] topics:[fn_call, Bytes(0000000000000000000000000000000000000000000000000000000000000008), create_escrow], data:{anchor_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, bounty_amount: 5000, client: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, developer: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, developer_kyc_id: Bytes(0101010101010101010101010101010101010101010101010101010101010101), expiry_ledger: 50, platform_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4, platform_rate: 200, scout: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M, scout_kyc_id: Bytes(0202020202020202020202020202020202020202020202020202020202020202), scout_rate: 800, token: CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A}
+   10: [Diagnostic Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[fn_return, balance], data:5000
+   11: [Diagnostic Event] topics:[fn_call, Bytes(e5b28cd0e241aaecbaf638165ac920bb39ebd1485bf5220aa32aed300e130739), balance], data:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM
+   12: [Diagnostic Event] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[fn_return, factory_init], data:Void
+   13: [Diagnostic Event] topics:[fn_call, Bytes(0000000000000000000000000000000000000000000000000000000000000008), factory_init], data:Bytes(1a1b7e7c2cb7c95eb1b15a2b4a2fd3ab62a630b312755df4bc1492d18817322c)
+   14: [Diagnostic Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[fn_return, mint], data:Void
+   15: [Contract Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[mint, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPP4V"], data:5000
+   16: [Diagnostic Event] topics:[fn_call, Bytes(e5b28cd0e241aaecbaf638165ac920bb39ebd1485bf5220aa32aed300e130739), mint], data:[CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, 5000]
+   17: [Diagnostic Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[fn_return, set_admin], data:Void
+   18: [Contract Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[set_admin, GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPP4V, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPP4V"], data:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4
+   19: [Diagnostic Event] topics:[fn_call, Bytes(e5b28cd0e241aaecbaf638165ac920bb39ebd1485bf5220aa32aed300e130739), set_admin], data:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4
+   20: [Diagnostic Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[fn_return, init_asset], data:Void
+   21: [Diagnostic Event] topics:[fn_call, Bytes(e5b28cd0e241aaecbaf638165ac920bb39ebd1485bf5220aa32aed300e130739), init_asset], data:Bytes(0000000161616100000000000000000000000000000000000000000000000000000000000000000000000007)
+
+Backtrace (newest first):
+   0: backtrace::backtrace::libunwind::trace
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/backtrace/libunwind.rs:117:9
+      backtrace::backtrace::trace_unsynchronized
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/backtrace/mod.rs:66:14
+   1: backtrace::backtrace::trace
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/backtrace/mod.rs:53:14
+   2: backtrace::capture::Backtrace::create
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/capture.rs:294:9
+   3: backtrace::capture::Backtrace::new_unresolved
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/capture.rs:289:9
+   4: soroban_env_host::host::error::<impl soroban_env_host::host::Host>::maybe_get_debug_info::{{closure}}
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host/error.rs:293:37
+   5: soroban_env_host::budget::Budget::with_shadow_mode
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/budget.rs:972:21
+   6: soroban_env_host::host::Host::with_debug_mode
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host.rs:615:24
+   7: soroban_env_host::host::error::<impl soroban_env_host::host::Host>::maybe_get_debug_info
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host/error.rs:290:13
+   8: soroban_env_host::host::error::<impl soroban_env_host::host::Host>::error::{{closure}}
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host/error.rs:274:23
+   9: soroban_env_host::budget::Budget::with_shadow_mode
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/budget.rs:972:21
+  10: soroban_env_host::host::Host::with_debug_mode
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host.rs:615:24
+  11: soroban_env_host::host::error::<impl soroban_env_host::host::Host>::error
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host/error.rs:261:9
+  12: <soroban_env_host::host::Host as soroban_env_common::env::EnvBase>::escalate_error_to_panic
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host.rs:767:26
+  13: soroban_sdk::env::internal::reject_err::{{closure}}
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-21.7.7/src/env.rs:52:23
+  14: core::result::Result<T,E>::map_err
+             at /Users/admin/.rustup/toolchains/1.85.0-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/result.rs:856:27
+  15: soroban_sdk::env::internal::reject_err
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-21.7.7/src/env.rs:52:9
+  16: <soroban_sdk::env::Env as soroban_env_common::env::Env>::call
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-21.7.7/src/env.rs:1667:13
+  17: soroban_sdk::env::Env::invoke_contract
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-21.7.7/src/env.rs:379:18
+  18: uctalent_escrow::UCTalentContractClient::create_escrow
+             at src/lib.rs:14:1
+  19: uctalent_escrow::test::test_refund_after_expiry
+             at src/test.rs:263:26
+  20: uctalent_escrow::test::test_refund_after_expiry::{{closure}}
+             at src/test.rs:259:30
+  21: core::ops::function::FnOnce::call_once
+             at /Users/admin/.rustup/toolchains/1.85.0-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250:5
+
+
+Writing test snapshot file for test "test::test_refund_after_expiry" to "test_snapshots/test/test_refund_after_expiry.1.json".
+
+---- test::test_full_lifecycle stdout ----
+
+thread 'test::test_full_lifecycle' panicked at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host.rs:768:9:
+HostError: Error(Object, UnexpectedSize)
+
+Event log (newest first):
+   0: [Diagnostic Event] topics:[error, Error(Object, UnexpectedSize)], data:"escalating error to panic"
+   1: [Diagnostic Event] topics:[error, Error(Object, UnexpectedSize)], data:["contract call failed", create_escrow, [{anchor_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, bounty_amount: 10000000, client: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, developer: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, developer_kyc_id: Bytes(0101010101010101010101010101010101010101010101010101010101010101), expiry_ledger: 200, platform_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4, platform_rate: 200, scout: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M, scout_kyc_id: Bytes(0202020202020202020202020202020202020202020202020202020202020202), scout_rate: 800, token: CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A}]]
+   2: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[error, Error(Object, UnexpectedSize)], data:"caught error from function"
+   3: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[error, Error(Object, UnexpectedSize)], data:"escalating error to panic"
+   4: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[error, Error(Object, UnexpectedSize)], data:["contract call failed", referral_init, [{anchor_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, bounty_amount: 10000000, candidate: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, client: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, expiry_ledger: 200, platform_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4, platform_rate: 200, scout_rate: 800, token: CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A}]]
+   5: [Failed Diagnostic Event (not emitted)] contract:CAT5HPWZPV42PTN6O34QBJFT5L7ZD5TF7X4VRBJW7P4LHXYC7RNMS6YW, topics:[log], data:["VM call trapped with HostError", referral_init, Error(Object, UnexpectedSize)]
+   6: [Failed Diagnostic Event (not emitted)] contract:CAT5HPWZPV42PTN6O34QBJFT5L7ZD5TF7X4VRBJW7P4LHXYC7RNMS6YW, topics:[error, Error(Object, UnexpectedSize)], data:"escalating error to VM trap from failed host function call: map_unpack_to_linear_memory"
+   7: [Failed Diagnostic Event (not emitted)] contract:CAT5HPWZPV42PTN6O34QBJFT5L7ZD5TF7X4VRBJW7P4LHXYC7RNMS6YW, topics:[error, Error(Object, UnexpectedSize)], data:"differing host map and output slice lengths when unpacking map to linear memory"
+   8: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[fn_call, Bytes(27d3bed97d79a7cdbe76f900a4b3eaff91f665fdf9588536fbf8b3df02fc5ac9), referral_init], data:{anchor_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, bounty_amount: 10000000, candidate: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, client: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, expiry_ledger: 200, platform_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4, platform_rate: 200, scout_rate: 800, token: CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A}
+   9: [Diagnostic Event] topics:[fn_call, Bytes(0000000000000000000000000000000000000000000000000000000000000008), create_escrow], data:{anchor_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, bounty_amount: 10000000, client: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, developer: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, developer_kyc_id: Bytes(0101010101010101010101010101010101010101010101010101010101010101), expiry_ledger: 200, platform_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4, platform_rate: 200, scout: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M, scout_kyc_id: Bytes(0202020202020202020202020202020202020202020202020202020202020202), scout_rate: 800, token: CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A}
+   10: [Diagnostic Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[fn_return, balance], data:10000000
+   11: [Diagnostic Event] topics:[fn_call, Bytes(e5b28cd0e241aaecbaf638165ac920bb39ebd1485bf5220aa32aed300e130739), balance], data:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM
+   12: [Diagnostic Event] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[fn_return, factory_init], data:Void
+   13: [Diagnostic Event] topics:[fn_call, Bytes(0000000000000000000000000000000000000000000000000000000000000008), factory_init], data:Bytes(1a1b7e7c2cb7c95eb1b15a2b4a2fd3ab62a630b312755df4bc1492d18817322c)
+   14: [Diagnostic Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[fn_return, mint], data:Void
+   15: [Contract Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[mint, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPP4V"], data:10000000
+   16: [Diagnostic Event] topics:[fn_call, Bytes(e5b28cd0e241aaecbaf638165ac920bb39ebd1485bf5220aa32aed300e130739), mint], data:[CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, 10000000]
+   17: [Diagnostic Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[fn_return, set_admin], data:Void
+   18: [Contract Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[set_admin, GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPP4V, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPP4V"], data:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4
+   19: [Diagnostic Event] topics:[fn_call, Bytes(e5b28cd0e241aaecbaf638165ac920bb39ebd1485bf5220aa32aed300e130739), set_admin], data:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4
+   20: [Diagnostic Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[fn_return, init_asset], data:Void
+   21: [Diagnostic Event] topics:[fn_call, Bytes(e5b28cd0e241aaecbaf638165ac920bb39ebd1485bf5220aa32aed300e130739), init_asset], data:Bytes(0000000161616100000000000000000000000000000000000000000000000000000000000000000000000007)
+
+Backtrace (newest first):
+   0: backtrace::backtrace::libunwind::trace
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/backtrace/libunwind.rs:117:9
+      backtrace::backtrace::trace_unsynchronized
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/backtrace/mod.rs:66:14
+   1: backtrace::backtrace::trace
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/backtrace/mod.rs:53:14
+   2: backtrace::capture::Backtrace::create
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/capture.rs:294:9
+   3: backtrace::capture::Backtrace::new_unresolved
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/capture.rs:289:9
+   4: soroban_env_host::host::error::<impl soroban_env_host::host::Host>::maybe_get_debug_info::{{closure}}
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host/error.rs:293:37
+   5: soroban_env_host::budget::Budget::with_shadow_mode
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/budget.rs:972:21
+   6: soroban_env_host::host::Host::with_debug_mode
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host.rs:615:24
+   7: soroban_env_host::host::error::<impl soroban_env_host::host::Host>::maybe_get_debug_info
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host/error.rs:290:13
+   8: soroban_env_host::host::error::<impl soroban_env_host::host::Host>::error::{{closure}}
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host/error.rs:274:23
+   9: soroban_env_host::budget::Budget::with_shadow_mode
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/budget.rs:972:21
+  10: soroban_env_host::host::Host::with_debug_mode
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host.rs:615:24
+  11: soroban_env_host::host::error::<impl soroban_env_host::host::Host>::error
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host/error.rs:261:9
+  12: <soroban_env_host::host::Host as soroban_env_common::env::EnvBase>::escalate_error_to_panic
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host.rs:767:26
+  13: soroban_sdk::env::internal::reject_err::{{closure}}
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-21.7.7/src/env.rs:52:23
+  14: core::result::Result<T,E>::map_err
+             at /Users/admin/.rustup/toolchains/1.85.0-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/result.rs:856:27
+  15: soroban_sdk::env::internal::reject_err
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-21.7.7/src/env.rs:52:9
+  16: <soroban_sdk::env::Env as soroban_env_common::env::Env>::call
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-21.7.7/src/env.rs:1667:13
+  17: soroban_sdk::env::Env::invoke_contract
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-21.7.7/src/env.rs:379:18
+  18: uctalent_escrow::UCTalentContractClient::create_escrow
+             at src/lib.rs:14:1
+  19: uctalent_escrow::test::test_full_lifecycle
+             at src/test.rs:136:26
+  20: uctalent_escrow::test::test_full_lifecycle::{{closure}}
+             at src/test.rs:129:25
+  21: core::ops::function::FnOnce::call_once
+             at /Users/admin/.rustup/toolchains/1.85.0-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250:5
+
+
+Writing test snapshot file for test "test::test_full_lifecycle" to "test_snapshots/test/test_full_lifecycle.1.json".
+
+---- test::test_reverse_buffer_refund stdout ----
+
+thread 'test::test_reverse_buffer_refund' panicked at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host.rs:768:9:
+HostError: Error(Object, UnexpectedSize)
+
+Event log (newest first):
+   0: [Diagnostic Event] topics:[error, Error(Object, UnexpectedSize)], data:"escalating error to panic"
+   1: [Diagnostic Event] topics:[error, Error(Object, UnexpectedSize)], data:["contract call failed", create_milestone_escrow, [{anchor_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, bounty_amount: 10000000, client: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, expiry_ledger: 5000000, freelancer: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, freelancer_kyc_id: Bytes(0505050505050505050505050505050505050505050505050505050505050505), freelancer_rate: 8000, milestones: [5000000, 5000000], platform_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4, platform_rate: 2000, private_hash: Bytes(0000000000000000000000000000000000000000000000000000000000000000), scout_rate: 0, token: CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A}]]
+   2: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[error, Error(Object, UnexpectedSize)], data:"caught error from function"
+   3: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[error, Error(Object, UnexpectedSize)], data:"escalating error to panic"
+   4: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[error, Error(Object, UnexpectedSize)], data:["contract call failed", milestone_init, [{anchor_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, bounty_amount: 10000000, client: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, expiry_ledger: 5000000, freelancer: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, freelancer_kyc_id: Bytes(0505050505050505050505050505050505050505050505050505050505050505), freelancer_rate: 8000, milestones: [5000000, 5000000], platform_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4, platform_rate: 2000, private_hash: Bytes(0000000000000000000000000000000000000000000000000000000000000000), scout_rate: 0, token: CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A}]]
+   5: [Failed Diagnostic Event (not emitted)] contract:CAT5HPWZPV42PTN6O34QBJFT5L7ZD5TF7X4VRBJW7P4LHXYC7RNMS6YW, topics:[log], data:["VM call trapped with HostError", milestone_init, Error(Object, UnexpectedSize)]
+   6: [Failed Diagnostic Event (not emitted)] contract:CAT5HPWZPV42PTN6O34QBJFT5L7ZD5TF7X4VRBJW7P4LHXYC7RNMS6YW, topics:[error, Error(Object, UnexpectedSize)], data:"escalating error to VM trap from failed host function call: map_unpack_to_linear_memory"
+   7: [Failed Diagnostic Event (not emitted)] contract:CAT5HPWZPV42PTN6O34QBJFT5L7ZD5TF7X4VRBJW7P4LHXYC7RNMS6YW, topics:[error, Error(Object, UnexpectedSize)], data:"differing host map and output slice lengths when unpacking map to linear memory"
+   8: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[fn_call, Bytes(27d3bed97d79a7cdbe76f900a4b3eaff91f665fdf9588536fbf8b3df02fc5ac9), milestone_init], data:{anchor_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, bounty_amount: 10000000, client: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, expiry_ledger: 5000000, freelancer: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, freelancer_kyc_id: Bytes(0505050505050505050505050505050505050505050505050505050505050505), freelancer_rate: 8000, milestones: [5000000, 5000000], platform_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4, platform_rate: 2000, private_hash: Bytes(0000000000000000000000000000000000000000000000000000000000000000), scout_rate: 0, token: CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A}
+   9: [Diagnostic Event] topics:[fn_call, Bytes(0000000000000000000000000000000000000000000000000000000000000008), create_milestone_escrow], data:{anchor_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, bounty_amount: 10000000, client: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, expiry_ledger: 5000000, freelancer: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, freelancer_kyc_id: Bytes(0505050505050505050505050505050505050505050505050505050505050505), freelancer_rate: 8000, milestones: [5000000, 5000000], platform_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4, platform_rate: 2000, private_hash: Bytes(0000000000000000000000000000000000000000000000000000000000000000), scout_rate: 0, token: CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A}
+   10: [Diagnostic Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[fn_return, mint], data:Void
+   11: [Contract Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[mint, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPP4V"], data:5000000
+   12: [Diagnostic Event] topics:[fn_call, Bytes(e5b28cd0e241aaecbaf638165ac920bb39ebd1485bf5220aa32aed300e130739), mint], data:[CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, 5000000]
+   13: [Diagnostic Event] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[fn_return, factory_init], data:Void
+   14: [Diagnostic Event] topics:[fn_call, Bytes(0000000000000000000000000000000000000000000000000000000000000008), factory_init], data:Bytes(1a1b7e7c2cb7c95eb1b15a2b4a2fd3ab62a630b312755df4bc1492d18817322c)
+   15: [Diagnostic Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[fn_return, mint], data:Void
+   16: [Contract Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[mint, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPP4V"], data:10000000
+   17: [Diagnostic Event] topics:[fn_call, Bytes(e5b28cd0e241aaecbaf638165ac920bb39ebd1485bf5220aa32aed300e130739), mint], data:[CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, 10000000]
+   18: [Diagnostic Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[fn_return, set_admin], data:Void
+   19: [Contract Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[set_admin, GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPP4V, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPP4V"], data:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4
+   20: [Diagnostic Event] topics:[fn_call, Bytes(e5b28cd0e241aaecbaf638165ac920bb39ebd1485bf5220aa32aed300e130739), set_admin], data:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4
+   21: [Diagnostic Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[fn_return, init_asset], data:Void
+   22: [Diagnostic Event] topics:[fn_call, Bytes(e5b28cd0e241aaecbaf638165ac920bb39ebd1485bf5220aa32aed300e130739), init_asset], data:Bytes(0000000161616100000000000000000000000000000000000000000000000000000000000000000000000007)
+
+Backtrace (newest first):
+   0: backtrace::backtrace::libunwind::trace
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/backtrace/libunwind.rs:117:9
+      backtrace::backtrace::trace_unsynchronized
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/backtrace/mod.rs:66:14
+   1: backtrace::backtrace::trace
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/backtrace/mod.rs:53:14
+   2: backtrace::capture::Backtrace::create
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/capture.rs:294:9
+   3: backtrace::capture::Backtrace::new_unresolved
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/capture.rs:289:9
+   4: soroban_env_host::host::error::<impl soroban_env_host::host::Host>::maybe_get_debug_info::{{closure}}
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host/error.rs:293:37
+   5: soroban_env_host::budget::Budget::with_shadow_mode
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/budget.rs:972:21
+   6: soroban_env_host::host::Host::with_debug_mode
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host.rs:615:24
+   7: soroban_env_host::host::error::<impl soroban_env_host::host::Host>::maybe_get_debug_info
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host/error.rs:290:13
+   8: soroban_env_host::host::error::<impl soroban_env_host::host::Host>::error::{{closure}}
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host/error.rs:274:23
+   9: soroban_env_host::budget::Budget::with_shadow_mode
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/budget.rs:972:21
+  10: soroban_env_host::host::Host::with_debug_mode
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host.rs:615:24
+  11: soroban_env_host::host::error::<impl soroban_env_host::host::Host>::error
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host/error.rs:261:9
+  12: <soroban_env_host::host::Host as soroban_env_common::env::EnvBase>::escalate_error_to_panic
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host.rs:767:26
+  13: soroban_sdk::env::internal::reject_err::{{closure}}
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-21.7.7/src/env.rs:52:23
+  14: core::result::Result<T,E>::map_err
+             at /Users/admin/.rustup/toolchains/1.85.0-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/result.rs:856:27
+  15: soroban_sdk::env::internal::reject_err
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-21.7.7/src/env.rs:52:9
+  16: <soroban_sdk::env::Env as soroban_env_common::env::Env>::call
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-21.7.7/src/env.rs:1667:13
+  17: soroban_sdk::env::Env::invoke_contract
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-21.7.7/src/env.rs:379:18
+  18: uctalent_escrow::UCTalentContractClient::create_milestone_escrow
+             at src/lib.rs:14:1
+  19: uctalent_escrow::test::test_reverse_buffer_refund
+             at src/test.rs:452:26
+  20: uctalent_escrow::test::test_reverse_buffer_refund::{{closure}}
+             at src/test.rs:425:32
+  21: core::ops::function::FnOnce::call_once
+             at /Users/admin/.rustup/toolchains/1.85.0-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250:5
+
+
+Writing test snapshot file for test "test::test_reverse_buffer_refund" to "test_snapshots/test/test_reverse_buffer_refund.1.json".
+
+---- test::test_oracle_integration_in_events stdout ----
+
+thread 'test::test_oracle_integration_in_events' panicked at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host.rs:768:9:
+HostError: Error(Object, UnexpectedSize)
+
+Event log (newest first):
+   0: [Diagnostic Event] topics:[error, Error(Object, UnexpectedSize)], data:"escalating error to panic"
+   1: [Diagnostic Event] topics:[error, Error(Object, UnexpectedSize)], data:["contract call failed", create_milestone_escrow, [{anchor_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, bounty_amount: 5000000, client: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, expiry_ledger: 1000000, freelancer: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, freelancer_kyc_id: Bytes(0505050505050505050505050505050505050505050505050505050505050505), freelancer_rate: 8000, milestones: [5000000], platform_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4, platform_rate: 2000, private_hash: Bytes(0000000000000000000000000000000000000000000000000000000000000000), scout_rate: 0, token: CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A}]]
+   2: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[error, Error(Object, UnexpectedSize)], data:"caught error from function"
+   3: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[error, Error(Object, UnexpectedSize)], data:"escalating error to panic"
+   4: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[error, Error(Object, UnexpectedSize)], data:["contract call failed", milestone_init, [{anchor_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, bounty_amount: 5000000, client: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, expiry_ledger: 1000000, freelancer: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, freelancer_kyc_id: Bytes(0505050505050505050505050505050505050505050505050505050505050505), freelancer_rate: 8000, milestones: [5000000], platform_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4, platform_rate: 2000, private_hash: Bytes(0000000000000000000000000000000000000000000000000000000000000000), scout_rate: 0, token: CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A}]]
+   5: [Failed Diagnostic Event (not emitted)] contract:CAT5HPWZPV42PTN6O34QBJFT5L7ZD5TF7X4VRBJW7P4LHXYC7RNMS6YW, topics:[log], data:["VM call trapped with HostError", milestone_init, Error(Object, UnexpectedSize)]
+   6: [Failed Diagnostic Event (not emitted)] contract:CAT5HPWZPV42PTN6O34QBJFT5L7ZD5TF7X4VRBJW7P4LHXYC7RNMS6YW, topics:[error, Error(Object, UnexpectedSize)], data:"escalating error to VM trap from failed host function call: map_unpack_to_linear_memory"
+   7: [Failed Diagnostic Event (not emitted)] contract:CAT5HPWZPV42PTN6O34QBJFT5L7ZD5TF7X4VRBJW7P4LHXYC7RNMS6YW, topics:[error, Error(Object, UnexpectedSize)], data:"differing host map and output slice lengths when unpacking map to linear memory"
+   8: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[fn_call, Bytes(27d3bed97d79a7cdbe76f900a4b3eaff91f665fdf9588536fbf8b3df02fc5ac9), milestone_init], data:{anchor_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, bounty_amount: 5000000, client: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, expiry_ledger: 1000000, freelancer: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, freelancer_kyc_id: Bytes(0505050505050505050505050505050505050505050505050505050505050505), freelancer_rate: 8000, milestones: [5000000], platform_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4, platform_rate: 2000, private_hash: Bytes(0000000000000000000000000000000000000000000000000000000000000000), scout_rate: 0, token: CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A}
+   9: [Diagnostic Event] topics:[fn_call, Bytes(0000000000000000000000000000000000000000000000000000000000000008), create_milestone_escrow], data:{anchor_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, bounty_amount: 5000000, client: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, expiry_ledger: 1000000, freelancer: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, freelancer_kyc_id: Bytes(0505050505050505050505050505050505050505050505050505050505050505), freelancer_rate: 8000, milestones: [5000000], platform_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4, platform_rate: 2000, private_hash: Bytes(0000000000000000000000000000000000000000000000000000000000000000), scout_rate: 0, token: CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A}
+   10: [Diagnostic Event] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[fn_return, factory_init], data:Void
+   11: [Diagnostic Event] topics:[fn_call, Bytes(0000000000000000000000000000000000000000000000000000000000000008), factory_init], data:Bytes(1a1b7e7c2cb7c95eb1b15a2b4a2fd3ab62a630b312755df4bc1492d18817322c)
+   12: [Diagnostic Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[fn_return, mint], data:Void
+   13: [Contract Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[mint, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPP4V"], data:10000000
+   14: [Diagnostic Event] topics:[fn_call, Bytes(e5b28cd0e241aaecbaf638165ac920bb39ebd1485bf5220aa32aed300e130739), mint], data:[CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, 10000000]
+   15: [Diagnostic Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[fn_return, set_admin], data:Void
+   16: [Contract Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[set_admin, GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPP4V, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPP4V"], data:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4
+   17: [Diagnostic Event] topics:[fn_call, Bytes(e5b28cd0e241aaecbaf638165ac920bb39ebd1485bf5220aa32aed300e130739), set_admin], data:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4
+   18: [Diagnostic Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[fn_return, init_asset], data:Void
+   19: [Diagnostic Event] topics:[fn_call, Bytes(e5b28cd0e241aaecbaf638165ac920bb39ebd1485bf5220aa32aed300e130739), init_asset], data:Bytes(0000000161616100000000000000000000000000000000000000000000000000000000000000000000000007)
+
+Backtrace (newest first):
+   0: backtrace::backtrace::libunwind::trace
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/backtrace/libunwind.rs:117:9
+      backtrace::backtrace::trace_unsynchronized
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/backtrace/mod.rs:66:14
+   1: backtrace::backtrace::trace
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/backtrace/mod.rs:53:14
+   2: backtrace::capture::Backtrace::create
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/capture.rs:294:9
+   3: backtrace::capture::Backtrace::new_unresolved
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/capture.rs:289:9
+   4: soroban_env_host::host::error::<impl soroban_env_host::host::Host>::maybe_get_debug_info::{{closure}}
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host/error.rs:293:37
+   5: soroban_env_host::budget::Budget::with_shadow_mode
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/budget.rs:972:21
+   6: soroban_env_host::host::Host::with_debug_mode
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host.rs:615:24
+   7: soroban_env_host::host::error::<impl soroban_env_host::host::Host>::maybe_get_debug_info
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host/error.rs:290:13
+   8: soroban_env_host::host::error::<impl soroban_env_host::host::Host>::error::{{closure}}
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host/error.rs:274:23
+   9: soroban_env_host::budget::Budget::with_shadow_mode
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/budget.rs:972:21
+  10: soroban_env_host::host::Host::with_debug_mode
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host.rs:615:24
+  11: soroban_env_host::host::error::<impl soroban_env_host::host::Host>::error
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host/error.rs:261:9
+  12: <soroban_env_host::host::Host as soroban_env_common::env::EnvBase>::escalate_error_to_panic
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host.rs:767:26
+  13: soroban_sdk::env::internal::reject_err::{{closure}}
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-21.7.7/src/env.rs:52:23
+  14: core::result::Result<T,E>::map_err
+             at /Users/admin/.rustup/toolchains/1.85.0-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/result.rs:856:27
+  15: soroban_sdk::env::internal::reject_err
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-21.7.7/src/env.rs:52:9
+  16: <soroban_sdk::env::Env as soroban_env_common::env::Env>::call
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-21.7.7/src/env.rs:1667:13
+  17: soroban_sdk::env::Env::invoke_contract
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-21.7.7/src/env.rs:379:18
+  18: uctalent_escrow::UCTalentContractClient::create_milestone_escrow
+             at src/lib.rs:14:1
+  19: uctalent_escrow::test::test_oracle_integration_in_events
+             at src/test.rs:410:26
+  20: uctalent_escrow::test::test_oracle_integration_in_events::{{closure}}
+             at src/test.rs:387:39
+  21: core::ops::function::FnOnce::call_once
+             at /Users/admin/.rustup/toolchains/1.85.0-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250:5
+
+
+Writing test snapshot file for test "test::test_oracle_integration_in_events" to "test_snapshots/test/test_oracle_integration_in_events.1.json".
+
+---- test::test_milestone_escrow_lifecycle stdout ----
+
+thread 'test::test_milestone_escrow_lifecycle' panicked at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host.rs:768:9:
+HostError: Error(Object, UnexpectedSize)
+
+Event log (newest first):
+   0: [Diagnostic Event] topics:[error, Error(Object, UnexpectedSize)], data:"escalating error to panic"
+   1: [Diagnostic Event] topics:[error, Error(Object, UnexpectedSize)], data:["contract call failed", create_milestone_escrow, [{anchor_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, bounty_amount: 10000000, client: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, expiry_ledger: 5000000, freelancer: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, freelancer_kyc_id: Bytes(0505050505050505050505050505050505050505050505050505050505050505), freelancer_rate: 8000, milestones: [5000000, 3000000, 2000000], platform_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4, platform_rate: 2000, private_hash: Bytes(0000000000000000000000000000000000000000000000000000000000000000), scout_rate: 0, token: CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A}]]
+   2: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[error, Error(Object, UnexpectedSize)], data:"caught error from function"
+   3: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[error, Error(Object, UnexpectedSize)], data:"escalating error to panic"
+   4: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[error, Error(Object, UnexpectedSize)], data:["contract call failed", milestone_init, [{anchor_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, bounty_amount: 10000000, client: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, expiry_ledger: 5000000, freelancer: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, freelancer_kyc_id: Bytes(0505050505050505050505050505050505050505050505050505050505050505), freelancer_rate: 8000, milestones: [5000000, 3000000, 2000000], platform_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4, platform_rate: 2000, private_hash: Bytes(0000000000000000000000000000000000000000000000000000000000000000), scout_rate: 0, token: CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A}]]
+   5: [Failed Diagnostic Event (not emitted)] contract:CAT5HPWZPV42PTN6O34QBJFT5L7ZD5TF7X4VRBJW7P4LHXYC7RNMS6YW, topics:[log], data:["VM call trapped with HostError", milestone_init, Error(Object, UnexpectedSize)]
+   6: [Failed Diagnostic Event (not emitted)] contract:CAT5HPWZPV42PTN6O34QBJFT5L7ZD5TF7X4VRBJW7P4LHXYC7RNMS6YW, topics:[error, Error(Object, UnexpectedSize)], data:"escalating error to VM trap from failed host function call: map_unpack_to_linear_memory"
+   7: [Failed Diagnostic Event (not emitted)] contract:CAT5HPWZPV42PTN6O34QBJFT5L7ZD5TF7X4VRBJW7P4LHXYC7RNMS6YW, topics:[error, Error(Object, UnexpectedSize)], data:"differing host map and output slice lengths when unpacking map to linear memory"
+   8: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[fn_call, Bytes(27d3bed97d79a7cdbe76f900a4b3eaff91f665fdf9588536fbf8b3df02fc5ac9), milestone_init], data:{anchor_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, bounty_amount: 10000000, client: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, expiry_ledger: 5000000, freelancer: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, freelancer_kyc_id: Bytes(0505050505050505050505050505050505050505050505050505050505050505), freelancer_rate: 8000, milestones: [5000000, 3000000, 2000000], platform_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4, platform_rate: 2000, private_hash: Bytes(0000000000000000000000000000000000000000000000000000000000000000), scout_rate: 0, token: CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A}
+   9: [Diagnostic Event] topics:[fn_call, Bytes(0000000000000000000000000000000000000000000000000000000000000008), create_milestone_escrow], data:{anchor_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, bounty_amount: 10000000, client: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, expiry_ledger: 5000000, freelancer: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, freelancer_kyc_id: Bytes(0505050505050505050505050505050505050505050505050505050505050505), freelancer_rate: 8000, milestones: [5000000, 3000000, 2000000], platform_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4, platform_rate: 2000, private_hash: Bytes(0000000000000000000000000000000000000000000000000000000000000000), scout_rate: 0, token: CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A}
+   10: [Diagnostic Event] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[fn_return, factory_init], data:Void
+   11: [Diagnostic Event] topics:[fn_call, Bytes(0000000000000000000000000000000000000000000000000000000000000008), factory_init], data:Bytes(1a1b7e7c2cb7c95eb1b15a2b4a2fd3ab62a630b312755df4bc1492d18817322c)
+   12: [Diagnostic Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[fn_return, mint], data:Void
+   13: [Contract Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[mint, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPP4V"], data:10000000
+   14: [Diagnostic Event] topics:[fn_call, Bytes(e5b28cd0e241aaecbaf638165ac920bb39ebd1485bf5220aa32aed300e130739), mint], data:[CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, 10000000]
+   15: [Diagnostic Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[fn_return, set_admin], data:Void
+   16: [Contract Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[set_admin, GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPP4V, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPP4V"], data:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4
+   17: [Diagnostic Event] topics:[fn_call, Bytes(e5b28cd0e241aaecbaf638165ac920bb39ebd1485bf5220aa32aed300e130739), set_admin], data:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4
+   18: [Diagnostic Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[fn_return, init_asset], data:Void
+   19: [Diagnostic Event] topics:[fn_call, Bytes(e5b28cd0e241aaecbaf638165ac920bb39ebd1485bf5220aa32aed300e130739), init_asset], data:Bytes(0000000161616100000000000000000000000000000000000000000000000000000000000000000000000007)
+
+Backtrace (newest first):
+   0: backtrace::backtrace::libunwind::trace
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/backtrace/libunwind.rs:117:9
+      backtrace::backtrace::trace_unsynchronized
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/backtrace/mod.rs:66:14
+   1: backtrace::backtrace::trace
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/backtrace/mod.rs:53:14
+   2: backtrace::capture::Backtrace::create
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/capture.rs:294:9
+   3: backtrace::capture::Backtrace::new_unresolved
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/capture.rs:289:9
+   4: soroban_env_host::host::error::<impl soroban_env_host::host::Host>::maybe_get_debug_info::{{closure}}
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host/error.rs:293:37
+   5: soroban_env_host::budget::Budget::with_shadow_mode
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/budget.rs:972:21
+   6: soroban_env_host::host::Host::with_debug_mode
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host.rs:615:24
+   7: soroban_env_host::host::error::<impl soroban_env_host::host::Host>::maybe_get_debug_info
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host/error.rs:290:13
+   8: soroban_env_host::host::error::<impl soroban_env_host::host::Host>::error::{{closure}}
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host/error.rs:274:23
+   9: soroban_env_host::budget::Budget::with_shadow_mode
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/budget.rs:972:21
+  10: soroban_env_host::host::Host::with_debug_mode
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host.rs:615:24
+  11: soroban_env_host::host::error::<impl soroban_env_host::host::Host>::error
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host/error.rs:261:9
+  12: <soroban_env_host::host::Host as soroban_env_common::env::EnvBase>::escalate_error_to_panic
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host.rs:767:26
+  13: soroban_sdk::env::internal::reject_err::{{closure}}
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-21.7.7/src/env.rs:52:23
+  14: core::result::Result<T,E>::map_err
+             at /Users/admin/.rustup/toolchains/1.85.0-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/result.rs:856:27
+  15: soroban_sdk::env::internal::reject_err
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-21.7.7/src/env.rs:52:9
+  16: <soroban_sdk::env::Env as soroban_env_common::env::Env>::call
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-21.7.7/src/env.rs:1667:13
+  17: soroban_sdk::env::Env::invoke_contract
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-21.7.7/src/env.rs:379:18
+  18: uctalent_escrow::UCTalentContractClient::create_milestone_escrow
+             at src/lib.rs:14:1
+  19: uctalent_escrow::test::test_milestone_escrow_lifecycle
+             at src/test.rs:361:26
+  20: uctalent_escrow::test::test_milestone_escrow_lifecycle::{{closure}}
+             at src/test.rs:336:37
+  21: core::ops::function::FnOnce::call_once
+             at /Users/admin/.rustup/toolchains/1.85.0-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250:5
+
+
+Writing test snapshot file for test "test::test_milestone_escrow_lifecycle" to "test_snapshots/test/test_milestone_escrow_lifecycle.1.json".
+
+---- test::test_split_math_dust_goes_to_developer stdout ----
+
+thread 'test::test_split_math_dust_goes_to_developer' panicked at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host.rs:768:9:
+HostError: Error(Object, UnexpectedSize)
+
+Event log (newest first):
+   0: [Diagnostic Event] topics:[error, Error(Object, UnexpectedSize)], data:"escalating error to panic"
+   1: [Diagnostic Event] topics:[error, Error(Object, UnexpectedSize)], data:["contract call failed", create_escrow, [{anchor_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, bounty_amount: 1001, client: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, developer: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, developer_kyc_id: Bytes(0101010101010101010101010101010101010101010101010101010101010101), expiry_ledger: 100, platform_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4, platform_rate: 200, scout: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M, scout_kyc_id: Bytes(0202020202020202020202020202020202020202020202020202020202020202), scout_rate: 800, token: CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A}]]
+   2: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[error, Error(Object, UnexpectedSize)], data:"caught error from function"
+   3: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[error, Error(Object, UnexpectedSize)], data:"escalating error to panic"
+   4: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[error, Error(Object, UnexpectedSize)], data:["contract call failed", referral_init, [{anchor_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, bounty_amount: 1001, candidate: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, client: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, expiry_ledger: 100, platform_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4, platform_rate: 200, scout_rate: 800, token: CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A}]]
+   5: [Failed Diagnostic Event (not emitted)] contract:CAT5HPWZPV42PTN6O34QBJFT5L7ZD5TF7X4VRBJW7P4LHXYC7RNMS6YW, topics:[log], data:["VM call trapped with HostError", referral_init, Error(Object, UnexpectedSize)]
+   6: [Failed Diagnostic Event (not emitted)] contract:CAT5HPWZPV42PTN6O34QBJFT5L7ZD5TF7X4VRBJW7P4LHXYC7RNMS6YW, topics:[error, Error(Object, UnexpectedSize)], data:"escalating error to VM trap from failed host function call: map_unpack_to_linear_memory"
+   7: [Failed Diagnostic Event (not emitted)] contract:CAT5HPWZPV42PTN6O34QBJFT5L7ZD5TF7X4VRBJW7P4LHXYC7RNMS6YW, topics:[error, Error(Object, UnexpectedSize)], data:"differing host map and output slice lengths when unpacking map to linear memory"
+   8: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[fn_call, Bytes(27d3bed97d79a7cdbe76f900a4b3eaff91f665fdf9588536fbf8b3df02fc5ac9), referral_init], data:{anchor_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, bounty_amount: 1001, candidate: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, client: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, expiry_ledger: 100, platform_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4, platform_rate: 200, scout_rate: 800, token: CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A}
+   9: [Diagnostic Event] topics:[fn_call, Bytes(0000000000000000000000000000000000000000000000000000000000000008), create_escrow], data:{anchor_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, bounty_amount: 1001, client: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, developer: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, developer_kyc_id: Bytes(0101010101010101010101010101010101010101010101010101010101010101), expiry_ledger: 100, platform_address: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4, platform_rate: 200, scout: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M, scout_kyc_id: Bytes(0202020202020202020202020202020202020202020202020202020202020202), scout_rate: 800, token: CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A}
+   10: [Diagnostic Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[fn_return, balance], data:1001
+   11: [Diagnostic Event] topics:[fn_call, Bytes(e5b28cd0e241aaecbaf638165ac920bb39ebd1485bf5220aa32aed300e130739), balance], data:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM
+   12: [Diagnostic Event] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[fn_return, factory_init], data:Void
+   13: [Diagnostic Event] topics:[fn_call, Bytes(0000000000000000000000000000000000000000000000000000000000000008), factory_init], data:Bytes(1a1b7e7c2cb7c95eb1b15a2b4a2fd3ab62a630b312755df4bc1492d18817322c)
+   14: [Diagnostic Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[fn_return, mint], data:Void
+   15: [Contract Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[mint, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPP4V"], data:1001
+   16: [Diagnostic Event] topics:[fn_call, Bytes(e5b28cd0e241aaecbaf638165ac920bb39ebd1485bf5220aa32aed300e130739), mint], data:[CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, 1001]
+   17: [Diagnostic Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[fn_return, set_admin], data:Void
+   18: [Contract Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[set_admin, GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPP4V, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPP4V"], data:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4
+   19: [Diagnostic Event] topics:[fn_call, Bytes(e5b28cd0e241aaecbaf638165ac920bb39ebd1485bf5220aa32aed300e130739), set_admin], data:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4
+   20: [Diagnostic Event] contract:CDS3FDGQ4JA2V3F26Y4BMWWJEC5TT26RJBN7KIQKUMVO2MAOCMDTSZ7A, topics:[fn_return, init_asset], data:Void
+   21: [Diagnostic Event] topics:[fn_call, Bytes(e5b28cd0e241aaecbaf638165ac920bb39ebd1485bf5220aa32aed300e130739), init_asset], data:Bytes(0000000161616100000000000000000000000000000000000000000000000000000000000000000000000007)
+
+Backtrace (newest first):
+   0: backtrace::backtrace::libunwind::trace
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/backtrace/libunwind.rs:117:9
+      backtrace::backtrace::trace_unsynchronized
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/backtrace/mod.rs:66:14
+   1: backtrace::backtrace::trace
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/backtrace/mod.rs:53:14
+   2: backtrace::capture::Backtrace::create
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/capture.rs:294:9
+   3: backtrace::capture::Backtrace::new_unresolved
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/backtrace-0.3.76/src/capture.rs:289:9
+   4: soroban_env_host::host::error::<impl soroban_env_host::host::Host>::maybe_get_debug_info::{{closure}}
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host/error.rs:293:37
+   5: soroban_env_host::budget::Budget::with_shadow_mode
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/budget.rs:972:21
+   6: soroban_env_host::host::Host::with_debug_mode
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host.rs:615:24
+   7: soroban_env_host::host::error::<impl soroban_env_host::host::Host>::maybe_get_debug_info
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host/error.rs:290:13
+   8: soroban_env_host::host::error::<impl soroban_env_host::host::Host>::error::{{closure}}
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host/error.rs:274:23
+   9: soroban_env_host::budget::Budget::with_shadow_mode
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/budget.rs:972:21
+  10: soroban_env_host::host::Host::with_debug_mode
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host.rs:615:24
+  11: soroban_env_host::host::error::<impl soroban_env_host::host::Host>::error
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host/error.rs:261:9
+  12: <soroban_env_host::host::Host as soroban_env_common::env::EnvBase>::escalate_error_to_panic
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-21.2.1/src/host.rs:767:26
+  13: soroban_sdk::env::internal::reject_err::{{closure}}
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-21.7.7/src/env.rs:52:23
+  14: core::result::Result<T,E>::map_err
+             at /Users/admin/.rustup/toolchains/1.85.0-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/result.rs:856:27
+  15: soroban_sdk::env::internal::reject_err
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-21.7.7/src/env.rs:52:9
+  16: <soroban_sdk::env::Env as soroban_env_common::env::Env>::call
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-21.7.7/src/env.rs:1667:13
+  17: soroban_sdk::env::Env::invoke_contract
+             at /Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-21.7.7/src/env.rs:379:18
+  18: uctalent_escrow::UCTalentContractClient::create_escrow
+             at src/lib.rs:14:1
+  19: uctalent_escrow::test::test_split_math_dust_goes_to_developer
+             at src/test.rs:187:26
+  20: uctalent_escrow::test::test_split_math_dust_goes_to_developer::{{closure}}
+             at src/test.rs:183:44
+  21: core::ops::function::FnOnce::call_once
+             at /Users/admin/.rustup/toolchains/1.85.0-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250:5
+
+
+Writing test snapshot file for test "test::test_split_math_dust_goes_to_developer" to "test_snapshots/test/test_split_math_dust_goes_to_developer.1.json".
+
+
+failures:
+    test::test_full_lifecycle
+    test::test_milestone_escrow_lifecycle
+    test::test_oracle_integration_in_events
+    test::test_refund_after_expiry
+    test::test_reverse_buffer_refund
+    test::test_split_math_dust_goes_to_developer
+
+test result: FAILED. 6 passed; 6 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.58s
+
+error: test failed, to rerun pass `--lib`

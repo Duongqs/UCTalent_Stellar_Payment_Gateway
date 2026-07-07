@@ -1,0 +1,7 @@
+ACCOUNTS = ["<distribution_account_public_key>"]
+SIGNING_KEY = "<signing_key>"
+NETWORK_PASSPHRASE = "Test SDF Network ; September 2015"
+DIRECT_PAYMENT_SERVER = "http://localhost:8080/sep31"
+WEB_AUTH_ENDPOINT = "http://localhost:8080/auth"
+KYC_SERVER = "http://localhost:8080/sep12"
+QUOTE_SERVER = "http://localhost:8080/sep38"
