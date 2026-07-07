@@ -18,6 +18,10 @@ const banking_1 = require("@uc/banking");
 const core_1 = require("@uc/core");
 const uuid_1 = require("uuid");
 let RateController = class RateController {
+    oracleService;
+    constructor(oracleService) {
+        this.oracleService = oracleService;
+    }
     async getRate(type, sell_asset, buy_asset, sell_amount, buy_amount, context, buy_delivery_method) {
         if (!type || (type !== 'indicative' && type !== 'firm')) {
             throw new common_1.BadRequestException('Valid type (indicative or firm) is required');
@@ -27,7 +31,7 @@ let RateController = class RateController {
         }
         let baseRate;
         try {
-            const oracleResult = await (0, banking_1.getSafeFxRate)();
+            const oracleResult = await this.oracleService.getSafeFxRate();
             baseRate = oracleResult.rate;
         }
         catch (apiError) {
@@ -132,6 +136,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], RateController.prototype, "getQuote", null);
 exports.RateController = RateController = __decorate([
-    (0, common_1.Controller)()
+    (0, common_1.Controller)(),
+    __metadata("design:paramtypes", [banking_1.OracleService])
 ], RateController);
 //# sourceMappingURL=rate.controller.js.map

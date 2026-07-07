@@ -17,4 +17,5 @@ Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./services/stellar.service"), exports);
 __exportStar(require("./services/anchor-rpc.service"), exports);
 __exportStar(require("./services/sep31-transaction.service"), exports);
+__exportStar(require("./stellar.module"), exports);
 //# sourceMappingURL=index.js.map

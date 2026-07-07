@@ -16,6 +16,10 @@ exports.KycController = void 0;
 const common_1 = require("@nestjs/common");
 const core_1 = require("@uc/core");
 let KycController = class KycController {
+    sep9Validation;
+    constructor(sep9Validation) {
+        this.sep9Validation = sep9Validation;
+    }
     async getCustomer(id, account, type) {
         if (!id && !account && !type) {
             throw new common_1.BadRequestException('Must provide id, account, or type');
@@ -68,7 +72,7 @@ let KycController = class KycController {
         }
     }
     async putCustomer(body) {
-        const validation = core_1.Sep9ValidationService.validate(body);
+        const validation = this.sep9Validation.validate(body);
         if (!validation.isValid) {
             throw new common_1.BadRequestException({
                 error: 'Invalid SEP-9 fields',
@@ -124,6 +128,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], KycController.prototype, "putCustomer", null);
 exports.KycController = KycController = __decorate([
-    (0, common_1.Controller)('customer')
+    (0, common_1.Controller)('customer'),
+    __metadata("design:paramtypes", [core_1.Sep9ValidationService])
 ], KycController);
 //# sourceMappingURL=kyc.controller.js.map

@@ -1,11 +1,11 @@
-import { 
-  Controller, 
-  Post, 
-  Body, 
-  HttpCode, 
-  HttpStatus, 
-  UnauthorizedException, 
-  InternalServerErrorException 
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  HttpStatus,
+  UnauthorizedException,
+  InternalServerErrorException
 } from '@nestjs/common';
 import { AnchorRpcService } from '@uc/stellar';
 import { query, auditLog } from '@uc/core';
@@ -13,6 +13,10 @@ import * as crypto from 'crypto';
 
 @Controller('ipn')
 export class IpnController {
+  constructor(
+    private readonly anchorRpc: AnchorRpcService
+  ) {}
+
   @Post()
   @HttpCode(HttpStatus.OK)
   async handleIpn(@Body() body: { result?: string; checksum?: string }) {
@@ -42,7 +46,6 @@ export class IpnController {
 
       console.log(`[IPN] Received: invoice=${invoice_no}, status=${status}`);
 
-      // Idempotency: check if this exact IPN was already processed
       const existing = await query(
         `SELECT id FROM disbursement_audit_log
          WHERE transaction_id = $1 AND event_type = $2`,
@@ -56,7 +59,7 @@ export class IpnController {
 
       switch (status) {
         case 'SUCCESS':
-          await AnchorRpcService.notifyOffchainFundsAvailable(transaction_id, external_transaction_id);
+          await this.anchorRpc.notifyOffchainFundsAvailable(transaction_id, external_transaction_id);
           await query(
             'UPDATE sep31_transactions SET status = $2, updated_at = now() WHERE id = $1',
             [transaction_id, 'completed']
@@ -84,7 +87,7 @@ export class IpnController {
             });
             console.warn(`[IPN] FAILED for ${transaction_id}, retry ${retryCount + 1}/3 scheduled in ${nextRetryMs}ms`);
           } else {
-            await AnchorRpcService.notifyTransactionError(
+            await this.anchorRpc.notifyTransactionError(
               transaction_id,
               `Disbursement failed after 3 retries`
             );

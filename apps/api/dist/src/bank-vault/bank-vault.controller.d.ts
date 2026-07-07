@@ -1,4 +1,8 @@
+import { BankVaultService, NinePayGatewayService } from '@uc/banking';
 export declare class BankVaultController {
+    private readonly bankVaultService;
+    private readonly ninePayGateway;
+    constructor(bankVaultService: BankVaultService, ninePayGateway: NinePayGatewayService);
     inquiry(body: {
         bankCode?: string;
         accountNumber?: string;

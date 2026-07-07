@@ -1,4 +1,7 @@
+import { OracleService } from '@uc/banking';
 export declare class HealthController {
+    private readonly oracleService;
+    constructor(oracleService: OracleService);
     getHealth(): Promise<{
         status: string;
         checks: {

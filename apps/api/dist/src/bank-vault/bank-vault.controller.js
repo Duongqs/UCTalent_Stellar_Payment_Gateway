@@ -18,13 +18,19 @@ const banking_1 = require("@uc/banking");
 const core_1 = require("@uc/core");
 const crypto_1 = require("crypto");
 let BankVaultController = class BankVaultController {
+    bankVaultService;
+    ninePayGateway;
+    constructor(bankVaultService, ninePayGateway) {
+        this.bankVaultService = bankVaultService;
+        this.ninePayGateway = ninePayGateway;
+    }
     async inquiry(body) {
         const { bankCode, accountNumber } = body;
         if (!bankCode || !accountNumber) {
             throw new common_1.BadRequestException('Missing bankCode or accountNumber');
         }
         try {
-            const accountName = await banking_1.NinePayGatewayService.lookupAccount(accountNumber, bankCode);
+            const accountName = await this.ninePayGateway.lookupAccount(accountNumber, bankCode);
             if (!accountName) {
                 throw new common_1.NotFoundException('Account not found or invalid');
             }
@@ -48,7 +54,7 @@ let BankVaultController = class BankVaultController {
                 type: 'sep31-receiver',
                 first_name: accountName,
             });
-            const record = await banking_1.BankVaultService.registerProfile({
+            const record = await this.bankVaultService.registerProfile({
                 customer_id: customerId,
                 stellar_wallet: '',
                 account_number: accountNumber,
@@ -80,6 +86,8 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], BankVaultController.prototype, "register", null);
 exports.BankVaultController = BankVaultController = __decorate([
-    (0, common_1.Controller)('api/v1/bank-vault')
+    (0, common_1.Controller)('api/v1/bank-vault'),
+    __metadata("design:paramtypes", [banking_1.BankVaultService,
+        banking_1.NinePayGatewayService])
 ], BankVaultController);
 //# sourceMappingURL=bank-vault.controller.js.map

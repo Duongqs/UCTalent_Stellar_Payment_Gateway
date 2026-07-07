@@ -1,21 +1,25 @@
-import { 
-  Controller, 
-  Get, 
-  Query, 
-  Param, 
-  BadRequestException, 
-  NotFoundException, 
-  ConflictException, 
+import {
+  Controller,
+  Get,
+  Query,
+  Param,
+  BadRequestException,
+  NotFoundException,
+  ConflictException,
   ServiceUnavailableException,
   HttpStatus,
   HttpCode
 } from '@nestjs/common';
-import { getSafeFxRate } from '@uc/banking';
+import { OracleService } from '@uc/banking';
 import { query, auditLog } from '@uc/core';
 import { v4 as uuidv4 } from 'uuid';
 
 @Controller()
 export class RateController {
+  constructor(
+    private readonly oracleService: OracleService
+  ) {}
+
   @Get('rate')
   async getRate(
     @Query('type') type?: string,
@@ -36,7 +40,7 @@ export class RateController {
 
     let baseRate: number;
     try {
-      const oracleResult = await getSafeFxRate();
+      const oracleResult = await this.oracleService.getSafeFxRate();
       baseRate = oracleResult.rate;
     } catch (apiError: any) {
       console.error('[Rate API] Oracle error:', apiError.message);
@@ -72,7 +76,7 @@ export class RateController {
       }
 
       const quoteId = uuidv4();
-      const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
       await query(
         `INSERT INTO firm_quotes (id, sell_asset, buy_asset, sell_amount, buy_amount, rate, context, expires_at)
@@ -115,7 +119,7 @@ export class RateController {
     }
 
     if (quote.expires_at && new Date(quote.expires_at) < new Date()) {
-      throw new BadRequestException('Quote expired'); // Using 400 for expired quote matching business logic or 410 (custom HTTP status if wanted, but standard exception is fine)
+      throw new BadRequestException('Quote expired');
     }
 
     if (quote.used_at) {

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { AnchorRpcService } from '@uc/stellar';
-import { NinePayGatewayService, NinePayMockService, getSafeFxRate } from '@uc/banking';
+import { NinePayGatewayService, NinePayMockService, OracleService } from '@uc/banking';
 import { BankProfileModel, query, auditLog, decrypt } from '@uc/core';
 import axios from 'axios';
 
@@ -9,6 +9,13 @@ import axios from 'axios';
 export class DisbursementPollerService {
   private platformUrl = process.env.ANCHOR_PLATFORM_URL || process.env.PLATFORM_SERVER_URL || 'http://localhost:8085';
   private isPolling = false;
+
+  constructor(
+    private readonly anchorRpc: AnchorRpcService,
+    private readonly ninePayGateway: NinePayGatewayService,
+    private readonly ninePayMock: NinePayMockService,
+    private readonly oracleService: OracleService
+  ) {}
 
   @Interval(10000)
   async pollPendingTransactions() {
@@ -27,8 +34,7 @@ export class DisbursementPollerService {
         } catch (txError: any) {
           console.error(`[Disbursement Poller] Failed TX ${tx.id}:`, txError.message);
           await auditLog(tx.id, 'poller_error', { error: txError.message });
-          
-          // Reset lock if it fails before progressing to pending_receiver
+
           await query(
             `UPDATE sep31_transactions 
              SET status = 'pending_sender', error_message = $2, updated_at = now() 
@@ -49,7 +55,6 @@ export class DisbursementPollerService {
   private async processTransaction(tx: any) {
     const txId = tx.id;
 
-    // Acquire lock
     const lockResult = await query(
       `UPDATE sep31_transactions 
        SET status = 'processing_lock', updated_at = now()
@@ -57,11 +62,10 @@ export class DisbursementPollerService {
        RETURNING id`,
       [txId]
     );
-    if (!lockResult) return; // Locked by another worker instance
+    if (!lockResult) return;
 
     console.log(`[Disbursement Poller] Processing TX ${txId}`);
 
-    // Get Stellar TX Hash
     const txRecord = await query<{ stellar_tx_hash: string | null }>(
       'SELECT stellar_tx_hash FROM sep31_transactions WHERE id = $1',
       [txId]
@@ -69,19 +73,17 @@ export class DisbursementPollerService {
 
     const stellarTxHash = txRecord?.stellar_tx_hash;
     if (!stellarTxHash) {
-      // Revert status to wait for Bridge Listener or manual tx hash population
       await query("UPDATE sep31_transactions SET status = 'pending_sender' WHERE id = $1", [txId]);
-      return; 
+      return;
     }
 
-    await AnchorRpcService.notifyOnchainFundsReceived(txId, tx.amount_in, stellarTxHash);
+    await this.anchorRpc.notifyOnchainFundsReceived(txId, tx.amount_in, stellarTxHash);
     await query(
       `UPDATE sep31_transactions SET status = 'pending_receiver', updated_at = now() WHERE id = $1`,
       [txId]
     );
     await auditLog(txId, 'onchain_received', { stellar_tx_hash: stellarTxHash });
 
-    // Resolve receiver
     const receiverId = tx.customers?.receiver?.id;
     if (!receiverId) {
       await this.haltForMissingInfo(txId, 'Missing receiver customer ID on transaction');
@@ -99,14 +101,12 @@ export class DisbursementPollerService {
       return;
     }
 
-    // Decrypt bank information
     const bankInfo = {
       account_number: decrypt(profile.encrypted_account),
       legal_name: decrypt(profile.encrypted_name),
       bank_code: profile.bank_code,
     };
 
-    // Calculate VND amount
     let vndAmount: number;
     if (tx.quote_id) {
       const quote = await query<{ buy_amount: string; sell_amount: string; expires_at: string }>(
@@ -121,12 +121,11 @@ export class DisbursementPollerService {
       vndAmount = parseInt(quote.buy_amount);
       await auditLog(txId, 'quote_consumed', { quote_id: tx.quote_id, vnd_amount: vndAmount });
     } else {
-      const oracle = await getSafeFxRate();
+      const oracle = await this.oracleService.getSafeFxRate();
       vndAmount = Math.floor(Number(tx.amount_in) * oracle.rate);
       await auditLog(txId, 'rate_calculated', { rate: oracle.rate, method: oracle.method, vnd_amount: vndAmount });
     }
 
-    // Apply 10% PIT withholding tax
     const taxWithheld = Math.floor(vndAmount * 0.1);
     const finalVndAmount = vndAmount - taxWithheld;
     const taxCode = 'PIT-AFFILIATE-10%';
@@ -138,7 +137,7 @@ export class DisbursementPollerService {
     console.log(`[Disbursement Poller] Disbursing ${finalVndAmount} VND (Tax: ${taxWithheld}) for TX ${txId}`);
 
     try {
-      await NinePayGatewayService.disburse(
+      await this.ninePayGateway.disburse(
         finalVndAmount,
         txId,
         bankInfo.bank_code,
@@ -159,7 +158,7 @@ export class DisbursementPollerService {
     }
 
     const napasRef = `NAPAS-${Date.now()}`;
-    await AnchorRpcService.notifyOffchainFundsPending(txId, napasRef);
+    await this.anchorRpc.notifyOffchainFundsPending(txId, napasRef);
     await query(
       `UPDATE sep31_transactions 
        SET napas_ref_id = $2, vnd_amount = $3, withheld_tax_amount = $4, tax_code = $5, status = 'pending_external', updated_at = now() 
@@ -169,9 +168,9 @@ export class DisbursementPollerService {
     await auditLog(txId, 'napas_sent', { napas_ref: napasRef, vnd_amount: finalVndAmount, withheld_tax_amount: taxWithheld, tax_code: taxCode });
 
     console.log(`[Disbursement Poller] TX ${txId} → pending_external (awaiting 9Pay IPN)`);
-    
+
     if (process.env.NINEPAY_MODE === 'mock' || process.env.USE_MOCK_NINEPAY === 'true' || process.env.USE_MOCK_IPN === 'true') {
-      await NinePayMockService.simulateDisbursement(txId, finalVndAmount, txId, napasRef);
+      await this.ninePayMock.simulateDisbursement(txId, finalVndAmount, txId, napasRef);
     }
   }
 

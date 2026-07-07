@@ -15,6 +15,12 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
 var __importStar = (this && this.__importStar) || (function () {
     var ownKeys = function(o) {
         ownKeys = Object.getOwnPropertyNames || function (o) {
@@ -32,23 +38,33 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NinePayGatewayService = void 0;
+const common_1 = require("@nestjs/common");
 const crypto = __importStar(require("crypto"));
 const axios_1 = __importDefault(require("axios"));
 const name_matching_service_1 = require("./name-matching.service");
-class NinePayGatewayService {
-    static buildHttpQuery(params) {
+let NinePayGatewayService = class NinePayGatewayService {
+    constructor(nameMatchingService) {
+        this.nameMatchingService = nameMatchingService;
+        this.merchantKey = process.env.NINEPAY_MERCHANT_KEY || process.env.NINEPAY_MERCHANT_ID || 'sandbox_merchant';
+        this.secretKey = process.env.NINEPAY_SECRET_KEY || 'sandbox_secret';
+        this.apiUrl = (process.env.NINEPAY_API_URL || 'https://sand-payment.9pay.vn').replace(/\/+$/, '');
+    }
+    buildHttpQuery(params) {
         if (!params || Object.keys(params).length === 0)
             return '';
         return Object.keys(params).sort().map(key => {
             return encodeURIComponent(key) + '=' + encodeURIComponent(params[key] || '');
         }).join('&').replace(/%20/g, '+');
     }
-    static createSignature(method, path, time, params) {
+    createSignature(method, path, time, params) {
         const httpQuery = this.buildHttpQuery(params);
         let message = method.toUpperCase() + '\n' + this.apiUrl + path + '\n' + time;
         if (httpQuery) {
@@ -59,10 +75,10 @@ class NinePayGatewayService {
             .update(message, 'utf8')
             .digest('base64');
     }
-    static buildAuthHeader(signature) {
+    buildAuthHeader(signature) {
         return `Signature Algorithm=HS256,Credential=${this.merchantKey},SignedHeaders=,Signature=${signature}`;
     }
-    static async request(method, path, params = {}) {
+    async request(method, path, params = {}) {
         const time = Math.round(Date.now() / 1000).toString();
         const signature = this.createSignature(method, path, time, params);
         const authHeader = this.buildAuthHeader(signature);
@@ -85,7 +101,7 @@ class NinePayGatewayService {
         const response = await (0, axios_1.default)(config);
         return response.data;
     }
-    static async lookupAccount(accountNumber, bankCode) {
+    async lookupAccount(accountNumber, bankCode) {
         if (process.env.NINEPAY_MODE === 'mock' || process.env.USE_MOCK_NINEPAY === 'true') {
             console.log(`[Mock 9Pay] Lookup account ${accountNumber} at ${bankCode}`);
             if (accountNumber.includes('169969'))
@@ -116,12 +132,12 @@ class NinePayGatewayService {
             return null;
         }
     }
-    static async disburse(amount, invoiceNo, bankCode, accountNumber, description, kycName, complianceMeta) {
+    async disburse(amount, invoiceNo, bankCode, accountNumber, description, kycName, complianceMeta) {
         const accountName = await this.lookupAccount(accountNumber, bankCode);
         if (!accountName) {
             throw new Error(`RECONCILIATION_FAILED: Cannot lookup account ${accountNumber} at bank ${bankCode}`);
         }
-        name_matching_service_1.NameMatchingService.reconcileNames(kycName, accountName, invoiceNo);
+        this.nameMatchingService.reconcileNames(kycName, accountName, invoiceNo);
         if (process.env.NINEPAY_MODE === 'mock' || process.env.USE_MOCK_NINEPAY === 'true') {
             console.log(`[Mock 9Pay] Disbursed ${amount} VND for invoice ${invoiceNo} to account ${accountNumber}`);
             return { status: 5, message: 'Mock Success' };
@@ -149,9 +165,10 @@ class NinePayGatewayService {
             throw error;
         }
     }
-}
+};
 exports.NinePayGatewayService = NinePayGatewayService;
-NinePayGatewayService.merchantKey = process.env.NINEPAY_MERCHANT_KEY || process.env.NINEPAY_MERCHANT_ID || 'sandbox_merchant';
-NinePayGatewayService.secretKey = process.env.NINEPAY_SECRET_KEY || 'sandbox_secret';
-NinePayGatewayService.apiUrl = (process.env.NINEPAY_API_URL || 'https://sand-payment.9pay.vn').replace(/\/+$/, '');
+exports.NinePayGatewayService = NinePayGatewayService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [name_matching_service_1.NameMatchingService])
+], NinePayGatewayService);
 //# sourceMappingURL=ninepay-gateway.service.js.map

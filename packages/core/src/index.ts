@@ -15,3 +15,4 @@ export { CustomerEntity } from './entities/customer.entity';
 export type { KYCStatus as EntityKycStatus } from './entities/customer.entity';
 export { BankProfileEntity } from './entities/bank-profile.entity';
 export { DatabaseModule } from './database/database.module';
+export { CoreModule } from './core.module';

@@ -1,4 +1,7 @@
+import { Sep31TransactionService } from '@uc/stellar';
 export declare class Sep31Controller {
+    private readonly sep31Service;
+    constructor(sep31Service: Sep31TransactionService);
     initiateDisbursement(body: {
         amount?: string;
         sender_id?: string;

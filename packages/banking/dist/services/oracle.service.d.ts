@@ -6,7 +6,14 @@ export interface OracleResult {
     cachedAt: Date;
     method: 'median' | 'single';
 }
-export declare function getSafeFxRate(): Promise<OracleResult>;
-export declare function invalidateCache(): void;
-export declare function getCircuitBreakerState(): string;
-export declare function resetCircuitBreaker(): void;
+export declare class OracleService {
+    private cache;
+    private circuitBreaker;
+    private sources;
+    private calculateMedian;
+    private detectOutliers;
+    getSafeFxRate(): Promise<OracleResult>;
+    invalidateCache(): void;
+    getCircuitBreakerState(): string;
+    resetCircuitBreaker(): void;
+}

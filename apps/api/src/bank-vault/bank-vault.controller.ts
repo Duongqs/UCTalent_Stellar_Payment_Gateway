@@ -1,9 +1,9 @@
-import { 
-  Controller, 
-  Post, 
-  Body, 
-  BadRequestException, 
-  NotFoundException, 
+import {
+  Controller,
+  Post,
+  Body,
+  BadRequestException,
+  NotFoundException,
   InternalServerErrorException,
   HttpCode,
   HttpStatus
@@ -14,6 +14,11 @@ import { randomUUID } from 'crypto';
 
 @Controller('api/v1/bank-vault')
 export class BankVaultController {
+  constructor(
+    private readonly bankVaultService: BankVaultService,
+    private readonly ninePayGateway: NinePayGatewayService
+  ) {}
+
   @Post('inquiry')
   @HttpCode(HttpStatus.OK)
   async inquiry(@Body() body: { bankCode?: string; accountNumber?: string }) {
@@ -23,7 +28,7 @@ export class BankVaultController {
     }
 
     try {
-      const accountName = await NinePayGatewayService.lookupAccount(accountNumber, bankCode);
+      const accountName = await this.ninePayGateway.lookupAccount(accountNumber, bankCode);
       if (!accountName) {
         throw new NotFoundException('Account not found or invalid');
       }
@@ -52,7 +57,7 @@ export class BankVaultController {
         first_name: accountName,
       });
 
-      const record = await BankVaultService.registerProfile({
+      const record = await this.bankVaultService.registerProfile({
         customer_id: customerId,
         stellar_wallet: '',
         account_number: accountNumber,

@@ -1,18 +1,22 @@
-import { 
-  Controller, 
-  Get, 
-  Put, 
-  Query, 
-  Body, 
-  HttpCode, 
-  HttpStatus, 
-  BadRequestException, 
-  InternalServerErrorException 
+import {
+  Controller,
+  Get,
+  Put,
+  Query,
+  Body,
+  HttpCode,
+  HttpStatus,
+  BadRequestException,
+  InternalServerErrorException
 } from '@nestjs/common';
 import { CustomerModel, Sep9ValidationService, auditLog } from '@uc/core';
 
 @Controller('customer')
 export class KycController {
+  constructor(
+    private readonly sep9Validation: Sep9ValidationService
+  ) {}
+
   @Get()
   async getCustomer(
     @Query('id') id?: string,
@@ -73,7 +77,7 @@ export class KycController {
   @Put()
   @HttpCode(HttpStatus.ACCEPTED)
   async putCustomer(@Body() body: Record<string, any>) {
-    const validation = Sep9ValidationService.validate(body);
+    const validation = this.sep9Validation.validate(body);
     if (!validation.isValid) {
       throw new BadRequestException({
         error: 'Invalid SEP-9 fields',

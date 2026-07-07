@@ -9,6 +9,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
 const schedule_1 = require("@nestjs/schedule");
+const core_1 = require("@uc/core");
+const stellar_1 = require("@uc/stellar");
+const banking_1 = require("@uc/banking");
 const soroban_listener_service_1 = require("./soroban-listener/soroban-listener.service");
 const event_consumer_service_1 = require("./soroban-listener/event-consumer.service");
 const disbursement_poller_service_1 = require("./disbursement/disbursement-poller.service");
@@ -19,6 +22,9 @@ exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
             schedule_1.ScheduleModule.forRoot(),
+            core_1.CoreModule,
+            stellar_1.StellarModule,
+            banking_1.BankingModule,
         ],
         providers: [
             soroban_listener_service_1.SorobanListenerService,

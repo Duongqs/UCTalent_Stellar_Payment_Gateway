@@ -15,6 +15,12 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
 var __importStar = (this && this.__importStar) || (function () {
     var ownKeys = function(o) {
         ownKeys = Object.getOwnPropertyNames || function (o) {
@@ -32,18 +38,25 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NinePayMockService = void 0;
+const common_1 = require("@nestjs/common");
 const axios_1 = __importDefault(require("axios"));
 const crypto = __importStar(require("crypto"));
 const stellar_1 = require("@uc/stellar");
-class NinePayMockService {
-    static async simulateDisbursement(transactionId, amount, invoiceNo, external_transaction_id) {
+let NinePayMockService = class NinePayMockService {
+    constructor(anchorRpcService) {
+        this.anchorRpcService = anchorRpcService;
+    }
+    async simulateDisbursement(transactionId, amount, invoiceNo, external_transaction_id) {
         console.log(`[Mock 9Pay] Initiating disbursement for invoice ${invoiceNo}, amount: ${amount} VND`);
-        await stellar_1.AnchorRpcService.notifyOffchainFundsPending(transactionId, external_transaction_id);
+        await this.anchorRpcService.notifyOffchainFundsPending(transactionId, external_transaction_id);
         setTimeout(async () => {
             console.log(`[Mock 9Pay] Disbursement SUCCESS for invoice ${invoiceNo}`);
             const payload = {
@@ -71,6 +84,10 @@ class NinePayMockService {
             }
         }, 3000);
     }
-}
+};
 exports.NinePayMockService = NinePayMockService;
+exports.NinePayMockService = NinePayMockService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [stellar_1.AnchorRpcService])
+], NinePayMockService);
 //# sourceMappingURL=ninepay-mock.service.js.map

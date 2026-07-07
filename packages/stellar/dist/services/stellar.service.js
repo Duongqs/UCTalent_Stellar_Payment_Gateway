@@ -1,13 +1,23 @@
 "use strict";
-var _a;
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StellarService = void 0;
 const stellar_sdk_1 = require("@stellar/stellar-sdk");
-class StellarService {
-    static getRpcServer() {
+const common_1 = require("@nestjs/common");
+let StellarService = class StellarService {
+    constructor() {
+        this.rpcUrl = process.env.SOROBAN_RPC_URL || 'https://soroban-testnet.stellar.org';
+        this.rpcServer = new stellar_sdk_1.rpc.Server(this.rpcUrl);
+    }
+    getRpcServer() {
         return this.rpcServer;
     }
-    static toNative(scValOrBase64) {
+    toNative(scValOrBase64) {
         try {
             let scVal = scValOrBase64;
             if (typeof scVal === 'string') {
@@ -23,7 +33,7 @@ class StellarService {
             return null;
         }
     }
-    static async verifyTransaction(txHash) {
+    async verifyTransaction(txHash) {
         try {
             const txStatus = await this.rpcServer.getTransaction(txHash);
             return {
@@ -36,7 +46,7 @@ class StellarService {
             return { success: false, status: 'UNKNOWN' };
         }
     }
-    static async faucet(destinationAddress) {
+    async faucet(destinationAddress) {
         const horizonUrl = 'https://horizon-testnet.stellar.org';
         const server = new stellar_sdk_1.Horizon.Server(horizonUrl);
         const fundingSecret = process.env.FUNDING_SECRET || 'SCQMGZP23PYPUUG652FNE4M44O5CB3NV3CPEXXVF7H6EJJ3SCUJZL6HO';
@@ -63,7 +73,7 @@ class StellarService {
         }
         return result.hash;
     }
-    static async sponsorTransaction(innerXdr) {
+    async sponsorTransaction(innerXdr) {
         const anchorSigningKey = process.env.ANCHOR_SIGNING_KEY;
         if (!anchorSigningKey) {
             return innerXdr;
@@ -84,9 +94,9 @@ class StellarService {
             throw new Error(`sponsor_failed: ${err.message}`);
         }
     }
-}
+};
 exports.StellarService = StellarService;
-_a = StellarService;
-StellarService.rpcUrl = process.env.SOROBAN_RPC_URL || 'https://soroban-testnet.stellar.org';
-StellarService.rpcServer = new stellar_sdk_1.rpc.Server(_a.rpcUrl);
+exports.StellarService = StellarService = __decorate([
+    (0, common_1.Injectable)()
+], StellarService);
 //# sourceMappingURL=stellar.service.js.map

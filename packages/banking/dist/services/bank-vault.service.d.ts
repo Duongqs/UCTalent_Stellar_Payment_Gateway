@@ -1,14 +1,19 @@
 import { BankProfileRecord } from '@uc/core';
+import { NinePayGatewayService } from './ninepay-gateway.service';
+import { NameMatchingService } from './name-matching.service';
 export declare class BankVaultService {
-    static registerProfile(data: {
+    private readonly ninePayGatewayService;
+    private readonly nameMatchingService;
+    constructor(ninePayGatewayService: NinePayGatewayService, nameMatchingService: NameMatchingService);
+    registerProfile(data: {
         customer_id: string;
         stellar_wallet: string;
         account_number: string;
         legal_name: string;
         bank_code: string;
     }): Promise<BankProfileRecord>;
-    static getProfile(customerId: string): Promise<BankProfileRecord | null>;
-    static hydrateBankInfo(refId: string): Promise<{
+    getProfile(customerId: string): Promise<BankProfileRecord | null>;
+    hydrateBankInfo(refId: string): Promise<{
         account_number: string;
         legal_name: string;
         bank_code: string;

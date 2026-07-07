@@ -14,7 +14,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DatabaseModule = exports.BankProfileEntity = exports.CustomerEntity = exports.DisbursementAuditLogEntity = exports.BridgeEventQueueEntity = exports.FirmQuoteEntity = exports.Sep31TransactionEntity = exports.BaseEntity = void 0;
+exports.CoreModule = exports.DatabaseModule = exports.BankProfileEntity = exports.CustomerEntity = exports.DisbursementAuditLogEntity = exports.BridgeEventQueueEntity = exports.FirmQuoteEntity = exports.Sep31TransactionEntity = exports.BaseEntity = void 0;
 __exportStar(require("./db"), exports);
 __exportStar(require("./models/customer.model"), exports);
 __exportStar(require("./models/bank-profile.model"), exports);
@@ -37,4 +37,6 @@ var bank_profile_entity_1 = require("./entities/bank-profile.entity");
 Object.defineProperty(exports, "BankProfileEntity", { enumerable: true, get: function () { return bank_profile_entity_1.BankProfileEntity; } });
 var database_module_1 = require("./database/database.module");
 Object.defineProperty(exports, "DatabaseModule", { enumerable: true, get: function () { return database_module_1.DatabaseModule; } });
+var core_module_1 = require("./core.module");
+Object.defineProperty(exports, "CoreModule", { enumerable: true, get: function () { return core_module_1.CoreModule; } });
 //# sourceMappingURL=index.js.map

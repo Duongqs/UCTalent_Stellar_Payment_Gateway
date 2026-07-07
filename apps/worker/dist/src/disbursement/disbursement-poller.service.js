@@ -20,8 +20,18 @@ const banking_1 = require("@uc/banking");
 const core_1 = require("@uc/core");
 const axios_1 = __importDefault(require("axios"));
 let DisbursementPollerService = class DisbursementPollerService {
+    anchorRpc;
+    ninePayGateway;
+    ninePayMock;
+    oracleService;
     platformUrl = process.env.ANCHOR_PLATFORM_URL || process.env.PLATFORM_SERVER_URL || 'http://localhost:8085';
     isPolling = false;
+    constructor(anchorRpc, ninePayGateway, ninePayMock, oracleService) {
+        this.anchorRpc = anchorRpc;
+        this.ninePayGateway = ninePayGateway;
+        this.ninePayMock = ninePayMock;
+        this.oracleService = oracleService;
+    }
     async pollPendingTransactions() {
         if (this.isPolling)
             return;
@@ -68,7 +78,7 @@ let DisbursementPollerService = class DisbursementPollerService {
             await (0, core_1.query)("UPDATE sep31_transactions SET status = 'pending_sender' WHERE id = $1", [txId]);
             return;
         }
-        await stellar_1.AnchorRpcService.notifyOnchainFundsReceived(txId, tx.amount_in, stellarTxHash);
+        await this.anchorRpc.notifyOnchainFundsReceived(txId, tx.amount_in, stellarTxHash);
         await (0, core_1.query)(`UPDATE sep31_transactions SET status = 'pending_receiver', updated_at = now() WHERE id = $1`, [txId]);
         await (0, core_1.auditLog)(txId, 'onchain_received', { stellar_tx_hash: stellarTxHash });
         const receiverId = tx.customers?.receiver?.id;
@@ -102,7 +112,7 @@ let DisbursementPollerService = class DisbursementPollerService {
             await (0, core_1.auditLog)(txId, 'quote_consumed', { quote_id: tx.quote_id, vnd_amount: vndAmount });
         }
         else {
-            const oracle = await (0, banking_1.getSafeFxRate)();
+            const oracle = await this.oracleService.getSafeFxRate();
             vndAmount = Math.floor(Number(tx.amount_in) * oracle.rate);
             await (0, core_1.auditLog)(txId, 'rate_calculated', { rate: oracle.rate, method: oracle.method, vnd_amount: vndAmount });
         }
@@ -115,7 +125,7 @@ let DisbursementPollerService = class DisbursementPollerService {
         };
         console.log(`[Disbursement Poller] Disbursing ${finalVndAmount} VND (Tax: ${taxWithheld}) for TX ${txId}`);
         try {
-            await banking_1.NinePayGatewayService.disburse(finalVndAmount, txId, bankInfo.bank_code, bankInfo.account_number, 'UCTalent Freelance Disbursement', bankInfo.legal_name, complianceMeta);
+            await this.ninePayGateway.disburse(finalVndAmount, txId, bankInfo.bank_code, bankInfo.account_number, 'UCTalent Freelance Disbursement', bankInfo.legal_name, complianceMeta);
         }
         catch (err) {
             if (err.message && err.message.includes('RECONCILIATION_FAILED')) {
@@ -125,14 +135,14 @@ let DisbursementPollerService = class DisbursementPollerService {
             throw err;
         }
         const napasRef = `NAPAS-${Date.now()}`;
-        await stellar_1.AnchorRpcService.notifyOffchainFundsPending(txId, napasRef);
+        await this.anchorRpc.notifyOffchainFundsPending(txId, napasRef);
         await (0, core_1.query)(`UPDATE sep31_transactions 
        SET napas_ref_id = $2, vnd_amount = $3, withheld_tax_amount = $4, tax_code = $5, status = 'pending_external', updated_at = now() 
        WHERE id = $1`, [txId, napasRef, finalVndAmount, taxWithheld, taxCode]);
         await (0, core_1.auditLog)(txId, 'napas_sent', { napas_ref: napasRef, vnd_amount: finalVndAmount, withheld_tax_amount: taxWithheld, tax_code: taxCode });
         console.log(`[Disbursement Poller] TX ${txId} → pending_external (awaiting 9Pay IPN)`);
         if (process.env.NINEPAY_MODE === 'mock' || process.env.USE_MOCK_NINEPAY === 'true' || process.env.USE_MOCK_IPN === 'true') {
-            await banking_1.NinePayMockService.simulateDisbursement(txId, finalVndAmount, txId, napasRef);
+            await this.ninePayMock.simulateDisbursement(txId, finalVndAmount, txId, napasRef);
         }
     }
     async haltForMissingInfo(txId, reason) {
@@ -149,6 +159,10 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], DisbursementPollerService.prototype, "pollPendingTransactions", null);
 exports.DisbursementPollerService = DisbursementPollerService = __decorate([
-    (0, common_1.Injectable)()
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [stellar_1.AnchorRpcService,
+        banking_1.NinePayGatewayService,
+        banking_1.NinePayMockService,
+        banking_1.OracleService])
 ], DisbursementPollerService);
 //# sourceMappingURL=disbursement-poller.service.js.map

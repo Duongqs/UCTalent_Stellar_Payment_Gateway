@@ -6,7 +6,7 @@ export interface Sep31TransactionPayload {
     quote_id?: string;
 }
 export declare class Sep31TransactionService {
-    private static anchorUrl;
-    private static generateMockJwt;
-    static createTransaction(payload: Sep31TransactionPayload): Promise<any>;
+    private anchorUrl;
+    private generateMockJwt;
+    createTransaction(payload: Sep31TransactionPayload): Promise<any>;
 }

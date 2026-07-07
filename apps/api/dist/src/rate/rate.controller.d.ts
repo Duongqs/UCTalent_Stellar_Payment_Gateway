@@ -1,4 +1,7 @@
+import { OracleService } from '@uc/banking';
 export declare class RateController {
+    private readonly oracleService;
+    constructor(oracleService: OracleService);
     getRate(type?: string, sell_asset?: string, buy_asset?: string, sell_amount?: string, buy_amount?: string, context?: string, buy_delivery_method?: string): Promise<{
         rate: any;
     }>;

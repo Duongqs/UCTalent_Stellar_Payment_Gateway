@@ -51,6 +51,10 @@ const stellar_1 = require("@uc/stellar");
 const core_1 = require("@uc/core");
 const crypto = __importStar(require("crypto"));
 let IpnController = class IpnController {
+    anchorRpc;
+    constructor(anchorRpc) {
+        this.anchorRpc = anchorRpc;
+    }
     async handleIpn(body) {
         const resultB64 = body.result;
         const receivedChecksum = body.checksum;
@@ -80,7 +84,7 @@ let IpnController = class IpnController {
             }
             switch (status) {
                 case 'SUCCESS':
-                    await stellar_1.AnchorRpcService.notifyOffchainFundsAvailable(transaction_id, external_transaction_id);
+                    await this.anchorRpc.notifyOffchainFundsAvailable(transaction_id, external_transaction_id);
                     await (0, core_1.query)('UPDATE sep31_transactions SET status = $2, updated_at = now() WHERE id = $1', [transaction_id, 'completed']);
                     await (0, core_1.auditLog)(transaction_id, 'ipn_success', { external_transaction_id });
                     break;
@@ -97,7 +101,7 @@ let IpnController = class IpnController {
                         console.warn(`[IPN] FAILED for ${transaction_id}, retry ${retryCount + 1}/3 scheduled in ${nextRetryMs}ms`);
                     }
                     else {
-                        await stellar_1.AnchorRpcService.notifyTransactionError(transaction_id, `Disbursement failed after 3 retries`);
+                        await this.anchorRpc.notifyTransactionError(transaction_id, `Disbursement failed after 3 retries`);
                         await (0, core_1.query)(`UPDATE sep31_transactions SET status = 'error', error_message = $2, updated_at = now() WHERE id = $1`, [transaction_id, 'Max retries exceeded']);
                         await (0, core_1.auditLog)(transaction_id, 'ipn_failed_final', { reason: 'max_retries' });
                         console.error(`[ALERT:disbursement_failed] TX ${transaction_id} failed after 3 retries`);
@@ -127,6 +131,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], IpnController.prototype, "handleIpn", null);
 exports.IpnController = IpnController = __decorate([
-    (0, common_1.Controller)('ipn')
+    (0, common_1.Controller)('ipn'),
+    __metadata("design:paramtypes", [stellar_1.AnchorRpcService])
 ], IpnController);
 //# sourceMappingURL=ipn.controller.js.map

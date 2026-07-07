@@ -1,13 +1,13 @@
-import { 
-  Controller, 
-  Post, 
-  Body, 
-  BadRequestException, 
-  ConflictException, 
-  HttpCode, 
-  HttpStatus, 
-  InternalServerErrorException, 
-  BadGatewayException 
+import {
+  Controller,
+  Post,
+  Body,
+  BadRequestException,
+  ConflictException,
+  HttpCode,
+  HttpStatus,
+  InternalServerErrorException,
+  BadGatewayException
 } from '@nestjs/common';
 import { Sep31TransactionService } from '@uc/stellar';
 import { query, queryAll } from '@uc/core';
@@ -15,6 +15,10 @@ import { randomUUID } from 'crypto';
 
 @Controller('sep31')
 export class Sep31Controller {
+  constructor(
+    private readonly sep31Service: Sep31TransactionService
+  ) {}
+
   @Post('initiate')
   @HttpCode(HttpStatus.OK)
   async initiateDisbursement(
@@ -36,7 +40,7 @@ export class Sep31Controller {
           [tempId, amount, 'USDC', sender_id, receiver_id, 'processing_lock', idempotency_key, quote_id || null]
         );
       } catch (error: any) {
-        if (error.code === '23505') { // Unique constraint violation
+        if (error.code === '23505') {
           const existingTxList = await queryAll(
             'SELECT id, status FROM sep31_transactions WHERE idempotency_key = $1',
             [idempotency_key]
@@ -64,7 +68,7 @@ export class Sep31Controller {
     } else {
       await query(
         `INSERT INTO sep31_transactions (id, amount_in, asset_code, sender_id, receiver_id, status, quote_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
         [tempId, amount, 'USDC', sender_id, receiver_id, 'processing_lock', quote_id || null]
       );
     }
@@ -73,7 +77,7 @@ export class Sep31Controller {
 
     let transactionResponse;
     try {
-      transactionResponse = await Sep31TransactionService.createTransaction({
+      transactionResponse = await this.sep31Service.createTransaction({
         amount,
         asset_code: 'USDC',
         sender_id,

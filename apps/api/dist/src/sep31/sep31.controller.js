@@ -18,6 +18,10 @@ const stellar_1 = require("@uc/stellar");
 const core_1 = require("@uc/core");
 const crypto_1 = require("crypto");
 let Sep31Controller = class Sep31Controller {
+    sep31Service;
+    constructor(sep31Service) {
+        this.sep31Service = sep31Service;
+    }
     async initiateDisbursement(body) {
         const { amount, sender_id, receiver_id, quote_id, idempotency_key } = body;
         if (!amount || !sender_id || !receiver_id) {
@@ -55,12 +59,12 @@ let Sep31Controller = class Sep31Controller {
         }
         else {
             await (0, core_1.query)(`INSERT INTO sep31_transactions (id, amount_in, asset_code, sender_id, receiver_id, status, quote_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`, [tempId, amount, 'USDC', sender_id, receiver_id, 'processing_lock', quote_id || null]);
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [tempId, amount, 'USDC', sender_id, receiver_id, 'processing_lock', quote_id || null]);
         }
         console.log(`[SEP31] Initiating disbursement for ${amount} USDC to receiver ${receiver_id}`);
         let transactionResponse;
         try {
-            transactionResponse = await stellar_1.Sep31TransactionService.createTransaction({
+            transactionResponse = await this.sep31Service.createTransaction({
                 amount,
                 asset_code: 'USDC',
                 sender_id,
@@ -115,6 +119,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], Sep31Controller.prototype, "initiateDisbursement", null);
 exports.Sep31Controller = Sep31Controller = __decorate([
-    (0, common_1.Controller)('sep31')
+    (0, common_1.Controller)('sep31'),
+    __metadata("design:paramtypes", [stellar_1.Sep31TransactionService])
 ], Sep31Controller);
 //# sourceMappingURL=sep31.controller.js.map

@@ -19,4 +19,5 @@ __exportStar(require("./services/ninepay-gateway.service"), exports);
 __exportStar(require("./services/oracle.service"), exports);
 __exportStar(require("./services/bank-vault.service"), exports);
 __exportStar(require("./services/ninepay-mock.service"), exports);
+__exportStar(require("./banking.module"), exports);
 //# sourceMappingURL=index.js.map
