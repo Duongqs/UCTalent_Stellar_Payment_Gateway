@@ -21,6 +21,16 @@ scratch.js
 test-output.txt
 .DS_Store
 
+# Local agent/config and planning documents
+.agent/
+.ai-devkit.json
+docs/
+*.postman_collection.json
+9pay-integration-plan.md
+PROJECT_BRIEF.md
+UI_UX_PROPOSAL.md
+doc.html
+
 # IDEs and editors
 .idea/
 .vscode/
