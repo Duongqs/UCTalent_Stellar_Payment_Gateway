@@ -18,8 +18,19 @@ pnpm-debug.log*
 
 # Diagnostic/temporary files
 scratch.js
+scratch*.js
+scratch*.ts
 test-output.txt
 .DS_Store
+
+# Local business-server debug output/scripts
+business-server/jest_output*.txt
+business-server/test-*.js
+business-server/test-*.ts
+business-server/test-banks.js
+business-server/test_output*.log
+business-server/test_result.log
+business-server/server*.log
 
 # Local agent/config and planning documents
 .agent/
