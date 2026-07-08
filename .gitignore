@@ -32,6 +32,12 @@ business-server/test_output*.log
 business-server/test_result.log
 business-server/server*.log
 
+# Build output
+dist/
+
+# Old project files
+disbursement-bridge/
+
 # Local agent/config and planning documents
 .agent/
 .ai-devkit.json
@@ -39,8 +45,6 @@ docs/
 *.postman_collection.json
 9pay-integration-plan.md
 PROJECT_BRIEF.md
-UI_UX_PROPOSAL.md
-doc.html
 
 # IDEs and editors
 .idea/

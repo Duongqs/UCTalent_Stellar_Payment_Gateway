@@ -21,10 +21,10 @@ export class FirmQuoteEntity extends BaseEntity {
   @Column({ type: 'varchar' })
   context: string;
 
-  @Column({ name: 'expires_at', type: 'timestamptz' })
+  @Column({ name: 'expires_at' })
   expiresAt: Date;
 
-  @Column({ name: 'used_at', type: 'timestamptz', nullable: true })
+  @Column({ name: 'used_at', nullable: true })
   usedAt: Date;
 
   @Column({ name: 'transaction_id', type: 'varchar', nullable: true })

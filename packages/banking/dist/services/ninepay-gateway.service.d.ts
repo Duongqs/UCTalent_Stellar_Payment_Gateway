@@ -1,10 +1,12 @@
 import { NameMatchingService } from './name-matching.service';
+import { EnvService } from '@uc/core';
 export declare class NinePayGatewayService {
+    private readonly envService;
     private readonly nameMatchingService;
-    private merchantKey;
-    private secretKey;
-    private apiUrl;
-    constructor(nameMatchingService: NameMatchingService);
+    constructor(envService: EnvService, nameMatchingService: NameMatchingService);
+    private get merchantKey();
+    private get secretKey();
+    private get apiUrl();
     private buildHttpQuery;
     private createSignature;
     private buildAuthHeader;

@@ -9,12 +9,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RateModule = void 0;
 const common_1 = require("@nestjs/common");
 const rate_controller_1 = require("./rate.controller");
+const quote_controller_1 = require("./quote.controller");
 let RateModule = class RateModule {
 };
 exports.RateModule = RateModule;
 exports.RateModule = RateModule = __decorate([
     (0, common_1.Module)({
-        controllers: [rate_controller_1.RateController],
+        controllers: [rate_controller_1.RateController, quote_controller_1.QuoteController],
     })
 ], RateModule);
 //# sourceMappingURL=rate.module.js.map

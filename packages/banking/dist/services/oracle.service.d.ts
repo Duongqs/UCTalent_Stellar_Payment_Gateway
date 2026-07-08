@@ -1,3 +1,4 @@
+import { EnvService } from '@uc/core';
 export interface OracleResult {
     rate: number;
     rawRates: Record<string, number | null>;
@@ -7,8 +8,10 @@ export interface OracleResult {
     method: 'median' | 'single';
 }
 export declare class OracleService {
+    private readonly envService;
     private cache;
     private circuitBreaker;
+    constructor(envService: EnvService);
     private sources;
     private calculateMedian;
     private detectOutliers;

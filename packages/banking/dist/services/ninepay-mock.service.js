@@ -50,8 +50,10 @@ const common_1 = require("@nestjs/common");
 const axios_1 = __importDefault(require("axios"));
 const crypto = __importStar(require("crypto"));
 const stellar_1 = require("@uc/stellar");
+const core_1 = require("@uc/core");
 let NinePayMockService = class NinePayMockService {
-    constructor(anchorRpcService) {
+    constructor(envService, anchorRpcService) {
+        this.envService = envService;
         this.anchorRpcService = anchorRpcService;
     }
     async simulateDisbursement(transactionId, amount, invoiceNo, external_transaction_id) {
@@ -69,10 +71,10 @@ let NinePayMockService = class NinePayMockService {
             const resultB64 = Buffer.from(payloadStr).toString('base64');
             const expectedChecksum = crypto
                 .createHash('sha256')
-                .update(resultB64 + (process.env.NINEPAY_CHECKSUM_KEY || ''))
+                .update(resultB64 + (this.envService.get('NINEPAY_CHECKSUM_KEY') || ''))
                 .digest('hex')
                 .toUpperCase();
-            const apiPort = process.env.PORT || '8081';
+            const apiPort = this.envService.get('PORT') || 8081;
             try {
                 await axios_1.default.post(`http://localhost:${apiPort}/ipn`, {
                     result: resultB64,
@@ -88,6 +90,7 @@ let NinePayMockService = class NinePayMockService {
 exports.NinePayMockService = NinePayMockService;
 exports.NinePayMockService = NinePayMockService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [stellar_1.AnchorRpcService])
+    __metadata("design:paramtypes", [core_1.EnvService,
+        stellar_1.AnchorRpcService])
 ], NinePayMockService);
 //# sourceMappingURL=ninepay-mock.service.js.map

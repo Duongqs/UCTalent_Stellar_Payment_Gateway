@@ -40,11 +40,11 @@ __decorate([
     __metadata("design:type", String)
 ], FirmQuoteEntity.prototype, "context", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'expires_at', type: 'timestamptz' }),
+    (0, typeorm_1.Column)({ name: 'expires_at' }),
     __metadata("design:type", Date)
 ], FirmQuoteEntity.prototype, "expiresAt", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'used_at', type: 'timestamptz', nullable: true }),
+    (0, typeorm_1.Column)({ name: 'used_at', nullable: true }),
     __metadata("design:type", Date)
 ], FirmQuoteEntity.prototype, "usedAt", void 0);
 __decorate([

@@ -24,7 +24,7 @@ __decorate([
     __metadata("design:type", String)
 ], DisbursementAuditLogEntity.prototype, "eventType", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'jsonb' }),
+    (0, typeorm_1.Column)({ type: 'simple-json' }),
     __metadata("design:type", Object)
 ], DisbursementAuditLogEntity.prototype, "payload", void 0);
 exports.DisbursementAuditLogEntity = DisbursementAuditLogEntity = __decorate([

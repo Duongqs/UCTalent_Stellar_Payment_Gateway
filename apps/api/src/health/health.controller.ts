@@ -1,16 +1,24 @@
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import { OracleService } from '@uc/banking';
-import { checkHealth } from '@uc/core';
 
 @Controller('health')
 export class HealthController {
   constructor(
-    private readonly oracleService: OracleService
+    private readonly dataSource: DataSource,
+    private readonly oracleService: OracleService,
   ) {}
 
   @Get()
   async getHealth() {
-    const dbHealth = await checkHealth();
+    const start = Date.now();
+    let dbStatus = 'error';
+    try {
+      await this.dataSource.query('SELECT 1');
+      dbStatus = 'ok';
+    } catch (e) {}
+
+    const dbHealth = { status: dbStatus, latency_ms: Date.now() - start };
     const circuitBreaker = this.oracleService.getCircuitBreakerState();
     const healthy = dbHealth.status === 'ok' && circuitBreaker !== 'OPEN';
 

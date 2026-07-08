@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const envSchema = z.object({
-  NODE_ENV: z.enum(['local', 'development', 'production']).default('local'),
+  NODE_ENV: z.enum(['local', 'development', 'production', 'test']).default('local'),
   PORT: z.coerce.number().default(8081),
 
   POSTGRES_HOST: z.string().default('localhost'),
@@ -28,15 +28,23 @@ export const envSchema = z.object({
   ORACLE_SAFETY_SPREAD: z.coerce.number().default(0.99),
   ORACLE_CACHE_TTL_MS: z.coerce.number().default(60000),
 
-  ENCRYPTION_SECRET: z.string().min(32, 'ENCRYPTION_SECRET must be at least 32 chars'),
+  ENCRYPTION_SECRET: z.string().min(32, 'ENCRYPTION_SECRET must be at least 32 chars').default('a_very_secure_secret_key_that_is_at_least_32_bytes_long!'),
 
   UCTALENT_BACKEND_WEBHOOK_URL: z.string().default('http://localhost:3000/api/v2/cross-border/settlement-callback'),
   WEBHOOK_SECRET: z.string().default('uctalent-dev-secret'),
+  CROSS_BORDER_WEBHOOK_SECRET: z.string().default('uctalent-dev-secret'),
+  SEP31_WEBHOOK_URL: z.string().default('http://localhost:4000/api/anchor/disburse'),
 
   ANCHOR_PLATFORM_URL: z.string().default('http://localhost:8082'),
   PLATFORM_SERVER_URL: z.string().default('http://localhost:8085'),
 
+  ALLOWED_WEBHOOK_IPS: z.string().default('127.0.0.1,::1,*'),
+  USE_MOCK_NINEPAY: z.string().optional(),
+  USE_MOCK_IPN: z.string().optional(),
   SLACK_ALERT_WEBHOOK: z.string().optional(),
+  ESCROW_CONTRACT_ID: z.string().optional(),
+  FUNDING_SECRET: z.string().default('SCQMGZP23PYPUUG652FNE4M44O5CB3NV3CPEXXVF7H6EJJ3SCUJZL6HO'),
+  ANCHOR_SIGNING_KEY: z.string().optional(),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

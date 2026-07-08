@@ -28,13 +28,21 @@ __decorate([
     __metadata("design:type", String)
 ], BridgeEventQueueEntity.prototype, "contractId", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'payload_json', type: 'jsonb' }),
+    (0, typeorm_1.Column)({ name: 'payload_json', type: 'simple-json' }),
     __metadata("design:type", Object)
 ], BridgeEventQueueEntity.prototype, "payloadJson", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'varchar', default: 'pending' }),
     __metadata("design:type", String)
 ], BridgeEventQueueEntity.prototype, "status", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'error_message', type: 'text', nullable: true }),
+    __metadata("design:type", String)
+], BridgeEventQueueEntity.prototype, "errorMessage", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'retry_count', type: 'integer', default: 0 }),
+    __metadata("design:type", Number)
+], BridgeEventQueueEntity.prototype, "retryCount", void 0);
 exports.BridgeEventQueueEntity = BridgeEventQueueEntity = __decorate([
     (0, typeorm_1.Entity)({ name: 'bridge_events_queue' }),
     (0, typeorm_1.Index)(['txHash'], { unique: true }),

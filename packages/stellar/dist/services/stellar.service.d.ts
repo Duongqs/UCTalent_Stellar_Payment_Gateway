@@ -1,7 +1,9 @@
 import { rpc } from '@stellar/stellar-sdk';
+import { EnvService } from '@uc/core';
 export declare class StellarService {
-    private rpcUrl;
+    private readonly envService;
     private rpcServer;
+    constructor(envService: EnvService);
     getRpcServer(): rpc.Server;
     toNative(scValOrBase64: any): any;
     verifyTransaction(txHash: string): Promise<{

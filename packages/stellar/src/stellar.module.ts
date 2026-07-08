@@ -1,10 +1,10 @@
-import { Module } from '@nestjs/common';
-import { StellarService } from './services/stellar.service';
+import { Module, Global } from '@nestjs/common';
 import { Sep31TransactionService } from './services/sep31-transaction.service';
 import { AnchorRpcService } from './services/anchor-rpc.service';
 
+@Global()
 @Module({
-  providers: [StellarService, Sep31TransactionService, AnchorRpcService],
-  exports: [StellarService, Sep31TransactionService, AnchorRpcService],
+  providers: [Sep31TransactionService, AnchorRpcService],
+  exports: [Sep31TransactionService, AnchorRpcService],
 })
 export class StellarModule {}

@@ -15,5 +15,6 @@ export declare class Sep31TransactionEntity extends BaseEntity {
     vndAmount: number;
     withheldTaxAmount: number;
     taxCode: string;
+    retryCount: number;
     errorMessage: string;
 }

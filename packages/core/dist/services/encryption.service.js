@@ -38,17 +38,18 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EncryptionService = void 0;
-exports.encrypt = encrypt;
-exports.decrypt = decrypt;
-exports.createBeneficiaryRefId = createBeneficiaryRefId;
 const common_1 = require("@nestjs/common");
 const crypto = __importStar(require("crypto"));
+const env_service_1 = require("../config/env.service");
 const ALGORITHM = 'aes-256-cbc';
 const MIN_SECRET_LENGTH = 32;
 const CURRENT_VERSION = 'v1';
-function getSecret() {
+function getSecretFallback() {
     const secret = process.env.ENCRYPTION_SECRET;
     if (!secret) {
         throw new Error('FATAL: ENCRYPTION_SECRET environment variable is required');
@@ -58,14 +59,27 @@ function getSecret() {
     }
     return secret;
 }
-function deriveKey(salt) {
-    return crypto.scryptSync(getSecret(), salt, 32);
-}
 let EncryptionService = class EncryptionService {
+    constructor(envService) {
+        this.envService = envService;
+    }
+    getSecret() {
+        const secret = this.envService ? this.envService.get('ENCRYPTION_SECRET') : getSecretFallback();
+        if (!secret) {
+            throw new Error('FATAL: ENCRYPTION_SECRET environment variable is required');
+        }
+        if (secret.length < MIN_SECRET_LENGTH) {
+            throw new Error(`FATAL: ENCRYPTION_SECRET must be at least ${MIN_SECRET_LENGTH} characters`);
+        }
+        return secret;
+    }
+    deriveKey(salt) {
+        return crypto.scryptSync(this.getSecret(), salt, 32);
+    }
     encrypt(plaintext) {
         const salt = crypto.randomBytes(16);
         const iv = crypto.randomBytes(16);
-        const key = deriveKey(salt);
+        const key = this.deriveKey(salt);
         const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
         const encrypted = Buffer.concat([
             cipher.update(plaintext, 'utf8'),
@@ -84,28 +98,19 @@ let EncryptionService = class EncryptionService {
         }
         const salt = Buffer.from(saltHex, 'hex');
         const iv = Buffer.from(ivHex, 'hex');
-        const key = deriveKey(salt);
+        const key = this.deriveKey(salt);
         const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
         return decipher.update(cipherHex, 'hex', 'utf8') + decipher.final('utf8');
     }
     createBeneficiaryRefId(stellarWallet, accountNumber) {
-        const hmac = crypto.createHmac('sha256', getSecret());
+        const hmac = crypto.createHmac('sha256', this.getSecret());
         hmac.update(`${stellarWallet}:${accountNumber}`);
         return hmac.digest('hex');
     }
 };
 exports.EncryptionService = EncryptionService;
 exports.EncryptionService = EncryptionService = __decorate([
-    (0, common_1.Injectable)()
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [env_service_1.EnvService])
 ], EncryptionService);
-const _encryptionService = new EncryptionService();
-function encrypt(plaintext) {
-    return _encryptionService.encrypt(plaintext);
-}
-function decrypt(token) {
-    return _encryptionService.decrypt(token);
-}
-function createBeneficiaryRefId(stellarWallet, accountNumber) {
-    return _encryptionService.createBeneficiaryRefId(stellarWallet, accountNumber);
-}
 //# sourceMappingURL=encryption.service.js.map

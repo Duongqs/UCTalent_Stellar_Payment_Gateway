@@ -1,7 +1,9 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { rpc, scValToNative, xdr } from '@stellar/stellar-sdk';
-import { query, queryAll } from '@uc/core';
+import { SyncStateEntity, BridgeEventQueueEntity, EnvService } from '@uc/core';
 
 function toNative(scValOrBase64: any): any {
   try {
@@ -17,11 +19,6 @@ function toNative(scValOrBase64: any): any {
   }
 }
 
-function stroopsToUsdc(stroops: any): number {
-  const decimals = parseInt(process.env.TOKEN_DECIMALS || '7', 10);
-  return Number(BigInt(stroops || 0)) / Math.pow(10, decimals);
-}
-
 @Injectable()
 export class SorobanListenerService implements OnModuleInit {
   private rpcServer!: rpc.Server;
@@ -30,23 +27,40 @@ export class SorobanListenerService implements OnModuleInit {
   private lastProcessedLedger = 0;
   private isPolling = false;
 
+  constructor(
+    @InjectRepository(SyncStateEntity)
+    private readonly syncStateRepo: Repository<SyncStateEntity>,
+    @InjectRepository(BridgeEventQueueEntity)
+    private readonly eventQueueRepo: Repository<BridgeEventQueueEntity>,
+    private readonly envService: EnvService,
+  ) {}
+
+  private stroopsToUsdc(stroops: any): number {
+    const decimals = this.envService.get('TOKEN_DECIMALS') ?? 7;
+    return Number(BigInt(stroops || 0)) / Math.pow(10, decimals);
+  }
+
   async onModuleInit() {
-    const rpcUrl = process.env.SOROBAN_RPC_URL || 'https://rpc-testnet.stellar.org';
-    this.contractId = process.env.ESCROW_CONTRACT_ID || '';
-    
+    const rpcUrl =
+      this.envService.get('SOROBAN_RPC_URL') ||
+      'https://rpc-testnet.stellar.org';
+    this.contractId = this.envService.get('ESCROW_CONTRACT_ID') || '';
+
     if (!this.contractId) {
-      console.error('❌ ESCROW_CONTRACT_ID is not set in .env — cannot listen for events.');
+      console.error(
+        '❌ ESCROW_CONTRACT_ID is not set in env config — cannot listen for events.',
+      );
       return;
     }
 
     this.rpcServer = new rpc.Server(rpcUrl);
     this.watchedContracts = [this.contractId];
 
-    // Load persisted state from PostgreSQL
+    // Load persisted state from PostgreSQL/SQLite
     try {
-      const ledgerRow = await query<{ value: string }>(
-        "SELECT value FROM sync_state WHERE key = 'last_processed_ledger'"
-      );
+      const ledgerRow = await this.syncStateRepo.findOne({
+        where: { key: 'last_processed_ledger' },
+      });
       if (ledgerRow) {
         this.lastProcessedLedger = parseInt(ledgerRow.value, 10);
       } else {
@@ -55,33 +69,43 @@ export class SorobanListenerService implements OnModuleInit {
         await this.setLastProcessedLedger(this.lastProcessedLedger);
       }
 
-      const contractsRow = await query<{ value: string }>(
-        "SELECT value FROM sync_state WHERE key = 'watched_contracts'"
-      );
+      const contractsRow = await this.syncStateRepo.findOne({
+        where: { key: 'watched_contracts' },
+      });
       if (contractsRow) {
         this.watchedContracts = JSON.parse(contractsRow.value);
       }
-      
-      console.log(`[Soroban Listener] Initialized. Last ledger: ${this.lastProcessedLedger}. Watched contracts: ${this.watchedContracts.length}`);
+
+      console.log(
+        `[Soroban Listener] Initialized. Last ledger: ${this.lastProcessedLedger}. Watched contracts: ${this.watchedContracts.length}`,
+      );
     } catch (err: any) {
       console.error('[Soroban Listener] Initialization error:', err.message);
     }
   }
 
   private async setLastProcessedLedger(ledger: number) {
-    await query(
-      `INSERT INTO sync_state (key, value) VALUES ('last_processed_ledger', $1)
-       ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value`,
-      [ledger.toString()]
-    );
+    let row = await this.syncStateRepo.findOne({
+      where: { key: 'last_processed_ledger' },
+    });
+    if (!row) {
+      row = new SyncStateEntity();
+      row.key = 'last_processed_ledger';
+    }
+    row.value = ledger.toString();
+    await this.syncStateRepo.save(row);
   }
 
   private async saveWatchedContracts() {
-    await query(
-      `INSERT INTO sync_state (key, value) VALUES ('watched_contracts', $1)
-       ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value`,
-      [JSON.stringify(this.watchedContracts)]
-    );
+    let row = await this.syncStateRepo.findOne({
+      where: { key: 'watched_contracts' },
+    });
+    if (!row) {
+      row = new SyncStateEntity();
+      row.key = 'watched_contracts';
+    }
+    row.value = JSON.stringify(this.watchedContracts);
+    await this.syncStateRepo.save(row);
   }
 
   @Interval(5000)
@@ -98,12 +122,14 @@ export class SorobanListenerService implements OnModuleInit {
         return;
       }
 
-      const uniqueContracts = [...new Set([this.contractId, ...this.watchedContracts])];
+      const uniqueContracts = [
+        ...new Set([this.contractId, ...this.watchedContracts]),
+      ];
       const filters = [];
       for (let i = 0; i < uniqueContracts.length; i += 5) {
         filters.push({
           type: 'contract' as const,
-          contractIds: uniqueContracts.slice(i, i + 5)
+          contractIds: uniqueContracts.slice(i, i + 5),
         });
       }
 
@@ -115,7 +141,9 @@ export class SorobanListenerService implements OnModuleInit {
 
       const events = response?.events || [];
       if (events.length > 0) {
-        console.log(`[Soroban Listener] Ledgers ${this.lastProcessedLedger} → ${currentLedger}: found ${events.length} event(s)`);
+        console.log(
+          `[Soroban Listener] Ledgers ${this.lastProcessedLedger} → ${currentLedger}: found ${events.length} event(s)`,
+        );
       }
 
       for (const event of events) {
@@ -147,7 +175,9 @@ export class SorobanListenerService implements OnModuleInit {
           if (childAddr && !this.watchedContracts.includes(childAddr)) {
             this.watchedContracts.push(childAddr);
             await this.saveWatchedContracts();
-            console.log(`🌟 [Soroban Listener] Discovered escrow contract: ${childAddr}`);
+            console.log(
+              `🌟 [Soroban Listener] Discovered escrow contract: ${childAddr}`,
+            );
             await this.scanChildContractEvents(childAddr, event.ledger);
           }
         }
@@ -159,7 +189,10 @@ export class SorobanListenerService implements OnModuleInit {
     try {
       t0 = toNative(topics[0]);
       t1 = topics.length > 1 ? toNative(topics[1]) : '';
-      if (!(t0 === 'uctalent' && (t1 === 'referral_settled' || t1 === 'milestone_released'))) {
+      if (!(
+        t0 === 'uctalent' &&
+        (t1 === 'referral_settled' || t1 === 'milestone_released')
+      )) {
         return;
       }
     } catch (e) {
@@ -173,52 +206,91 @@ export class SorobanListenerService implements OnModuleInit {
       stellarTxHash: event.txHash,
       stellarMemo: `UCT_${event.ledger}_${event.txHash.substring(0, 8).toUpperCase()}`,
       ledgerSequence: event.ledger,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     if (t1 === 'referral_settled') {
       if (decoded.length < 6) return;
-      const [jobIdRaw, recipientRaw, bountyRaw, scoutShareRaw, platformShareRaw, scoutKycId] = decoded;
+      const [
+        jobIdRaw,
+        recipientRaw,
+        bountyRaw,
+        scoutShareRaw,
+        platformShareRaw,
+        scoutKycId,
+      ] = decoded;
 
-      payload.trackingId = typeof jobIdRaw === 'string' ? jobIdRaw : (Buffer.isBuffer(jobIdRaw) ? jobIdRaw.toString() : String(jobIdRaw));
-      payload.recipient = typeof recipientRaw === 'string' ? recipientRaw : String(recipientRaw);
-      payload.bountyAmount = stroopsToUsdc(bountyRaw);
+      payload.trackingId =
+        typeof jobIdRaw === 'string'
+          ? jobIdRaw
+          : Buffer.isBuffer(jobIdRaw)
+            ? jobIdRaw.toString()
+            : String(jobIdRaw);
+      payload.recipient =
+        typeof recipientRaw === 'string' ? recipientRaw : String(recipientRaw);
+      payload.bountyAmount = this.stroopsToUsdc(bountyRaw);
       payload.splits = {
-        scout: { amountUsdc: stroopsToUsdc(scoutShareRaw), kycId: Buffer.isBuffer(scoutKycId) ? scoutKycId.toString('hex') : String(scoutKycId) },
-        platform: { amountUsdc: stroopsToUsdc(platformShareRaw), kycId: null }
+        scout: {
+          amountUsdc: this.stroopsToUsdc(scoutShareRaw),
+          kycId: Buffer.isBuffer(scoutKycId)
+            ? scoutKycId.toString('hex')
+            : String(scoutKycId),
+        },
+        platform: {
+          amountUsdc: this.stroopsToUsdc(platformShareRaw),
+          kycId: null,
+        },
       };
     } else if (t1 === 'milestone_released') {
       if (decoded.length < 4) return;
       const [gigIdRaw, indexRaw, amountRaw, freelancerRaw] = decoded;
 
-      payload.trackingId = typeof gigIdRaw === 'string' ? gigIdRaw : (Buffer.isBuffer(gigIdRaw) ? gigIdRaw.toString() : String(gigIdRaw));
+      payload.trackingId =
+        typeof gigIdRaw === 'string'
+          ? gigIdRaw
+          : Buffer.isBuffer(gigIdRaw)
+            ? gigIdRaw.toString()
+            : String(gigIdRaw);
       payload.milestoneIndex = Number(indexRaw);
-      payload.recipient = typeof freelancerRaw === 'string' ? freelancerRaw : String(freelancerRaw);
-      payload.bountyAmount = stroopsToUsdc(amountRaw);
+      payload.recipient =
+        typeof freelancerRaw === 'string'
+          ? freelancerRaw
+          : String(freelancerRaw);
+      payload.bountyAmount = this.stroopsToUsdc(amountRaw);
       payload.splits = {
-        talent: { amountUsdc: stroopsToUsdc(amountRaw), kycId: null }
+        talent: { amountUsdc: this.stroopsToUsdc(amountRaw), kycId: null },
       };
     }
 
     try {
-      const existing = await query(
-        'SELECT id FROM bridge_events_queue WHERE tx_hash = $1',
-        [event.txHash]
-      );
+      const existing = await this.eventQueueRepo.findOne({
+        where: { txHash: event.txHash },
+      });
       if (!existing) {
-        await query(
-          `INSERT INTO bridge_events_queue (ledger, tx_hash, contract_id, payload_json) 
-           VALUES ($1, $2, $3, $4)`,
-          [event.ledger, event.txHash, contractIdStr, JSON.stringify(payload)]
+        const queueEntry = this.eventQueueRepo.create({
+          ledger: event.ledger,
+          txHash: event.txHash,
+          contractId: contractIdStr,
+          payloadJson: payload,
+          status: 'pending',
+        });
+        await this.eventQueueRepo.save(queueEntry);
+        console.log(
+          `📥 [Soroban Listener] Queued event from ${event.txHash} (Ledger ${event.ledger})`,
         );
-        console.log(`📥 [Soroban Listener] Queued event from ${event.txHash} (Ledger ${event.ledger})`);
       }
     } catch (err: any) {
-      console.error(`❌ [Soroban Listener] Failed to queue event:`, err.message);
+      console.error(
+        `❌ [Soroban Listener] Failed to queue event:`,
+        err.message,
+      );
     }
   }
 
-  private async scanChildContractEvents(childAddr: string, startLedger: number) {
+  private async scanChildContractEvents(
+    childAddr: string,
+    startLedger: number,
+  ) {
     try {
       const response = await this.rpcServer.getEvents({
         startLedger: startLedger,
@@ -229,7 +301,10 @@ export class SorobanListenerService implements OnModuleInit {
         await this.enqueueEvent(ev);
       }
     } catch (err: any) {
-      console.error(`[Soroban Listener] Post-discovery scan failed for ${childAddr}:`, err.message);
+      console.error(
+        `[Soroban Listener] Post-discovery scan failed for ${childAddr}:`,
+        err.message,
+      );
     }
   }
 }

@@ -5,3 +5,4 @@ export { BridgeEventQueueEntity } from './bridge-event-queue.entity';
 export { DisbursementAuditLogEntity } from './disbursement-audit-log.entity';
 export { CustomerEntity } from './customer.entity';
 export { BankProfileEntity } from './bank-profile.entity';
+export { SyncStateEntity } from './sync-state.entity';

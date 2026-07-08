@@ -2,10 +2,12 @@ import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import * as crypto from 'crypto';
 import { AnchorRpcService } from '@uc/stellar';
+import { EnvService } from '@uc/core';
 
 @Injectable()
 export class NinePayMockService {
   constructor(
+    private readonly envService: EnvService,
     private readonly anchorRpcService: AnchorRpcService
   ) {}
 
@@ -28,11 +30,11 @@ export class NinePayMockService {
       const resultB64 = Buffer.from(payloadStr).toString('base64');
       const expectedChecksum = crypto
         .createHash('sha256')
-        .update(resultB64 + (process.env.NINEPAY_CHECKSUM_KEY || ''))
+        .update(resultB64 + (this.envService.get('NINEPAY_CHECKSUM_KEY') || ''))
         .digest('hex')
         .toUpperCase();
 
-      const apiPort = process.env.PORT || '8081';
+      const apiPort = this.envService.get('PORT') || 8081;
       try {
         await axios.post(`http://localhost:${apiPort}/ipn`, {
           result: resultB64,

@@ -8,16 +8,16 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StellarModule = void 0;
 const common_1 = require("@nestjs/common");
-const stellar_service_1 = require("./services/stellar.service");
 const sep31_transaction_service_1 = require("./services/sep31-transaction.service");
 const anchor_rpc_service_1 = require("./services/anchor-rpc.service");
 let StellarModule = class StellarModule {
 };
 exports.StellarModule = StellarModule;
 exports.StellarModule = StellarModule = __decorate([
+    (0, common_1.Global)(),
     (0, common_1.Module)({
-        providers: [stellar_service_1.StellarService, sep31_transaction_service_1.Sep31TransactionService, anchor_rpc_service_1.AnchorRpcService],
-        exports: [stellar_service_1.StellarService, sep31_transaction_service_1.Sep31TransactionService, anchor_rpc_service_1.AnchorRpcService],
+        providers: [sep31_transaction_service_1.Sep31TransactionService, anchor_rpc_service_1.AnchorRpcService],
+        exports: [sep31_transaction_service_1.Sep31TransactionService, anchor_rpc_service_1.AnchorRpcService],
     })
 ], StellarModule);
 //# sourceMappingURL=stellar.module.js.map

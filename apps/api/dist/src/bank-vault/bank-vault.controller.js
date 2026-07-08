@@ -16,19 +16,21 @@ exports.BankVaultController = void 0;
 const common_1 = require("@nestjs/common");
 const banking_1 = require("@uc/banking");
 const core_1 = require("@uc/core");
+const bank_vault_inquiry_dto_1 = require("./dtos/bank-vault-inquiry.dto");
+const bank_vault_register_dto_1 = require("./dtos/bank-vault-register.dto");
+const anchor_webhook_guard_1 = require("../sep31/guards/anchor-webhook.guard");
 const crypto_1 = require("crypto");
 let BankVaultController = class BankVaultController {
+    customerService;
     bankVaultService;
     ninePayGateway;
-    constructor(bankVaultService, ninePayGateway) {
+    constructor(customerService, bankVaultService, ninePayGateway) {
+        this.customerService = customerService;
         this.bankVaultService = bankVaultService;
         this.ninePayGateway = ninePayGateway;
     }
     async inquiry(body) {
         const { bankCode, accountNumber } = body;
-        if (!bankCode || !accountNumber) {
-            throw new common_1.BadRequestException('Missing bankCode or accountNumber');
-        }
         try {
             const accountName = await this.ninePayGateway.lookupAccount(accountNumber, bankCode);
             if (!accountName) {
@@ -44,16 +46,17 @@ let BankVaultController = class BankVaultController {
     }
     async register(body) {
         const { userId, kycId, bankCode, accountNumber, accountName } = body;
-        if (!userId || !bankCode || !accountNumber || !accountName) {
-            throw new common_1.BadRequestException('Missing required fields');
-        }
         try {
             const customerId = kycId || (0, crypto_1.randomUUID)();
-            await core_1.CustomerModel.createOrUpdate({
-                id: customerId,
-                type: 'sep31-receiver',
-                first_name: accountName,
-            });
+            let customer = await this.customerService.findById(customerId);
+            if (!customer) {
+                customer = this.customerService.create({});
+                customer.id = customerId;
+            }
+            customer.firstName = accountName;
+            customer.customerType = 'sep31-receiver';
+            customer.status = 'NEEDS_INFO';
+            await this.customerService.save(customer);
             const record = await this.bankVaultService.registerProfile({
                 customer_id: customerId,
                 stellar_wallet: '',
@@ -61,7 +64,7 @@ let BankVaultController = class BankVaultController {
                 legal_name: accountName,
                 bank_code: bankCode,
             });
-            return { beneficiaryRefId: record.beneficiary_ref_id };
+            return { beneficiaryRefId: record.beneficiaryRefId };
         }
         catch (error) {
             throw new common_1.BadRequestException(error.message);
@@ -74,7 +77,7 @@ __decorate([
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [bank_vault_inquiry_dto_1.BankVaultInquiryDto]),
     __metadata("design:returntype", Promise)
 ], BankVaultController.prototype, "inquiry", null);
 __decorate([
@@ -82,12 +85,14 @@ __decorate([
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [bank_vault_register_dto_1.BankVaultRegisterDto]),
     __metadata("design:returntype", Promise)
 ], BankVaultController.prototype, "register", null);
 exports.BankVaultController = BankVaultController = __decorate([
-    (0, common_1.Controller)('api/v1/bank-vault'),
-    __metadata("design:paramtypes", [banking_1.BankVaultService,
+    (0, common_1.Controller)('v1/bank-vault'),
+    (0, common_1.UseGuards)(anchor_webhook_guard_1.AnchorWebhookGuard),
+    __metadata("design:paramtypes", [core_1.CustomerService,
+        banking_1.BankVaultService,
         banking_1.NinePayGatewayService])
 ], BankVaultController);
 //# sourceMappingURL=bank-vault.controller.js.map

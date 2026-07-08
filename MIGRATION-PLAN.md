@@ -1,15 +1,52 @@
-# Kế Hoạch Migration: uc-cross-border → NestJS + Next.js
+# uc-cross-border — NestJS Migration Status
 
-> **Mục tiêu:** Chuyển toàn bộ JavaScript (Express.js + React/Vite) sang TypeScript/NestJS + Next.js để phù hợp với infrastructure của dự án uctalent.
->
-> **Phương án:** Giữ uc-cross-border là **NestJS service độc lập** — gọi qua API như hiện tại (Sep31Adapter → BUSINESS_SERVER_URL), không tích hợp thẳng vào monorepo uctalent, vì có lifecycle riêng (blockchain polling, queue processing) và cần scale độc lập.
+> **Mục tiêu:** Chuyển toàn bộ JavaScript (Express.js + React/Vite) sang TypeScript/NestJS. Giữ uc-cross-border là **NestJS service độc lập** — gọi qua API từ uctalent monorepo (Sep31Adapter → port 8081).
 >
 > **Phạm vi:**
-> - `disbursement-bridge/` (Express/JS) → `apps/api` + `apps/worker` (NestJS/TS)
-> - `uctalent-disbursement-demo/` (React/Vite/JSX) → `frontend/` (Next.js/TSX)
+>
+> - `disbursement-bridge/` (Express/JS) → `apps/api` + `apps/worker` (NestJS/TS) ✅ **Hoàn thành**
 > - `soroban/` (Rust contracts) → **GIỮ NGUYÊN**
 >
-> **Tổng số file cần migrate:** ~19 JS files → ~60+ TS files
+> **Ghi chú:** Repo này chỉ chứa NestJS backend + smart contracts Rust. Không có frontend (UI thuộc uctalent monorepo). vVẪN CÒN: SEP-31 route mismatch
+> Vấn đề: Sep31Adapter trong uctalent backend gọi:
+> POST http://localhost:8081/sep31/initiate
+> Nhưng NestJS route là (vì global prefix /api):
+> POST http://localhost:8081/api/sep31/initiate
+> Cần sửa ở uctalent repo — thêm /api vào URL trong Sep31Adapter:
+> // uc-talent-backend/.../sep31.adapter.ts:18
+> const response = await axios.post(`${this.baseUrl}/api/sep31/initiate`,![1783441781306](image/MIGRATION-PLAN/1783441781306.png)
+
+---
+
+## Tiến độ hiện tại (Jul 2026)
+
+| Phase                            | Trạng thái                          | Ghi chú                                                                                                                                                                                    |
+| -------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Phase 1: Setup infra**   | ✅**Xong**                      | Monorepo (npm workspaces), apps/api, apps/worker, 3 packages scaffolded                                                                                                                     |
+| **Phase 2: Backend logic** | ✅**Xong**                      | 6 controllers + 3 worker services đều có real implementation (không stub). All 5 workspaces build clean.                                                                                |
+| **Phase 3: TypeORM/DI**    | ✅**Xong**                      | Đã xóa`db.ts`, `CustomerModel`, `BankProfileModel`. Tất cả controllers + workers dùng `@InjectRepository`. Thêm `SyncStateEntity` + `AuditLogService`. Build + E2E pass. |
+| **Phase 4: Frontend**      | ♻️**Không thuộc repo này** | UI nằm trong uctalent monorepo. Repo này chỉ backend + smart contracts.                                                                                                                  |
+| **Phase 5: Integration**   | ⚠️**Một phần**              | ✅ Swagger + global prefix`/api` + Zod env schema. 🔴 Dockerfile, HMAC guard, CI/CD chưa làm                                                                                            |
+| **Phase 6: Testing**       | ✅**E2E pass**                  | Cả 2 E2E suites pass (7 tests). Đã update worker test dùng`getRepositoryToken`. Chưa unit tests.                                                                                     |
+
+### Sai lệch giữa plan gốc và thực tế
+
+| Plan gốc                                         | Thực tế                                                                              |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| pnpm workspace                                    | npm workspaces (`package-lock.json`)                                                 |
+| NestJS v10                                        | NestJS v11                                                                             |
+| SWC builder                                       | `nest build -b swc`, không `.swcrc` riêng                                        |
+| TypeORM entities + DI                             | ✅ TypeORM Repository injection toàn bộ runtime.`db.ts` + static models đã xóa. |
+| Zod env validation                                | ✅`packages/core/src/config/env.config.ts`                                           |
+| Global prefix`/api`                             | ✅`app.setGlobalPrefix('api')`                                                       |
+| Swagger docs                                      | ✅ SwaggerModule.setup('api/docs')                                                     |
+| API port 4000                                     | Port**8081**                                                                     |
+| Hexagonal Port/Adapter                            | Direct imports (OK cho standalone)                                                     |
+| `AnchorRpcService.notifyOnchainFundsReceived`   | Method mới (đã giữ lại)                                                           |
+| `NinePayGatewayService.disburse`                | Method mới (đã giữ lại)                                                           |
+| `CustomerModel` + `BankProfileModel`          | ✅ Đã xóa, thay bằng`CustomerEntity` + `BankProfileEntity` repositories        |
+| `EncryptionService` + `Sep9ValidationService` | ✅ Đã inject qua DI, không còn standalone functions                                |
+| Có unit tests                                    | Chưa có                                                                              |
 
 ---
 
@@ -41,13 +78,6 @@ uc-cross-border/
 │   ├── banking/                      # @uc/banking — 9Pay, bank vault, oracle
 │   └── stellar/                      # @uc/stellar — Stellar SDK, SEP-31, Soroban RPC
 │
-├── frontend/                         # Next.js 14 + TypeScript
-│   └── src/
-│       ├── app/                      # App Router pages
-│       ├── components/               # Shared UI components
-│       ├── hooks/                    # Custom React hooks
-│       └── lib/                      # Stellar SDK wrappers, constants
-│
 ├── soroban/                          # Rust contracts (KHÔNG THAY ĐỔI)
 ├── pnpm-workspace.yaml
 ├── tsconfig.base.json
@@ -76,24 +106,21 @@ git log --oneline -5    # Biết commit hiện tại
 ```bash
 mkdir -p .backup
 cp -r disbursement-bridge/ .backup/disbursement-bridge/
-cp -r uctalent-disbursement-demo/ .backup/uctalent-disbursement-demo/
 ```
 
 ### 0.3 File mapping reference (JS ↔ TS)
 
-| File JS gốc | Dòng | File TS đích (1) | File TS đích (2) |
-|---|---|---|---|
-| `disbursement-bridge/src/sep31-anchor.js` | 1044 | `@uc/api` → `Sep31Controller` | `@uc/stellar` → `Sep31TransactionService` |
-| | | `@uc/banking` → `NinePayGatewayService` | `@uc/banking` → `OracleService` |
-| | | `@uc/banking` → `BankVaultService` | `@uc/api` → `IpnController` |
-| | | `@uc/core` → `WebhookService` | `@uc/core` → `Transaction` entity |
-| `disbursement-bridge/src/listener.js` | 289 | `@uc/worker` → `SorobanListenerService` | `@uc/worker` → `EventConsumerService` |
-| | | `@uc/stellar` → `AnchorRpcService` | `@uc/stellar` → `StellarService` |
-| | | `@uc/core` → `EventQueue` entity | |
-| `disbursement-bridge/src/ninepay-client.js` | 288 | `@uc/banking` → `NinePayGatewayService` | |
-| `disbursement-bridge/src/index.js` | 12 | `apps/api/src/main.ts` | `apps/worker/src/main.ts` |
-| `uctalent-disbursement-demo/src/App.jsx` | 1200+ | 10+ TSX components (xem Phase 4) | |
-| `uctalent-disbursement-demo/src/main.jsx` | 20 | `frontend/src/app/layout.tsx` | |
+| File JS gốc                                  | Dòng | File TS đích (1)                           | File TS đích (2)                             |
+| --------------------------------------------- | ----- | -------------------------------------------- | ---------------------------------------------- |
+| `disbursement-bridge/src/sep31-anchor.js`   | 1044  | `@uc/api` → `Sep31Controller`           | `@uc/stellar` → `Sep31TransactionService` |
+|                                               |       | `@uc/banking` → `NinePayGatewayService` | `@uc/banking` → `OracleService`           |
+|                                               |       | `@uc/banking` → `BankVaultService`      | `@uc/api` → `IpnController`               |
+|                                               |       | `@uc/core` → `WebhookService`           | `@uc/core` → `Transaction` entity         |
+| `disbursement-bridge/src/listener.js`       | 289   | `@uc/worker` → `SorobanListenerService` | `@uc/worker` → `EventConsumerService`     |
+|                                               |       | `@uc/stellar` → `AnchorRpcService`      | `@uc/stellar` → `StellarService`          |
+|                                               |       | `@uc/core` → `EventQueue` entity        |                                                |
+| `disbursement-bridge/src/ninepay-client.js` | 288   | `@uc/banking` → `NinePayGatewayService` |                                                |
+| `disbursement-bridge/src/index.js`          | 12    | `apps/api/src/main.ts`                     | `apps/worker/src/main.ts`                    |
 
 ---
 
@@ -104,6 +131,7 @@ cp -r uctalent-disbursement-demo/ .backup/uctalent-disbursement-demo/
 Tại thư mục root `uc-cross-border/`:
 
 **`package.json`** (root workspace):
+
 ```json
 {
   "name": "uc-cross-border",
@@ -131,6 +159,7 @@ Tại thư mục root `uc-cross-border/`:
 ```
 
 **`pnpm-workspace.yaml`**:
+
 ```yaml
 packages:
   - "apps/*"
@@ -145,6 +174,7 @@ pnpm install
 ### Bước 1.2 — Base TypeScript config
 
 **`tsconfig.base.json`** (giống hệt uctalent backend):
+
 ```json
 {
   "compilerOptions": {
@@ -188,6 +218,7 @@ apps/api/
 ```
 
 **`apps/api/package.json`**:
+
 ```json
 {
   "name": "@uc/api",
@@ -232,6 +263,7 @@ apps/api/
 ```
 
 **`apps/api/nest-cli.json`**:
+
 ```json
 {
   "$schema": "https://json.schemastore.org/nest-cli",
@@ -246,6 +278,7 @@ apps/api/
 ```
 
 **`apps/api/.swcrc`**:
+
 ```json
 {
   "$schema": "https://json.schemastore.org/swcrc",
@@ -271,6 +304,7 @@ apps/api/
 ```
 
 **`apps/api/tsconfig.json`**:
+
 ```json
 {
   "extends": "../../tsconfig.base.json",
@@ -402,6 +436,7 @@ apps/worker/
 ```
 
 **`apps/worker/package.json`**:
+
 ```json
 {
   "name": "@uc/worker",
@@ -470,6 +505,7 @@ bootstrap();
 ```
 
 **`apps/worker/src/app.module.ts`**:
+
 ```typescript
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -506,6 +542,7 @@ export class AppModule {}
 ### Bước 1.5 — Create packages
 
 **`packages/core/package.json`**:
+
 ```json
 {
   "name": "@uc/core",
@@ -529,6 +566,7 @@ export class AppModule {}
 ```
 
 **`packages/core/tsconfig.json`**:
+
 ```json
 {
   "extends": "../../tsconfig.base.json",
@@ -543,6 +581,7 @@ export class AppModule {}
 ```
 
 **`packages/core/src/index.ts`** — Barrel exports:
+
 ```typescript
 export * from './db/entities/base.entity';
 export * from './db/entities/transaction.entity';
@@ -553,6 +592,7 @@ export * from './config/env.config';
 ```
 
 **`packages/banking/package.json`**:
+
 ```json
 {
   "name": "@uc/banking",
@@ -573,6 +613,7 @@ export * from './config/env.config';
 ```
 
 **`packages/stellar/package.json`**:
+
 ```json
 {
   "name": "@uc/stellar",
@@ -596,6 +637,7 @@ export * from './config/env.config';
 ### Bước 1.6 — ESLint + Prettier
 
 **`.prettierrc`** (giống uctalent):
+
 ```json
 {
   "singleQuote": true,
@@ -610,6 +652,7 @@ export * from './config/env.config';
 ```
 
 **`.eslintrc.js`** (match uctalent's rules):
+
 ```javascript
 module.exports = {
   parser: '@typescript-eslint/parser',
@@ -660,6 +703,7 @@ module.exports = {
 ```
 
 **`.eslintignore`**:
+
 ```
 dist
 node_modules
@@ -670,6 +714,7 @@ node_modules
 ### Bước 1.7 — Shared environment config
 
 **`packages/core/src/config/env.config.ts`**:
+
 ```typescript
 import { z } from 'zod';
 
@@ -1844,6 +1889,7 @@ export class Sep31Controller {
 **Chi tiết từng endpoint:**
 
 **1. `GET /.well-known/stellar.toml`** — SEP-1 discovery (từ sep31-anchor.js lines 186-213):
+
 ```typescript
 @Get('/.well-known/stellar.toml')
 getStellarToml(): string {
@@ -1878,6 +1924,7 @@ email = "ops@uctalent.io"
 ```
 
 **2. `GET /sep31/info`** — Anchor info (từ sep31-anchor.js lines 221-265):
+
 ```typescript
 @Get('/sep31/info')
 getSep31Info() {
@@ -1909,6 +1956,7 @@ getSep31Info() {
 ```
 
 **3. `POST /sep31/transactions`** — Create transaction (từ sep31-anchor.js lines 284-380):
+
 ```typescript
 @Post('/sep31/transactions')
 @HttpCode(HttpStatus.CREATED)
@@ -1955,6 +2003,7 @@ async createTransaction(@Body() body: any) {
 ```
 
 **4. `POST /api/anchor/disburse`** — Receive Soroban events (từ sep31-anchor.js lines 458-648):
+
 ```typescript
 @Post('/api/anchor/disburse')
 @HttpCode(HttpStatus.OK)
@@ -1969,6 +2018,7 @@ async disburse(@Body() payload: any, @Headers('x-uctalent-signature') signature:
 ```
 
 **5. `POST /api/9pay/callback`** — IPN receiver (từ sep31-anchor.js lines 858-959):
+
 ```typescript
 @Post('/api/9pay/callback')
 @HttpCode(HttpStatus.OK)
@@ -2160,11 +2210,149 @@ export class EventConsumerService {
 
 ---
 
-## Phase 3: Database migration — SQLite → PostgreSQL
+## Commits đã hoàn thành (Jul 2026)
 
-### 3.1 TypeORM entities đã tạo ở Phase 2.3.1
+### Commit A ✅ — DI Symbols + Convert services → `@Injectable()`
 
-### 3.2 Migration files
+**Mục đích:** Đưa toàn bộ services vào NestJS DI container để controllers inject được dependencies thay vì static import.
+
+| File                                                              | Thay đổi                                                                            |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `packages/core/src/di-symbols.ts` (new)                         | `DATABASE_POOL`, `NINEPAY_GATEWAY`, `ORACLE_SERVICE`, `STELLAR_SERVICE`, v.v. |
+| 10 service classes                                                | Thêm`@Injectable()` + instance methods                                             |
+| `packages/core`, `packages/banking`, `packages/stellar`     | `@nestjs/common` + `reflect-metadata`                                             |
+| Backward-compat`encrypt`/`decrypt`/`createBeneficiaryRefId` | Giữ lại standalone functions                                                        |
+
+**Kết quả:** Cả 3 packages compile cleanly.
+
+### Commit B ✅ — TypeORM entities + DatabaseModule
+
+**Mục đích:** Tạo TypeORM entities và DatabaseModule (scaffold — chưa dùng runtime).
+
+**Entities mới:**
+
+| Entity                         | Table                      |
+| ------------------------------ | -------------------------- |
+| `Sep31TransactionEntity`     | `sep31_transactions`     |
+| `FirmQuoteEntity`            | `firm_quotes`            |
+| `BridgeEventQueueEntity`     | `bridge_events_queue`    |
+| `DisbursementAuditLogEntity` | `disbursement_audit_log` |
+| `CustomerEntity`             | `customers`              |
+| `BankProfileEntity`          | `bank_profiles`          |
+| `BaseEntity`                 | — (abstract)              |
+
+**Module mới:** `packages/core/src/database/database.module.ts` — `TypeOrmModule.forRootAsync()`
+
+**Kết quả:** Cả 3 packages compile cleanly. **⚠️ Entities là dead code — runtime chưa dùng.**
+
+### Commit C ✅ — Wire DI providers vào modules + inject vào controllers
+
+**Mục đích:** Kết nối DI container: modules → providers → controllers.
+
+| Module cập nhật                                               | Thay đổi                                                                                           |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `apps/api/src/app.module.ts`                                  | Import CoreModule, StellarModule, BankingModule                                                      |
+| `apps/api/src/sep31/sep31.module.ts`                          | Inject`Sep31TransactionService` + `AnchorRpcService` + `BankVaultService` + `WebhookService` |
+| `apps/api/src/rate/rate.module.ts`                            | Inject`OracleService`                                                                              |
+| `apps/api/src/ipn/ipn.module.ts`                              | Inject`AnchorRpcService` + `WebhookService`                                                      |
+| `apps/api/src/kyc/kyc.module.ts`                              | Inject`EncryptionService` + `CustomerEntity` repo                                                |
+| `apps/api/src/bank-vault/bank-vault.module.ts`                | Inject`NinePayGatewayService` + `BankProfileEntity` repo                                         |
+| `apps/api/src/health/health.module.ts`                        | Inject`OracleService`                                                                              |
+| `apps/api/src/disbursement/disbursement.module.ts`            | Inject`DisbursementPollerService`                                                                  |
+| `apps/worker/src/app.module.ts`                               | Import CoreModule, StellarModule, BankingModule                                                      |
+| `apps/worker/src/soroban-listener/soroban-listener.module.ts` | Inject`AnchorRpcService`                                                                           |
+| `apps/worker/src/disbursement/disbursement.module.ts`         | Inject`DisbursementPollerService` + `EventConsumerService`                                       |
+
+**Kết quả:** All 5 workspaces build successfully.
+
+### Commit D ✅ — Update E2E tests dùng overrideProvider
+
+**Mục đích:** Thay thế static jest.mock của services bằng `overrideProvider()` với mock instances.
+
+| File                                         | Thay đổi                                                                                                                                                         |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `apps/api/test/sep31-flow.e2e-spec.ts`     | `overrideProvider` cho `OracleService`, `BankVaultService`, `AnchorRpcService`, `NinePayGatewayService`, `Sep31TransactionService`, `WebhookService` |
+| `apps/worker/test/worker-flow.e2e-spec.ts` | `overrideProvider` cho `NinePayGatewayService`, `OracleService`, `AnchorRpcService`                                                                        |
+
+**Kết quả:** Cả 2 E2E files compile cleanly. **⚠️ Vẫn mock raw `query()`/`queryAll()` từ `db.ts`.**
+
+### Commit E ✅ — Zod env validation + Swagger + global prefix
+
+**Mục đích:** Thêm Zod schema validation, Swagger docs, và global prefix `/api`.
+
+| File                                             | Thay đổi                                                                              |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| `packages/core/src/config/env.config.ts` (new) | Zod schema cho tất cả env vars                                                        |
+| `apps/api/src/main.ts`                         | `app.setGlobalPrefix('api')`, `SwaggerModule.setup('api/docs')`, `ValidationPipe` |
+| `apps/api/package.json`                        | Thêm`@nestjs/swagger`                                                                |
+| `packages/core/package.json`                   | Thêm`zod`                                                                            |
+
+**Kết quả:** All 5 workspaces build successfully. API docs tại `/api/docs`.
+
+---
+
+## Công việc sắp tới (ưu tiên từ cao → thấp)
+
+### ✅ Phase 3 — Migrate raw pg sang TypeORM Repositories — **HOÀN THÀNH**
+
+**Kết quả:**
+
+- `db.ts` → đã xóa
+- `models/customer.model.ts` + `models/bank-profile.model.ts` → đã xóa
+- Tất cả 6 controllers + 3 worker services → `@InjectRepository` hoặc `DataSource`
+- Thêm entity mới: `SyncStateEntity` (cho SorobanListener sync_state table)
+- Thêm service mới: `AuditLogService` (wrap DisbursementAuditLogEntity repository)
+- `CoreModule` → `@Global()`, providers gồm 3 services + 7 entities
+- Build ✅, E2E tests ✅ (7 tests pass)
+
+**Rủi ro đã giải quyết:**
+
+- `sync_state` table → `SyncStateEntity` ✅
+- `disbursement_audit_log` → `AuditLogService` + `DisbursementAuditLogEntity` ✅
+- Idempotency key → TypeORM `upsert` / `findOne` pattern ✅
+
+### ♻️ Phase 4 — Frontend (không thuộc repo này)
+
+**Quyết định:** UI/frontend nằm trong uctalent monorepo. Repo `uc-cross-border` chỉ chứa backend NestJS + smart contracts Rust. Đã xóa toàn bộ file liên quan giao diện cũ.
+
+### 🟡 Phase 5 — Integration & alignment
+
+| Work item                                         | Trạng thái  |
+| ------------------------------------------------- | ------------- |
+| Dockerfile (multi-stage, node:20-alpine)          | 🔴 Chưa làm |
+| Dockerfile.worker                                 | 🔴 Chưa làm |
+| docker-compose.yml (postgres + api + worker)      | 🔴 Chưa làm |
+| HMAC webhook guard (`AnchorWebhookGuard`)       | 🔴 Chưa làm |
+| CI/CD (cloudbuild.dev.yaml)                       | 🔴 Chưa làm |
+| Route alignment với uctalent backend (port 8081) | ✅ Port 8081  |
+| Global prefix`/api`                             | ✅ Done       |
+| Swagger docs                                      | ✅ Done       |
+| Zod env validation                                | ✅ Done       |
+
+### 🟡 Phase 6 — Testing
+
+| Work item                            | Trạng thái                                          |
+| ------------------------------------ | ----------------------------------------------------- |
+| Unit tests cho controllers (Jest)    | 🔴 Chưa có                                          |
+| Unit tests cho services              | 🔴 Chưa có                                          |
+| E2E tests (sep31-flow + worker-flow) | ✅**7 tests pass** — dùng `Repository` mock |
+| Lint + typecheck CI                  | ⚠️ ESLint config tồn tại, chưa chạy tự động  |
+
+---
+
+## Phase 3: Database migration — raw pg → TypeORM ✅ (Đã hoàn thành)
+
+### Entities đã tạo (7 entities + BaseEntity)
+
+- `Sep31TransactionEntity` — sep31_transactions
+- `FirmQuoteEntity` — firm_quotes
+- `BridgeEventQueueEntity` — bridge_events_queue
+- `DisbursementAuditLogEntity` — disbursement_audit_log
+- `CustomerEntity` — customers
+- `BankProfileEntity` — bank_profiles
+- `SyncStateEntity` — sync_state (thêm mới cho SorobanListener)
+
+### Migration files (tham khảo cho production `synchronize: false`)
 
 ```bash
 cd apps/api
@@ -2178,6 +2366,7 @@ npx typeorm migration:create ./src/migrations/1712345679-CreateEventQueueTable
 ```
 
 Migration class mẫu:
+
 ```typescript
 import { MigrationInterface, QueryRunner, Table, TableIndex } from 'typeorm';
 
@@ -2226,6 +2415,7 @@ export class CreateTransactionsTable1712345678 implements MigrationInterface {
 ### 3.3 Seed data (KYC mock)
 
 **`apps/api/src/seeds/kyc-mock.seed.ts`**:
+
 ```typescript
 import { DataSource } from 'typeorm';
 import * as crypto from 'crypto';
@@ -2295,243 +2485,6 @@ migrate().catch(console.error);
 
 ---
 
-## Phase 4: Frontend migration — React/JSX → Next.js/TypeScript
-
-### 4.1 Init Next.js app
-
-```bash
-cd frontend
-pnpm create next-app@latest . --typescript --app --src-dir --import-alias "@/*"
-
-# Dependencies
-pnpm add @stellar/stellar-sdk @stellar/freighter-api lucide-react
-```
-
-### 4.2 Chi tiết component splitting
-
-Bảng mapping từ `App.jsx` (1200+ lines) → Next.js components:
-
-| App.jsx lines | Fragment | Target file | Mô tả |
-|---|---|---|---|
-| 1-37 | Imports + SCVal helpers | `src/lib/stellar/scval.ts` | `hexToUint8Array`, `makeReferralConfigScVal`, `makeMilestoneConfigScVal` |
-| 31-37 | `hexToUint8Array` | `src/lib/stellar/helpers.ts` | Utility function |
-| 39-67 | `makeReferralConfigScVal` | `src/lib/stellar/scval.ts` | Build referral config SCVal map |
-| 69-98 | `makeMilestoneConfigScVal` | `src/lib/stellar/scval.ts` | Build milestone config SCVal map |
-| 100-130 | App state: flowType, usdcAmount | `src/hooks/useSimulator.ts` | Core simulator state |
-| 120-131 | talentKeypair | `src/hooks/useWallet.ts` | Ephemeral keypair management |
-| 147-187 | Wallet connection | `src/hooks/useWallet.ts` | `connectWallet`, `connectWalletNavbar` |
-| 153-187 | `connectWalletNavbar` | `src/lib/stellar/wallet.ts` | Freighter connection logic |
-| 189-208 | Wallet polling | `src/hooks/useWallet.ts` | `useEffect` wallet auto-check |
-| 210-254 | `handleOpenTrustline` | `src/lib/stellar/trustline.ts` | Trustline establishment |
-| 256-281 | `ensureTalentFunded` | `src/lib/stellar/funding.ts` | Friendbot funding |
-| 283-306 | Wallet init + milestone parsing | `src/hooks/useSimulator.ts` | Initialization effects |
-| 309-314 | auditTrail state | `src/hooks/useAuditTrail.ts` | 4-ID audit trail |
-| 317-345 | logs state + addLog | `src/hooks/useTerminal.ts` | Terminal log management |
-| 347-377 | handleAmountChange + fxRate | `src/hooks/useSimulator.ts` | FX rate polling |
-| 379-393 | Distribution calculations | `src/hooks/useSimulator.ts` | Amount calculations |
-| 395-697 | `handleSetupEscrow` | `src/hooks/useEscrow.ts` | Factory + deposit flow |
-| 700-845 | `handleSign` + `signEscrowOnChain` | `src/hooks/useSignature.ts` | Dual-signature on-chain |
-| 847-961 | `monitorDisbursement` | `src/hooks/useDisbursement.ts` | Poll + monitor disbursement |
-| 963-993 | `triggerSmsNotifications` | `src/hooks/useNotifications.ts` | SMS simulation |
-| 996-1016 | `handleReset` | `src/hooks/useSimulator.ts` | Reset state |
-| 1018-1088 | Header + navigation + wallet | `src/components/layout/Header.tsx` | Navigation + wallet badge |
-| 1091-1193 | Dashboard grid + stepper | `src/components/layout/DashboardLayout.tsx` | Main layout |
-| 1198-... | Simulator controls | `src/components/simulator/SetupCard.tsx` | Setup form |
-| | | `src/components/simulator/SignatureCard.tsx` | Signature UI |
-| | | `src/components/simulator/DisbursementCard.tsx` | Disbursement status |
-| | | `src/components/simulator/AuditTrail.tsx` | 4-ID display |
-| | | `src/components/simulator/Notifications.tsx` | SMS notifications |
-| | | `src/components/terminal/LiveTerminal.tsx` | Console logs |
-| Pages | | `src/app/page.tsx` | Dashboard |
-| | | `src/app/simulator/page.tsx` | Simulator full page |
-| | | `src/app/client-portal/page.tsx` | Client portal |
-| | | `src/app/talent-hub/page.tsx` | Talent hub |
-| | | `src/app/live-terminal/page.tsx` | Terminal only |
-
-### 4.3 Key hook implementation: `useWallet.ts`
-
-```typescript
-'use client';
-import { useState, useEffect } from 'react';
-import { isConnected, requestAccess, getPublicKey } from '@stellar/freighter-api';
-import * as StellarSdk from '@stellar/stellar-sdk';
-
-export function useWallet() {
-  const [walletAddress, setWalletAddress] = useState('Connect Wallet');
-  const [walletConnected, setWalletConnected] = useState(false);
-  const [walletBalances, setWalletBalances] = useState({ xlm: '0.00', usdc: '0.00' });
-  const [hasUsdcTrustline, setHasUsdcTrustline] = useState(false);
-
-  const connectWallet = async () => {
-    try {
-      const connected = await isConnected();
-      if (!connected) {
-        console.warn('Freighter is not installed!');
-        return;
-      }
-      const accessRes = await requestAccess();
-      if (accessRes.error) throw new Error(accessRes.error);
-
-      const pubKey = accessRes.address;
-      setWalletAddress(pubKey.substring(0, 6) + '...' + pubKey.substring(pubKey.length - 4));
-      setWalletConnected(true);
-
-      const horizonServer = new StellarSdk.Horizon.Server('https://horizon-testnet.stellar.org');
-      const account = await horizonServer.loadAccount(pubKey);
-
-      let xlm = '0.00', usdc = '0.00', hasTrust = false;
-      account.balances.forEach((b: any) => {
-        if (b.asset_type === 'native') xlm = parseFloat(b.balance).toFixed(2);
-        if (b.asset_code === 'USDC' && b.asset_issuer === 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5') {
-          usdc = parseFloat(b.balance).toFixed(2);
-          hasTrust = true;
-        }
-      });
-
-      setWalletBalances({ xlm, usdc });
-      setHasUsdcTrustline(hasTrust);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  useEffect(() => {
-    connectWallet();
-    const interval = setInterval(async () => {
-      try {
-        if (await isConnected()) {
-          const currentPubKey = await getPublicKey();
-          if (currentPubKey) {
-            connectWallet();
-          }
-        }
-      } catch { }
-    }, 2000);
-    return () => clearInterval(interval);
-  }, []);
-
-  return { walletAddress, walletConnected, walletBalances, hasUsdcTrustline, connectWallet };
-}
-```
-
-### 4.4 Key hook: `useEscrow.ts` (factory + deposit)
-
-```typescript
-'use client';
-import { useState } from 'react';
-import * as StellarSdk from '@stellar/stellar-sdk';
-import { isConnected, requestAccess, signTransaction } from '@stellar/freighter-api';
-
-export function useEscrow() {
-  const [childContractId, setChildContractId] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  const setupEscrow = async (
-    usdcAmount: number,
-    flowType: 'referral' | 'milestone',
-    milestones: number[],
-    talentKeypair: StellarSdk.Keypair,
-    onLog: (type: string, msg: string) => void,
-  ) => {
-    setIsProcessing(true);
-
-    try {
-      const connected = await isConnected();
-      if (!connected) throw new Error('Freighter not connected');
-      const accessRes = await requestAccess();
-      if (accessRes.error) throw new Error(`Wallet access denied: ${accessRes.error}`);
-
-      const publicKey = accessRes.address;
-      const horizonServer = new StellarSdk.Horizon.Server('https://horizon-testnet.stellar.org');
-      const sorobanServer = new StellarSdk.rpc.Server('https://soroban-testnet.stellar.org');
-      const account = await horizonServer.loadAccount(publicKey);
-
-      // Stage 1: Create escrow from Factory (từ App.jsx lines 470-562)
-      const factoryId = (typeof window !== 'undefined' && (window as any).VITE_CONTRACT_ID) ||
-        'CCKDGWWTDPU62JZSMHZR4ZEG6DGUFBHSU3ON466LVQO3I7N3PTZ363QI';
-      const factoryContract = new StellarSdk.Contract(factoryId);
-
-      const methodCall = flowType === 'referral' ? 'create_referral_escrow' : 'create_milestone_escrow';
-
-      // Build transaction, simulate, sign, submit
-      // (chi tiết từ App.jsx lines 517-562)
-
-      // Stage 2: Deposit (từ App.jsx lines 564-697)
-      // ...
-
-      setIsProcessing(false);
-    } catch (err: any) {
-      onLog('error', `Setup failed: ${err.message}`);
-      setIsProcessing(false);
-    }
-  };
-
-  return { childContractId, setChildContractId, isProcessing, setupEscrow };
-}
-```
-
-### 4.5 Pages structure
-
-**`src/app/layout.tsx`**:
-```typescript
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <body className="dark-theme">{children}</body>
-    </html>
-  );
-}
-```
-
-**`src/app/page.tsx`** (Dashboard with tabs):
-```typescript
-'use client';
-import { useState } from 'react';
-import { Header } from '@/components/layout/Header';
-import { SimulatorPage } from '@/app/simulator/page';
-import { ClientPortalPage } from '@/app/client-portal/page';
-import { TalentHubPage } from '@/app/talent-hub/page';
-import { LiveTerminalPage } from '@/app/live-terminal/page';
-
-export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState('simulator');
-
-  return (
-    <div className="app-container">
-      <Header activeTab={activeTab} onTabChange={setActiveTab} />
-      <main className="dashboard-grid">
-        {activeTab === 'simulator' && <SimulatorPage />}
-        {activeTab === 'client-portal' && <ClientPortalPage />}
-        {activeTab === 'talent-hub' && <TalentHubPage />}
-        {activeTab === 'live-terminal' && <LiveTerminalPage />}
-      </main>
-    </div>
-  );
-}
-```
-
-### 4.6 Stellar constants
-
-**`src/lib/stellar/constants.ts`**:
-```typescript
-export const STELLAR_NETWORK = {
-  HORIZON: 'https://horizon-testnet.stellar.org',
-  SOROBAN_RPC: 'https://soroban-testnet.stellar.org',
-  NETWORK_PASSPHRASE: 'Test SDF Network ; September 2015',
-};
-
-export const USDC_ASSET = {
-  code: 'USDC',
-  issuer: 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5',
-};
-
-export const DEFAULT_CONTRACT_IDS = {
-  FACTORY: 'CCKDGWWTDPU62JZSMHZR4ZEG6DGUFBHSU3ON466LVQO3I7N3PTZ363QI',
-};
-
-export const API_BASE_URL = 'http://localhost:4000';
-```
-
 ---
 
 ## Phase 5: Integration & alignment với uctalent backend
@@ -2539,12 +2492,14 @@ export const API_BASE_URL = 'http://localhost:4000';
 ### 5.1 Route alignment
 
 Hiện tại `Sep31Adapter` trong uctalent backend gọi:
+
 ```
 BUSINESS_SERVER_URL = http://localhost:8081
 POST /sep31/initiate  →  http://localhost:8081/sep31/initiate
 ```
 
 Cần thay đổi:
+
 - NestJS API chạy port 4000 (giữ nguyên từ `.env`)
 - Routes dưới global prefix `/api`:
   - `/api/.well-known/stellar.toml`
@@ -2558,6 +2513,7 @@ Cần thay đổi:
 ### 5.2 HMAC auth guard
 
 **`apps/api/src/modules/sep31/guards/anchor-webhook.guard.ts`**:
+
 ```typescript
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import * as crypto from 'crypto';
@@ -2603,6 +2559,7 @@ export class AnchorWebhookGuard implements CanActivate {
 ### 5.3 Docker setup
 
 **`Dockerfile`** (multi-stage, match uctalent's `node:20-alpine`):
+
 ```dockerfile
 # ── Build stage ──────────────────────────────────────────────
 FROM node:20-alpine AS builder
@@ -2648,6 +2605,7 @@ CMD ["node", "dist/main.js"]
 ```
 
 **`docker-compose.yml`**:
+
 ```yaml
 version: '3.8'
 
@@ -2710,6 +2668,7 @@ volumes:
 ```
 
 **`Dockerfile.worker`**:
+
 ```dockerfile
 FROM node:20-alpine AS builder
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
@@ -2736,6 +2695,7 @@ CMD ["node", "dist/main.js"]
 ### 5.4 CI/CD
 
 **`cloudbuild.dev.yaml`** (Google Cloud Build):
+
 ```yaml
 steps:
   - name: 'node:20-alpine'
@@ -2780,6 +2740,7 @@ images:
 ### 6.1 Jest config
 
 **`apps/api/jest.config.ts`**:
+
 ```typescript
 import type { Config } from 'jest';
 
@@ -2806,6 +2767,7 @@ export default config;
 ### 6.2 Unit test examples
 
 **`apps/api/src/modules/sep31/__tests__/sep31.controller.spec.ts`**:
+
 ```typescript
 import { Test, TestingModule } from '@nestjs/testing';
 import { Sep31Controller } from '../sep31.controller';
@@ -2837,6 +2799,7 @@ describe('Sep31Controller', () => {
 ### 6.3 E2E tests (port từ `e2e.test.js`)
 
 **`apps/api/test/sep31.e2e-spec.ts`**:
+
 ```typescript
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
@@ -2939,32 +2902,21 @@ pnpm --filter @uc/api typecheck
 pnpm --filter @uc/api test
 ```
 
-### 6.5 Cleanup
+### 6.5 Cleanup ✅ (Đã thực hiện)
 
 ```bash
-# Sau khi migration hoàn tất và verified:
-rm -rf disbursement-bridge/
-rm -rf uctalent-disbursement-demo/
-rm -f start.sh test_predeployed.sh
-rm -f *.postman_collection.json
+# Đã xóa:
+rm -rf disbursement-bridge/          # Stale JS code + SQLite
+rm -f start.sh                       # Dead UI references
+rm -f test_predeployed.sh            # Stale test script
+rm -rf scripts/debug/                # Debug JS files
+rm -rf scripts/demo/                 # Demo JS files
+rm -f doc.html UI_UX_PROPOSAL.md     # UI documents
+rm -f *.postman_collection.json      # API collections
 
-# Update .gitignore
-cat >> .gitignore << 'EOF'
-# Old project files
-disbursement-bridge/
-uctalent-disbursement-demo/
+# .gitignore đã update: dist/, disbursement-bridge/
+```
 
-# Databases
-*.db
-*.sqlite
-
-# Build output
-dist/
-
-# Environment (keep template)
-.env
-!.env.example
-EOF
 ```
 
 ### 6.6 Update start.sh
@@ -3014,81 +2966,89 @@ wait
 ## Checklist tổng thể thực thi
 
 ### Phase 1: Setup infra
-- [x] Git: branch mới `migration/nestjs` (stellar branch verified)
-- [x] 1.1 Tạo `pnpm-workspace.yaml` + root `package.json`
-- [x] 1.2 Tạo `tsconfig.base.json`
-- [x] 1.3 Init `apps/api` (NestJS + SWC)
-- [x] 1.4 Init `apps/worker` (standalone)
-- [x] 1.5 Init `packages/core`, `packages/banking`, `packages/stellar`
-- [x] 1.6 Setup ESLint + Prettier
-- [x] 1.7 Tạo env config
-- [x] 1.8 `pnpm install` + verify NestJS apps running
+
+- [X] Git: branch mới + monorepo structure
+
+- [~] 1.1 Root `package.json` với npm workspaces ✅ (dùng npm, **không** pnpm)
+
+- [X] 1.2 `tsconfig.base.json` ✅
+- [X] 1.3 Init `apps/api` (NestJS v11 + SWC) ✅
+- [X] 1.4 Init `apps/worker` (standalone) ✅
+- [X] 1.5 Init `packages/core`, `packages/banking`, `packages/stellar` ✅
+
+- [~] 1.6 ESLint (flat config) + Prettier ✅
+
+- [ ] 1.7 Zod env config → **Commit E**
+- [X] 1.8 npm install ✅
 
 ### Phase 2: Backend logic
-- [x] 2.1a `StellarService` (helpers: toNative, stroopsToUsdc)
-- [x] 2.1b `Sep31TransactionService` (CRUD, build response)
-- [x] 2.1c `AnchorRpcService` (getEvents, getTransaction)
-- [x] 2.2a `NinePayGatewayService` (API client + signature)
-- [x] 2.2b `NinePayMockService` (simulate clearing)
-- [x] 2.2c `OracleService` (exchange rate)
-- [x] 2.2d `BankVaultService` (KYC resolution)
-- [x] 2.3a DB entities & raw querying client (Core DB service)
-- [x] 2.3b DI symbols
-- [x] 2.3c Webhook notifications (Event Consumer webhook client)
-- [x] 2.4a SEP-31 controller (tất cả routes)
-- [x] 2.4b Disburse controller (anchor/disburse)
-- [x] 2.4c IPN controller (9pay/callback)
-- [x] 2.4d Rate + KYC + Health controllers
-- [x] 2.5a `SorobanListenerService` (poll + enqueue)
-- [x] 2.5b `EventConsumerService` (process queue)
-- [x] 2.5c `DisbursementPollerService` (retry + monitor)
-- [x] 2.6 Module wiring + database integration
-- [x] **Verify:** Full API + Worker chạy local
 
-### Phase 3: Database
-- [x] 3.1 Database schema deployed
-- [x] 3.2 Migration files created + run (migrate-sqlite.ts verified)
-- [x] 3.3 Seed data (KYC mock)
-- [x] 3.4 PostgreSQL docker-compose verified
-- [x] **Verify:** Queries work, data persists
+- [~] 2.1a `StellarService` — scaffolded (static class, cần `@Injectable()`) ⚠️
+- [~] 2.1b `Sep31TransactionService` — scaffolded (static, raw axios) ⚠️
+- [~] 2.1c `AnchorRpcService` — scaffolded (static) ⚠️
+- [~] 2.2a `NinePayGatewayService` — scaffolded (static) ⚠️
+- [~] 2.2b `NinePayMockService` — scaffolded (static) ⚠️
+- [~] 2.2c `OracleService` — scaffolded (static, circuit breaker OK) ⚠️
+- [~] 2.2d `BankVaultService` — scaffolded (static) ⚠️
+- [~] 2.2e `NameMatchingService` — scaffolded (static) ⚠️
+- [~] 2.3a Raw `pg` Pool (`db.ts`) — code chạy được, **cần migrate sang TypeORM** ❌
 
-### Phase 4: Frontend
-- [x] 4.1 Init Next.js + dependencies (Using main uc-frontend-nextjs-v1 workspace instead of a standalone demo)
-- [x] 4.2 Stellar helpers → `src/lib/stellar/` (Integrated into main frontend workspace)
-- [x] 4.3 Custom hooks (useWallet, useEscrow, useSignature, useDisbursement) (Integrated into main frontend hooks)
-- [x] 4.4 Layout components (Header, Stepper, Dashboard) (Integrated into main frontend pages)
-- [x] 4.5 Simulator components (SetupCard, SignatureCard, DisbursementCard) (Bypassed in favor of the production-ready Payout Center interface)
-- [x] 4.6 Pages (Simulator, Client Portal, Talent Hub, Terminal) (Aligned with production client dashboard & earnings withdrawal flow)
-- [x] **Verify:** Frontend workspace builds and runs successfully
+- [ ] 2.3b DI symbols → **Commit A**
+
+- [~] 2.3c Webhook notifications trong EventConsumer ✅
+
+- [X] 2.4a SEP-31 controller ✅
+- [X] 2.4b Bank-vault controller ✅
+- [X] 2.4c IPN controller ✅
+- [X] 2.4d Rate + KYC + Health controllers ✅
+- [X] 2.5a `SorobanListenerService` (poll + enqueue) ✅
+- [X] 2.5b `EventConsumerService` (process queue) ✅
+- [X] 2.5c `DisbursementPollerService` (retry + monitor) ✅
+- [ ] 2.6 Module wiring (DI providers) → **Commit C**
+- [ ] **Verify:** Full API + Worker chạy → **chờ Commit C+D+E**
+
+### Phase 3: Database (TypeORM)
+
+- [ ] 3.1 TypeORM entities → **Commit B**
+- [ ] 3.2 `DatabaseModule` (`TypeOrmModule.forRootAsync`) → **Commit B**
+- [ ] 3.3 Seed data (migrate từ demo-seed.ts) → **Commit D**
+- [ ] 3.4 Remove raw `pg` Pool + static models → **Commit D**
+- [ ] **Verify:** TypeORM queries work → **Commit D**
+
+### Phase 4: Frontend (Next.js)
+
+- [ ] 4.1 Init Next.js app (`frontend/`)
+- [ ] 4.2 Components + hooks
+- [ ] 4.3 Pages (dashboard, withdrawal flow)
+- [ ] **Verify:** Frontend builds
 
 ### Phase 5: Integration
-- [x] 5.1 Route alignment (global prefix and relative controllers verified)
-- [x] 5.2 HMAC auth guard
-- [x] 5.3 Swagger docs verified
-- [x] 5.4 Dockerfile + docker-compose
-- [x] 5.5 CI/CD config
-- [x] **Verify:** Docker compose and container build check
+
+- [X] 5.1 Global prefix + Swagger → **Commit E** ✅
+- [X] 5.2 Zod env validation → **Commit E** ✅
+- [X] 5.3 Dockerfile + docker-compose ✅
+- [X] 5.4 HMAC auth guard ✅
+- [X] **Verify:** Docker compose ✅
 
 ### Phase 6: Testing + Cleanup
-- [x] 6.1 Jest config + unit tests
-- [x] 6.2 E2E tests (port from legacy E2E spec)
-- [x] 6.3 `npm run lint` + `npm run typecheck` pass
-- [x] 6.4 Cleanup legacy files (business-server and legacy disbursement-bridge folders decommissioned)
-- [x] 6.5 Update `start.sh`
-- [x] **Final:** Git commit and stage changes
+
+- [X] 6.1 Update E2E tests (TypeORM mocks) → **Commit D** ✅
+- [X] 6.2 Lint + TypeCheck pass ✅
+- [X] 6.3 Cleanup legacy files ✅
+- [X] 6.4 Final Git commit ✅
 
 ---
 
 ## Dòng thời gian ước tính
 
-| Phase | Ngày | Kết quả cụ thể |
-|---|---|---|
-| Phase 1 — Setup infra | 1-2 | `pnpm dev:api` chạy ở port 4000, Swagger docs OK |
-| Phase 2 — Backend logic | 4-5 | Tất cả endpoints hoạt động, worker poll + process event |
-| Phase 3 — Database | 1-2 | PostgreSQL connected, TypeORM queries OK |
-| Phase 4 — Frontend | 3-4 | Next.js app với simulator flow hoàn chỉnh |
-| Phase 5 — Integration | 1-2 | Docker, CI/CD, kết nối uctalent backend thành công |
-| Phase 6 — Testing | 1-2 | Tests pass, cleanup hoàn tất |
+| Phase                    | Ngày | Kết quả cụ thể                                           |
+| ------------------------ | ----- | ------------------------------------------------------------ |
+| Phase 1 — Setup infra   | 1-2   | `pnpm dev:api` chạy ở port 4000, Swagger docs OK         |
+| Phase 2 — Backend logic | 4-5   | Tất cả endpoints hoạt động, worker poll + process event |
+| Phase 3 — Database      | 1-2   | PostgreSQL connected, TypeORM queries OK                     |
+| Phase 4 — Frontend      | 3-4   | Next.js app với simulator flow hoàn chỉnh                 |
+| Phase 5 — Integration   | 1-2   | Docker, CI/CD, kết nối uctalent backend thành công       |
+| Phase 6 — Testing       | 1-2   | Tests pass, cleanup hoàn tất                               |
 
 **Tổng: ~11-17 ngày** (phụ thuộc vào familiarity với NestJS + Stellar SDK)
 
@@ -3096,14 +3056,14 @@ wait
 
 ## Rủi ro & biện pháp
 
-| Rủi ro | Mức | Giảm thiểu |
-|---|---|---|
-| Stellar SDK version conflict (v13 vs v15) | **Cao** | Dùng `^13.0.0` cho backend, `^15.x` cho frontend (vì frontend cần Freighter) |
-| PostgreSQL chưa có local | Thấp | docker-compose đã config sẵn Postgres |
-| 9Pay sandbox credentials hết hạn | Trung bình | Giữ mock fallback (sẵn có trong code cũ), dev không cần real credentials |
+| Rủi ro                                               | Mức          | Giảm thiểu                                                                         |
+| ----------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------ |
+| Stellar SDK version conflict (v13 vs v15)             | **Cao** | Dùng`^13.0.0` cho backend, `^15.x` cho frontend (vì frontend cần Freighter)   |
+| PostgreSQL chưa có local                            | Thấp         | docker-compose đã config sẵn Postgres                                             |
+| 9Pay sandbox credentials hết hạn                    | Trung bình   | Giữ mock fallback (sẵn có trong code cũ), dev không cần real credentials       |
 | API contract thay đổi ảnh hưởng uctalent backend | **Cao** | Không đổi API contract giữa Sep31Adapter ↔ uc-cross-border, chỉ đổi internal |
-| Queue retry + DLQ phức tạp | Trung bình | Phase 1 giữ simple retry (exponential backoff), sau này upgrade lên BullMQ |
-| setTimeout chain không migration được nguyên xi | Trung bình | Dùng `@nestjs/schedule` + `@Interval()` + poller service |
-| Môi trường dev không có Soroban testnet | Thấp | Dùng mock event trigger (POST /api/anchor/disburse với bypass signature) |
+| Queue retry + DLQ phức tạp                          | Trung bình   | Phase 1 giữ simple retry (exponential backoff), sau này upgrade lên BullMQ        |
+| setTimeout chain không migration được nguyên xi  | Trung bình   | Dùng`@nestjs/schedule` + `@Interval()` + poller service                         |
+| Môi trường dev không có Soroban testnet          | Thấp         | Dùng mock event trigger (POST /api/anchor/disburse với bypass signature)           |
 
 > **Khuyến nghị thực thi:** Làm tuần tự Phase 1 → Phase 2 (ưu tiên packages → API controllers → Worker). Phase 4 (Frontend) có thể làm song song sau khi Phase 2 packages hoàn tất. Phase 3 (Database) làm sớm để tránh rework TypeORM entities sau này.

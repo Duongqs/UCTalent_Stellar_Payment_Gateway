@@ -18,9 +18,31 @@ const banking_1 = require("@uc/banking");
 const core_1 = require("@uc/core");
 const uuid_1 = require("uuid");
 let RateController = class RateController {
+    firmQuoteService;
     oracleService;
-    constructor(oracleService) {
+    auditLog;
+    constructor(firmQuoteService, oracleService, auditLog) {
+        this.firmQuoteService = firmQuoteService;
         this.oracleService = oracleService;
+        this.auditLog = auditLog;
+    }
+    async getInfo() {
+        return {
+            assets: [
+                {
+                    asset: 'stellar:USDC:GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF',
+                    sell_delivery_methods: [
+                        { name: 'stellar', description: 'Stellar Network' },
+                    ],
+                    buy_delivery_methods: [
+                        { name: 'NAPAS', description: 'NAPAS 247 Instant Transfer' },
+                    ],
+                },
+                {
+                    asset: 'iso4217:VND',
+                },
+            ],
+        };
     }
     async getRate(type, sell_asset, buy_asset, sell_amount, buy_amount, context, buy_delivery_method) {
         if (!type || (type !== 'indicative' && type !== 'firm')) {
@@ -38,12 +60,16 @@ let RateController = class RateController {
             console.error('[Rate API] Oracle error:', apiError.message);
             throw new common_1.ServiceUnavailableException('Exchange rate service unavailable. Please try again later.');
         }
+        if (!baseRate || typeof baseRate !== 'number' || Number.isNaN(baseRate) || baseRate <= 0) {
+            throw new common_1.ServiceUnavailableException('Exchange rate service returned an invalid rate.');
+        }
         const feeAmount = '0';
         const rateObj = {
             price: (1 / baseRate).toFixed(10).replace(/\.?0+$/, ''),
             fee: {
                 total: feeAmount,
-                asset: sell_asset || 'stellar:USDC:GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF',
+                asset: sell_asset ||
+                    'stellar:USDC:GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF',
             },
         };
         if (sell_amount && buy_amount) {
@@ -55,7 +81,9 @@ let RateController = class RateController {
         }
         else if (buy_amount) {
             rateObj.buy_amount = buy_amount;
-            rateObj.sell_amount = (parseFloat(buy_amount) / baseRate).toFixed(7).replace(/\.?0+$/, '');
+            rateObj.sell_amount = (parseFloat(buy_amount) / baseRate)
+                .toFixed(7)
+                .replace(/\.?0+$/, '');
         }
         else {
             throw new common_1.BadRequestException('Either sell_amount or buy_amount must be provided');
@@ -66,18 +94,19 @@ let RateController = class RateController {
             }
             const quoteId = (0, uuid_1.v4)();
             const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
-            await (0, core_1.query)(`INSERT INTO firm_quotes (id, sell_asset, buy_asset, sell_amount, buy_amount, rate, context, expires_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [
-                quoteId,
-                sell_asset || 'stellar:USDC:GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF',
-                buy_asset || 'iso4217:VND',
-                rateObj.sell_amount,
-                rateObj.buy_amount,
-                rateObj.price,
+            const quote = this.firmQuoteService.create({
+                id: quoteId,
+                sellAsset: sell_asset ||
+                    'stellar:USDC:GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF',
+                buyAsset: buy_asset || 'iso4217:VND',
+                sellAmount: rateObj.sell_amount,
+                buyAmount: rateObj.buy_amount,
+                rate: rateObj.price,
                 context,
                 expiresAt,
-            ]);
-            await (0, core_1.auditLog)(quoteId, 'quote_locked', {
+            });
+            await this.firmQuoteService.save(quote);
+            await this.auditLog.log(quoteId, 'quote_locked', {
                 rate: rateObj.price,
                 sell_amount: rateObj.sell_amount,
                 buy_amount: rateObj.buy_amount,
@@ -88,35 +117,16 @@ let RateController = class RateController {
         }
         return { rate: rateObj };
     }
-    async getQuote(id) {
-        const quote = await (0, core_1.query)('SELECT * FROM firm_quotes WHERE id = $1', [id]);
-        if (!quote) {
-            throw new common_1.NotFoundException('Quote not found');
-        }
-        if (quote.expires_at && new Date(quote.expires_at) < new Date()) {
-            throw new common_1.BadRequestException('Quote expired');
-        }
-        if (quote.used_at) {
-            throw new common_1.ConflictException('Quote already used');
-        }
-        return {
-            id: quote.id,
-            price: (parseFloat(quote.sell_amount) / parseFloat(quote.buy_amount)).toFixed(10).replace(/\.?0+$/, ''),
-            sell_asset: quote.sell_asset,
-            buy_asset: quote.buy_asset,
-            sell_amount: quote.sell_amount,
-            buy_amount: quote.buy_amount,
-            expires_at: quote.expires_at,
-            fee: {
-                total: '0',
-                asset: quote.sell_asset
-            }
-        };
-    }
 };
 exports.RateController = RateController;
 __decorate([
-    (0, common_1.Get)('rate'),
+    (0, common_1.Get)('info'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], RateController.prototype, "getInfo", null);
+__decorate([
+    (0, common_1.Get)(),
     __param(0, (0, common_1.Query)('type')),
     __param(1, (0, common_1.Query)('sell_asset')),
     __param(2, (0, common_1.Query)('buy_asset')),
@@ -128,15 +138,10 @@ __decorate([
     __metadata("design:paramtypes", [String, String, String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], RateController.prototype, "getRate", null);
-__decorate([
-    (0, common_1.Get)('quote/:id'),
-    __param(0, (0, common_1.Param)('id')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", Promise)
-], RateController.prototype, "getQuote", null);
 exports.RateController = RateController = __decorate([
-    (0, common_1.Controller)(),
-    __metadata("design:paramtypes", [banking_1.OracleService])
+    (0, common_1.Controller)('rate'),
+    __metadata("design:paramtypes", [core_1.FirmQuoteService,
+        banking_1.OracleService,
+        core_1.AuditLogService])
 ], RateController);
 //# sourceMappingURL=rate.controller.js.map

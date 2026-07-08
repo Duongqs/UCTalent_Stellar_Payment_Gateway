@@ -38,6 +38,9 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -46,9 +49,13 @@ exports.Sep31TransactionService = void 0;
 const common_1 = require("@nestjs/common");
 const axios_1 = __importDefault(require("axios"));
 const crypto = __importStar(require("crypto"));
+const core_1 = require("@uc/core");
 let Sep31TransactionService = class Sep31TransactionService {
-    constructor() {
-        this.anchorUrl = process.env.ANCHOR_PLATFORM_URL || 'http://localhost:8082';
+    constructor(envService) {
+        this.envService = envService;
+    }
+    get anchorUrl() {
+        return this.envService.get('ANCHOR_PLATFORM_URL') || 'http://localhost:8082';
     }
     generateMockJwt() {
         const secret = 'super_secret_jwt_key_that_is_at_least_32_bytes_long!';
@@ -100,6 +107,7 @@ let Sep31TransactionService = class Sep31TransactionService {
 };
 exports.Sep31TransactionService = Sep31TransactionService;
 exports.Sep31TransactionService = Sep31TransactionService = __decorate([
-    (0, common_1.Injectable)()
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [core_1.EnvService])
 ], Sep31TransactionService);
 //# sourceMappingURL=sep31-transaction.service.js.map

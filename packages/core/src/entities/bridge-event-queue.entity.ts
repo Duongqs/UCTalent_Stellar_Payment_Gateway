@@ -14,9 +14,15 @@ export class BridgeEventQueueEntity extends BaseEntity {
   @Column({ name: 'contract_id', type: 'varchar' })
   contractId: string;
 
-  @Column({ name: 'payload_json', type: 'jsonb' })
+  @Column({ name: 'payload_json', type: 'simple-json' })
   payloadJson: Record<string, any>;
 
   @Column({ type: 'varchar', default: 'pending' })
   status: 'pending' | 'completed' | 'failed';
+
+  @Column({ name: 'error_message', type: 'text', nullable: true })
+  errorMessage: string;
+
+  @Column({ name: 'retry_count', type: 'integer', default: 0 })
+  retryCount: number;
 }

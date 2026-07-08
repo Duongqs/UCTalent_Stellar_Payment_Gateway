@@ -50,6 +50,9 @@ export class Sep31TransactionEntity extends BaseEntity {
   @Column({ name: 'tax_code', type: 'varchar', nullable: true })
   taxCode: string;
 
+  @Column({ name: 'retry_count', type: 'int', default: 0 })
+  retryCount: number;
+
   @Column({ name: 'error_message', type: 'text', nullable: true })
   errorMessage: string;
 }

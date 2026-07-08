@@ -8,6 +8,9 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -15,22 +18,40 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DisbursementPollerService = void 0;
 const common_1 = require("@nestjs/common");
 const schedule_1 = require("@nestjs/schedule");
+const typeorm_1 = require("@nestjs/typeorm");
+const typeorm_2 = require("typeorm");
 const stellar_1 = require("@uc/stellar");
 const banking_1 = require("@uc/banking");
 const core_1 = require("@uc/core");
 const axios_1 = __importDefault(require("axios"));
 let DisbursementPollerService = class DisbursementPollerService {
+    sep31Repo;
+    bankProfileRepo;
+    firmQuoteRepo;
     anchorRpc;
     ninePayGateway;
     ninePayMock;
     oracleService;
-    platformUrl = process.env.ANCHOR_PLATFORM_URL || process.env.PLATFORM_SERVER_URL || 'http://localhost:8085';
+    encryption;
+    auditLog;
+    envService;
     isPolling = false;
-    constructor(anchorRpc, ninePayGateway, ninePayMock, oracleService) {
+    constructor(sep31Repo, bankProfileRepo, firmQuoteRepo, anchorRpc, ninePayGateway, ninePayMock, oracleService, encryption, auditLog, envService) {
+        this.sep31Repo = sep31Repo;
+        this.bankProfileRepo = bankProfileRepo;
+        this.firmQuoteRepo = firmQuoteRepo;
         this.anchorRpc = anchorRpc;
         this.ninePayGateway = ninePayGateway;
         this.ninePayMock = ninePayMock;
         this.oracleService = oracleService;
+        this.encryption = encryption;
+        this.auditLog = auditLog;
+        this.envService = envService;
+    }
+    get platformUrl() {
+        return (this.envService.get('PLATFORM_SERVER_URL') ||
+            this.envService.get('ANCHOR_PLATFORM_URL') ||
+            'http://localhost:8085');
     }
     async pollPendingTransactions() {
         if (this.isPolling)
@@ -47,10 +68,21 @@ let DisbursementPollerService = class DisbursementPollerService {
                 }
                 catch (txError) {
                     console.error(`[Disbursement Poller] Failed TX ${tx.id}:`, txError.message);
-                    await (0, core_1.auditLog)(tx.id, 'poller_error', { error: txError.message });
-                    await (0, core_1.query)(`UPDATE sep31_transactions 
-             SET status = 'pending_sender', error_message = $2, updated_at = now() 
-             WHERE id = $1 AND status = 'processing_lock'`, [tx.id, txError.message]).catch(() => { });
+                    await this.auditLog.log(tx.id, 'poller_error', {
+                        error: txError.message,
+                    });
+                    try {
+                        await this.sep31Repo
+                            .createQueryBuilder()
+                            .update(core_1.Sep31TransactionEntity)
+                            .set({ status: 'pending_sender', errorMessage: txError.message })
+                            .where('id = :id AND status = :status', {
+                            id: tx.id,
+                            status: 'processing_lock',
+                        })
+                            .execute();
+                    }
+                    catch (e) { }
                 }
             }
         }
@@ -65,63 +97,86 @@ let DisbursementPollerService = class DisbursementPollerService {
     }
     async processTransaction(tx) {
         const txId = tx.id;
-        const lockResult = await (0, core_1.query)(`UPDATE sep31_transactions 
-       SET status = 'processing_lock', updated_at = now()
-       WHERE id = $1 AND status = 'pending_sender'
-       RETURNING id`, [txId]);
-        if (!lockResult)
+        const lockResult = await this.sep31Repo
+            .createQueryBuilder()
+            .update(core_1.Sep31TransactionEntity)
+            .set({ status: 'processing_lock' })
+            .where('id = :id AND status = :status', {
+            id: txId,
+            status: 'pending_sender',
+        })
+            .execute();
+        if (lockResult.affected === 0)
             return;
         console.log(`[Disbursement Poller] Processing TX ${txId}`);
-        const txRecord = await (0, core_1.query)('SELECT stellar_tx_hash FROM sep31_transactions WHERE id = $1', [txId]);
-        const stellarTxHash = txRecord?.stellar_tx_hash;
+        const txRecord = await this.sep31Repo.findOne({ where: { id: txId } });
+        const stellarTxHash = txRecord?.stellarTxHash;
         if (!stellarTxHash) {
-            await (0, core_1.query)("UPDATE sep31_transactions SET status = 'pending_sender' WHERE id = $1", [txId]);
+            await this.sep31Repo.update(txId, { status: 'pending_sender' });
             return;
         }
         await this.anchorRpc.notifyOnchainFundsReceived(txId, tx.amount_in, stellarTxHash);
-        await (0, core_1.query)(`UPDATE sep31_transactions SET status = 'pending_receiver', updated_at = now() WHERE id = $1`, [txId]);
-        await (0, core_1.auditLog)(txId, 'onchain_received', { stellar_tx_hash: stellarTxHash });
+        await this.sep31Repo.update(txId, { status: 'pending_receiver' });
+        await this.auditLog.log(txId, 'onchain_received', {
+            stellar_tx_hash: stellarTxHash,
+        });
         const receiverId = tx.customers?.receiver?.id;
         if (!receiverId) {
             await this.haltForMissingInfo(txId, 'Missing receiver customer ID on transaction');
             return;
         }
-        const profile = await core_1.BankProfileModel.findByCustomerId(receiverId);
+        const profile = await this.bankProfileRepo.findOne({
+            where: { customerId: receiverId },
+        });
         if (!profile) {
             await this.haltForMissingInfo(txId, `No bank profile for receiver ${receiverId}`);
             return;
         }
-        if (!profile.is_verified) {
+        if (!profile.isVerified) {
             await this.haltForMissingInfo(txId, `Bank profile ${profile.id} not verified`);
             return;
         }
         const bankInfo = {
-            account_number: (0, core_1.decrypt)(profile.encrypted_account),
-            legal_name: (0, core_1.decrypt)(profile.encrypted_name),
-            bank_code: profile.bank_code,
+            account_number: this.encryption.decrypt(profile.encryptedAccount),
+            legal_name: this.encryption.decrypt(profile.encryptedName),
+            bank_code: profile.bankCode,
         };
         let vndAmount;
         if (tx.quote_id) {
-            const quote = await (0, core_1.query)(`UPDATE firm_quotes SET used_at = now(), transaction_id = $2
-         WHERE id = $1 AND used_at IS NULL AND expires_at > now()
-         RETURNING *`, [tx.quote_id, txId]);
+            const quote = await this.firmQuoteRepo.findOne({
+                where: {
+                    id: tx.quote_id,
+                    usedAt: (0, typeorm_2.IsNull)(),
+                    expiresAt: (0, typeorm_2.MoreThan)(new Date()),
+                },
+            });
             if (!quote) {
                 throw new Error(`Quote ${tx.quote_id} not found, expired, or already consumed`);
             }
-            vndAmount = parseInt(quote.buy_amount);
-            await (0, core_1.auditLog)(txId, 'quote_consumed', { quote_id: tx.quote_id, vnd_amount: vndAmount });
+            quote.usedAt = new Date();
+            quote.transactionId = txId;
+            await this.firmQuoteRepo.save(quote);
+            vndAmount = parseInt(quote.buyAmount, 10);
+            await this.auditLog.log(txId, 'quote_consumed', {
+                quote_id: tx.quote_id,
+                vnd_amount: vndAmount,
+            });
         }
         else {
             const oracle = await this.oracleService.getSafeFxRate();
             vndAmount = Math.floor(Number(tx.amount_in) * oracle.rate);
-            await (0, core_1.auditLog)(txId, 'rate_calculated', { rate: oracle.rate, method: oracle.method, vnd_amount: vndAmount });
+            await this.auditLog.log(txId, 'rate_calculated', {
+                rate: oracle.rate,
+                method: oracle.method,
+                vnd_amount: vndAmount,
+            });
         }
         const taxWithheld = Math.floor(vndAmount * 0.1);
         const finalVndAmount = vndAmount - taxWithheld;
         const taxCode = 'PIT-AFFILIATE-10%';
         const complianceMeta = {
             tax_withholding_code: taxCode,
-            onshore_contract_ref: `B2B-UNCHAIN-${txId.substring(0, 8)}`
+            onshore_contract_ref: `B2B-UNCHAIN-${txId.substring(0, 8)}`,
         };
         console.log(`[Disbursement Poller] Disbursing ${finalVndAmount} VND (Tax: ${taxWithheld}) for TX ${txId}`);
         try {
@@ -129,26 +184,43 @@ let DisbursementPollerService = class DisbursementPollerService {
         }
         catch (err) {
             if (err.message && err.message.includes('RECONCILIATION_FAILED')) {
-                await (0, core_1.query)(`UPDATE sep31_transactions SET status = 'error', error_message = $2, updated_at = now() WHERE id = $1`, [txId, 'RECONCILIATION_FAILED']);
+                await this.sep31Repo.update(txId, {
+                    status: 'error',
+                    errorMessage: 'RECONCILIATION_FAILED',
+                });
                 throw err;
             }
             throw err;
         }
         const napasRef = `NAPAS-${Date.now()}`;
         await this.anchorRpc.notifyOffchainFundsPending(txId, napasRef);
-        await (0, core_1.query)(`UPDATE sep31_transactions 
-       SET napas_ref_id = $2, vnd_amount = $3, withheld_tax_amount = $4, tax_code = $5, status = 'pending_external', updated_at = now() 
-       WHERE id = $1`, [txId, napasRef, finalVndAmount, taxWithheld, taxCode]);
-        await (0, core_1.auditLog)(txId, 'napas_sent', { napas_ref: napasRef, vnd_amount: finalVndAmount, withheld_tax_amount: taxWithheld, tax_code: taxCode });
+        await this.sep31Repo.update(txId, {
+            napasRefId: napasRef,
+            vndAmount: finalVndAmount,
+            withheldTaxAmount: taxWithheld,
+            taxCode: taxCode,
+            status: 'pending_external',
+        });
+        await this.auditLog.log(txId, 'napas_sent', {
+            napas_ref: napasRef,
+            vnd_amount: finalVndAmount,
+            withheld_tax_amount: taxWithheld,
+            tax_code: taxCode,
+        });
         console.log(`[Disbursement Poller] TX ${txId} → pending_external (awaiting 9Pay IPN)`);
-        if (process.env.NINEPAY_MODE === 'mock' || process.env.USE_MOCK_NINEPAY === 'true' || process.env.USE_MOCK_IPN === 'true') {
+        if (this.envService.get('NINEPAY_MODE') === 'mock' ||
+            this.envService.get('USE_MOCK_NINEPAY') === 'true' ||
+            this.envService.get('USE_MOCK_IPN') === 'true') {
             await this.ninePayMock.simulateDisbursement(txId, finalVndAmount, txId, napasRef);
         }
     }
     async haltForMissingInfo(txId, reason) {
         console.warn(`[Disbursement Poller] HALT TX ${txId}: ${reason}`);
-        await (0, core_1.query)(`UPDATE sep31_transactions SET status = 'pending_customer_info_update', error_message = $2, updated_at = now() WHERE id = $1`, [txId, reason]);
-        await (0, core_1.auditLog)(txId, 'halted_missing_info', { reason });
+        await this.sep31Repo.update(txId, {
+            status: 'pending_customer_info_update',
+            errorMessage: reason,
+        });
+        await this.auditLog.log(txId, 'halted_missing_info', { reason });
     }
 };
 exports.DisbursementPollerService = DisbursementPollerService;
@@ -160,9 +232,18 @@ __decorate([
 ], DisbursementPollerService.prototype, "pollPendingTransactions", null);
 exports.DisbursementPollerService = DisbursementPollerService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [stellar_1.AnchorRpcService,
+    __param(0, (0, typeorm_1.InjectRepository)(core_1.Sep31TransactionEntity)),
+    __param(1, (0, typeorm_1.InjectRepository)(core_1.BankProfileEntity)),
+    __param(2, (0, typeorm_1.InjectRepository)(core_1.FirmQuoteEntity)),
+    __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
+        typeorm_2.Repository,
+        stellar_1.AnchorRpcService,
         banking_1.NinePayGatewayService,
         banking_1.NinePayMockService,
-        banking_1.OracleService])
+        banking_1.OracleService,
+        core_1.EncryptionService,
+        core_1.AuditLogService,
+        core_1.EnvService])
 ], DisbursementPollerService);
 //# sourceMappingURL=disbursement-poller.service.js.map

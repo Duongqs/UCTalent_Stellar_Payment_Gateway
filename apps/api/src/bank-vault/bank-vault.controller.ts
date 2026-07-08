@@ -6,29 +6,35 @@ import {
   NotFoundException,
   InternalServerErrorException,
   HttpCode,
-  HttpStatus
+  HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { BankVaultService, NinePayGatewayService } from '@uc/banking';
-import { CustomerModel } from '@uc/core';
+import { CustomerService } from '@uc/core';
+import { BankVaultInquiryDto } from './dtos/bank-vault-inquiry.dto';
+import { BankVaultRegisterDto } from './dtos/bank-vault-register.dto';
+import { AnchorWebhookGuard } from '../sep31/guards/anchor-webhook.guard';
 import { randomUUID } from 'crypto';
 
-@Controller('api/v1/bank-vault')
+@Controller('v1/bank-vault')
+@UseGuards(AnchorWebhookGuard)
 export class BankVaultController {
   constructor(
+    private readonly customerService: CustomerService,
     private readonly bankVaultService: BankVaultService,
-    private readonly ninePayGateway: NinePayGatewayService
+    private readonly ninePayGateway: NinePayGatewayService,
   ) {}
 
   @Post('inquiry')
   @HttpCode(HttpStatus.OK)
-  async inquiry(@Body() body: { bankCode?: string; accountNumber?: string }) {
+  async inquiry(@Body() body: BankVaultInquiryDto) {
     const { bankCode, accountNumber } = body;
-    if (!bankCode || !accountNumber) {
-      throw new BadRequestException('Missing bankCode or accountNumber');
-    }
 
     try {
-      const accountName = await this.ninePayGateway.lookupAccount(accountNumber, bankCode);
+      const accountName = await this.ninePayGateway.lookupAccount(
+        accountNumber,
+        bankCode,
+      );
       if (!accountName) {
         throw new NotFoundException('Account not found or invalid');
       }
@@ -42,20 +48,21 @@ export class BankVaultController {
 
   @Post('register')
   @HttpCode(HttpStatus.OK)
-  async register(@Body() body: { userId?: string; kycId?: string; bankCode?: string; accountNumber?: string; accountName?: string }) {
+  async register(@Body() body: BankVaultRegisterDto) {
     const { userId, kycId, bankCode, accountNumber, accountName } = body;
-    if (!userId || !bankCode || !accountNumber || !accountName) {
-      throw new BadRequestException('Missing required fields');
-    }
 
     try {
       const customerId = kycId || randomUUID();
 
-      await CustomerModel.createOrUpdate({
-        id: customerId,
-        type: 'sep31-receiver',
-        first_name: accountName,
-      });
+      let customer = await this.customerService.findById(customerId);
+      if (!customer) {
+        customer = this.customerService.create({});
+        customer.id = customerId;
+      }
+      customer.firstName = accountName;
+      customer.customerType = 'sep31-receiver';
+      customer.status = 'NEEDS_INFO'; // default when only first name is registered
+      await this.customerService.save(customer);
 
       const record = await this.bankVaultService.registerProfile({
         customer_id: customerId,
@@ -65,7 +72,7 @@ export class BankVaultController {
         bank_code: bankCode,
       });
 
-      return { beneficiaryRefId: record.beneficiary_ref_id };
+      return { beneficiaryRefId: record.beneficiaryRefId };
     } catch (error: any) {
       throw new BadRequestException(error.message);
     }

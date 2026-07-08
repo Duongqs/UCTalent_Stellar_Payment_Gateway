@@ -5,14 +5,19 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StellarService = void 0;
 const stellar_sdk_1 = require("@stellar/stellar-sdk");
 const common_1 = require("@nestjs/common");
+const core_1 = require("@uc/core");
 let StellarService = class StellarService {
-    constructor() {
-        this.rpcUrl = process.env.SOROBAN_RPC_URL || 'https://soroban-testnet.stellar.org';
-        this.rpcServer = new stellar_sdk_1.rpc.Server(this.rpcUrl);
+    constructor(envService) {
+        this.envService = envService;
+        const rpcUrl = this.envService.get('SOROBAN_RPC_URL') || 'https://soroban-testnet.stellar.org';
+        this.rpcServer = new stellar_sdk_1.rpc.Server(rpcUrl);
     }
     getRpcServer() {
         return this.rpcServer;
@@ -49,13 +54,15 @@ let StellarService = class StellarService {
     async faucet(destinationAddress) {
         const horizonUrl = 'https://horizon-testnet.stellar.org';
         const server = new stellar_sdk_1.Horizon.Server(horizonUrl);
-        const fundingSecret = process.env.FUNDING_SECRET || 'SCQMGZP23PYPUUG652FNE4M44O5CB3NV3CPEXXVF7H6EJJ3SCUJZL6HO';
+        const fundingSecret = this.envService.get('FUNDING_SECRET') || 'SCQMGZP23PYPUUG652FNE4M44O5CB3NV3CPEXXVF7H6EJJ3SCUJZL6HO';
         const funderKeypair = stellar_sdk_1.Keypair.fromSecret(fundingSecret);
         const funderAccount = await server.loadAccount(funderKeypair.publicKey());
-        const usdcAsset = new stellar_sdk_1.Asset('USDC', process.env.USDC_ISSUER || 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5');
+        const usdcIssuer = this.envService.get('USDC_ISSUER') || 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5';
+        const usdcAsset = new stellar_sdk_1.Asset('USDC', usdcIssuer);
+        const networkPassphrase = this.envService.get('NETWORK_PASSPHRASE') || stellar_sdk_1.Networks.TESTNET;
         const txBuilder = new stellar_sdk_1.TransactionBuilder(funderAccount, {
             fee: '15000',
-            networkPassphrase: process.env.NETWORK_PASSPHRASE || stellar_sdk_1.Networks.TESTNET,
+            networkPassphrase,
         });
         txBuilder.addOperation(stellar_sdk_1.Operation.pathPaymentStrictReceive({
             sendAsset: stellar_sdk_1.Asset.native(),
@@ -74,18 +81,18 @@ let StellarService = class StellarService {
         return result.hash;
     }
     async sponsorTransaction(innerXdr) {
-        const anchorSigningKey = process.env.ANCHOR_SIGNING_KEY;
+        const anchorSigningKey = this.envService.get('ANCHOR_SIGNING_KEY');
         if (!anchorSigningKey) {
             return innerXdr;
         }
         try {
             const feeWalletKeypair = stellar_sdk_1.Keypair.fromSecret(anchorSigningKey);
-            const passphrase = process.env.NETWORK_PASSPHRASE || stellar_sdk_1.Networks.TESTNET;
-            const innerTx = stellar_sdk_1.TransactionBuilder.fromXDR(innerXdr, passphrase);
+            const networkPassphrase = this.envService.get('NETWORK_PASSPHRASE') || stellar_sdk_1.Networks.TESTNET;
+            const innerTx = stellar_sdk_1.TransactionBuilder.fromXDR(innerXdr, networkPassphrase);
             if ('innerTransaction' in innerTx) {
                 throw new Error('Transaction is already fee-bumped');
             }
-            const feeBumpTx = stellar_sdk_1.TransactionBuilder.buildFeeBumpTransaction(feeWalletKeypair, '10000', innerTx, passphrase);
+            const feeBumpTx = stellar_sdk_1.TransactionBuilder.buildFeeBumpTransaction(feeWalletKeypair, '10000', innerTx, networkPassphrase);
             feeBumpTx.sign(feeWalletKeypair);
             return feeBumpTx.toXDR();
         }
@@ -97,6 +104,7 @@ let StellarService = class StellarService {
 };
 exports.StellarService = StellarService;
 exports.StellarService = StellarService = __decorate([
-    (0, common_1.Injectable)()
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [core_1.EnvService])
 ], StellarService);
 //# sourceMappingURL=stellar.service.js.map

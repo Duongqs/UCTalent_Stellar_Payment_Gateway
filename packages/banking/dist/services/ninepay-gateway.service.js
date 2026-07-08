@@ -50,12 +50,20 @@ const common_1 = require("@nestjs/common");
 const crypto = __importStar(require("crypto"));
 const axios_1 = __importDefault(require("axios"));
 const name_matching_service_1 = require("./name-matching.service");
+const core_1 = require("@uc/core");
 let NinePayGatewayService = class NinePayGatewayService {
-    constructor(nameMatchingService) {
+    constructor(envService, nameMatchingService) {
+        this.envService = envService;
         this.nameMatchingService = nameMatchingService;
-        this.merchantKey = process.env.NINEPAY_MERCHANT_KEY || process.env.NINEPAY_MERCHANT_ID || 'sandbox_merchant';
-        this.secretKey = process.env.NINEPAY_SECRET_KEY || 'sandbox_secret';
-        this.apiUrl = (process.env.NINEPAY_API_URL || 'https://sand-payment.9pay.vn').replace(/\/+$/, '');
+    }
+    get merchantKey() {
+        return this.envService.get('NINEPAY_MERCHANT_KEY') || 'sandbox_merchant';
+    }
+    get secretKey() {
+        return this.envService.get('NINEPAY_SECRET_KEY') || 'sandbox_secret';
+    }
+    get apiUrl() {
+        return (this.envService.get('NINEPAY_API_URL') || 'https://sand-payment.9pay.vn').replace(/\/+$/, '');
     }
     buildHttpQuery(params) {
         if (!params || Object.keys(params).length === 0)
@@ -102,7 +110,7 @@ let NinePayGatewayService = class NinePayGatewayService {
         return response.data;
     }
     async lookupAccount(accountNumber, bankCode) {
-        if (process.env.NINEPAY_MODE === 'mock' || process.env.USE_MOCK_NINEPAY === 'true') {
+        if (this.envService.get('NINEPAY_MODE') === 'mock' || this.envService.get('USE_MOCK_NINEPAY') === 'true') {
             console.log(`[Mock 9Pay] Lookup account ${accountNumber} at ${bankCode}`);
             if (accountNumber.includes('169969'))
                 return 'NGUYEN VAN A';
@@ -138,7 +146,7 @@ let NinePayGatewayService = class NinePayGatewayService {
             throw new Error(`RECONCILIATION_FAILED: Cannot lookup account ${accountNumber} at bank ${bankCode}`);
         }
         this.nameMatchingService.reconcileNames(kycName, accountName, invoiceNo);
-        if (process.env.NINEPAY_MODE === 'mock' || process.env.USE_MOCK_NINEPAY === 'true') {
+        if (this.envService.get('NINEPAY_MODE') === 'mock' || this.envService.get('USE_MOCK_NINEPAY') === 'true') {
             console.log(`[Mock 9Pay] Disbursed ${amount} VND for invoice ${invoiceNo} to account ${accountNumber}`);
             return { status: 5, message: 'Mock Success' };
         }
@@ -169,6 +177,7 @@ let NinePayGatewayService = class NinePayGatewayService {
 exports.NinePayGatewayService = NinePayGatewayService;
 exports.NinePayGatewayService = NinePayGatewayService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [name_matching_service_1.NameMatchingService])
+    __metadata("design:paramtypes", [core_1.EnvService,
+        name_matching_service_1.NameMatchingService])
 ], NinePayGatewayService);
 //# sourceMappingURL=ninepay-gateway.service.js.map

@@ -41,6 +41,9 @@ var __importStar = (this && this.__importStar) || (function () {
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -48,50 +51,104 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.EventConsumerService = void 0;
 const common_1 = require("@nestjs/common");
 const schedule_1 = require("@nestjs/schedule");
+const typeorm_1 = require("@nestjs/typeorm");
+const typeorm_2 = require("typeorm");
 const core_1 = require("@uc/core");
 const axios_1 = __importDefault(require("axios"));
 const crypto = __importStar(require("crypto"));
 let EventConsumerService = class EventConsumerService {
+    eventQueueRepo;
+    envService;
     isProcessing = false;
+    constructor(eventQueueRepo, envService) {
+        this.eventQueueRepo = eventQueueRepo;
+        this.envService = envService;
+    }
     async processQueue() {
         if (this.isProcessing)
             return;
         this.isProcessing = true;
+        let row;
         try {
-            const row = await (0, core_1.query)(`SELECT id, ledger, tx_hash, payload_json FROM bridge_events_queue 
-         WHERE status = 'pending' 
-         ORDER BY id ASC LIMIT 1`);
+            row = await this.eventQueueRepo.findOne({
+                where: { status: 'pending' },
+                order: { id: 'ASC' },
+            });
             if (!row) {
                 this.isProcessing = false;
                 return;
             }
-            console.log(`[Event Consumer] Processing queued event #${row.id} (Tx: ${row.tx_hash})`);
-            const webhookUrl = process.env.SEP31_WEBHOOK_URL || 'http://localhost:3000/api/webhooks/sdp';
-            const webhookSecret = process.env.CROSS_BORDER_WEBHOOK_SECRET || 'uctalent-dev-secret';
-            const payload = JSON.parse(row.payload_json);
+            console.log(`[Event Consumer] Processing queued event #${row.id} (Tx: ${row.txHash})`);
+            const payload = row.payloadJson;
             const payloadString = JSON.stringify(payload);
-            const signature = 'sha256=' + crypto.createHmac('sha256', webhookSecret).update(payloadString).digest('hex');
+            const localApiPort = this.envService.get('PORT') || 8081;
+            const localDisburseUrl = `http://localhost:${localApiPort}/api/anchor/disburse`;
+            const localSecret = this.envService.get('WEBHOOK_SECRET') || 'uctalent-dev-secret';
+            const localSignature = 'sha256=' + crypto
+                .createHmac('sha256', localSecret)
+                .update(payloadString)
+                .digest('hex');
             try {
-                const res = await axios_1.default.post(webhookUrl, payload, {
+                const localRes = await axios_1.default.post(localDisburseUrl, payload, {
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-UCTALENT-SIGNATURE': signature
+                        'X-UCTALENT-SIGNATURE': localSignature,
                     },
                     timeout: 10000,
                 });
-                console.log(`[Event Consumer] Webhook response ${res.status}:`, JSON.stringify(res.data).substring(0, 150));
-                await (0, core_1.query)("UPDATE bridge_events_queue SET status = 'completed', updated_at = now() WHERE id = $1", [row.id]);
+                console.log(`[Event Consumer] Local disburse response: ${localRes.status}`);
             }
             catch (err) {
-                const status = err.response?.status || 'N/A';
-                console.error(`[Event Consumer] Webhook dispatch failed (HTTP ${status}):`, err.message);
-                await (0, core_1.query)(`UPDATE bridge_events_queue 
-           SET status = 'failed', error_message = $2, retry_count = retry_count + 1, updated_at = now() 
-           WHERE id = $1`, [row.id, err.message]);
+                console.error(`[Event Consumer] Local disburse failed: ${err.message}`);
+                throw err;
             }
+            const backendWebhookUrl = this.envService.get('UCTALENT_BACKEND_WEBHOOK_URL');
+            let targetBackendUrl = backendWebhookUrl;
+            if (targetBackendUrl) {
+                if (targetBackendUrl.includes('settlement-callback')) {
+                    targetBackendUrl = targetBackendUrl.replace('settlement-callback', 'webhook');
+                }
+                if (!targetBackendUrl.includes('/v2/')) {
+                    targetBackendUrl = targetBackendUrl.replace('/api/', '/api/v2/');
+                }
+            }
+            else {
+                targetBackendUrl = 'http://localhost:4000/api/v2/cross-border/webhook';
+            }
+            const backendSecret = this.envService.get('CROSS_BORDER_WEBHOOK_SECRET') || 'uctalent-dev-secret';
+            const backendSig = crypto
+                .createHmac('sha256', backendSecret)
+                .update(payloadString)
+                .digest('hex');
+            const backendSignature = `sha256=${backendSig}`;
+            try {
+                const backendRes = await axios_1.default.post(targetBackendUrl, payload, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-UCTALENT-SIGNATURE': backendSignature,
+                    },
+                    timeout: 10000,
+                });
+                console.log(`[Event Consumer] Backend webhook response: ${backendRes.status}`);
+            }
+            catch (err) {
+                console.error(`[Event Consumer] Backend webhook failed: ${err.message}`);
+                throw err;
+            }
+            await this.eventQueueRepo.update(row.id, {
+                status: 'completed',
+            });
         }
         catch (err) {
-            console.error('[Event Consumer] Queue processing error:', err.message);
+            const status = err.response?.status || 'N/A';
+            console.error(`[Event Consumer] Webhook dispatch failed (HTTP ${status}):`, err.message);
+            if (row) {
+                await this.eventQueueRepo.update(row.id, {
+                    status: 'failed',
+                    errorMessage: err.message,
+                    retryCount: (row.retryCount || 0) + 1,
+                });
+            }
         }
         finally {
             this.isProcessing = false;
@@ -106,6 +163,9 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], EventConsumerService.prototype, "processQueue", null);
 exports.EventConsumerService = EventConsumerService = __decorate([
-    (0, common_1.Injectable)()
+    (0, common_1.Injectable)(),
+    __param(0, (0, typeorm_1.InjectRepository)(core_1.BridgeEventQueueEntity)),
+    __metadata("design:paramtypes", [typeorm_2.Repository,
+        core_1.EnvService])
 ], EventConsumerService);
 //# sourceMappingURL=event-consumer.service.js.map

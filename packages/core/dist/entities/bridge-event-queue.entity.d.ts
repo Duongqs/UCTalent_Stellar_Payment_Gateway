@@ -5,4 +5,6 @@ export declare class BridgeEventQueueEntity extends BaseEntity {
     contractId: string;
     payloadJson: Record<string, any>;
     status: 'pending' | 'completed' | 'failed';
+    errorMessage: string;
+    retryCount: number;
 }

@@ -10,6 +10,6 @@ export class DisbursementAuditLogEntity extends BaseEntity {
   @Column({ name: 'event_type', type: 'varchar' })
   eventType: string;
 
-  @Column({ type: 'jsonb' })
+  @Column({ type: 'simple-json' })
   payload: Record<string, any>;
 }

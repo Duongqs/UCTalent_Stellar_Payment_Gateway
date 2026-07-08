@@ -18,6 +18,7 @@ let BankingModule = class BankingModule {
 };
 exports.BankingModule = BankingModule;
 exports.BankingModule = BankingModule = __decorate([
+    (0, common_1.Global)(),
     (0, common_1.Module)({
         imports: [stellar_1.StellarModule],
         providers: [

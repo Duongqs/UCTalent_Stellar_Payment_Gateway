@@ -2,16 +2,26 @@ import { Injectable } from '@nestjs/common';
 import * as crypto from 'crypto';
 import axios from 'axios';
 import { NameMatchingService } from './name-matching.service';
+import { EnvService } from '@uc/core';
 
 @Injectable()
 export class NinePayGatewayService {
-  private merchantKey = process.env.NINEPAY_MERCHANT_KEY || process.env.NINEPAY_MERCHANT_ID || 'sandbox_merchant';
-  private secretKey = process.env.NINEPAY_SECRET_KEY || 'sandbox_secret';
-  private apiUrl = (process.env.NINEPAY_API_URL || 'https://sand-payment.9pay.vn').replace(/\/+$/, '');
-
   constructor(
+    private readonly envService: EnvService,
     private readonly nameMatchingService: NameMatchingService
   ) {}
+
+  private get merchantKey(): string {
+    return this.envService.get('NINEPAY_MERCHANT_KEY') || 'sandbox_merchant';
+  }
+
+  private get secretKey(): string {
+    return this.envService.get('NINEPAY_SECRET_KEY') || 'sandbox_secret';
+  }
+
+  private get apiUrl(): string {
+    return (this.envService.get('NINEPAY_API_URL') || 'https://sand-payment.9pay.vn').replace(/\/+$/, '');
+  }
 
   private buildHttpQuery(params: Record<string, string>): string {
     if (!params || Object.keys(params).length === 0) return '';
@@ -63,7 +73,7 @@ export class NinePayGatewayService {
   }
 
   async lookupAccount(accountNumber: string, bankCode: string): Promise<string | null> {
-    if (process.env.NINEPAY_MODE === 'mock' || process.env.USE_MOCK_NINEPAY === 'true') {
+    if (this.envService.get('NINEPAY_MODE') === 'mock' || this.envService.get('USE_MOCK_NINEPAY') === 'true') {
       console.log(`[Mock 9Pay] Lookup account ${accountNumber} at ${bankCode}`);
       if (accountNumber.includes('169969')) return 'NGUYEN VAN A';
       if (accountNumber.includes('170170')) return 'NGUYEN VAN B';
@@ -109,7 +119,7 @@ export class NinePayGatewayService {
 
     this.nameMatchingService.reconcileNames(kycName, accountName, invoiceNo);
 
-    if (process.env.NINEPAY_MODE === 'mock' || process.env.USE_MOCK_NINEPAY === 'true') {
+    if (this.envService.get('NINEPAY_MODE') === 'mock' || this.envService.get('USE_MOCK_NINEPAY') === 'true') {
       console.log(`[Mock 9Pay] Disbursed ${amount} VND for invoice ${invoiceNo} to account ${accountNumber}`);
       return { status: 5, message: 'Mock Success' };
     }

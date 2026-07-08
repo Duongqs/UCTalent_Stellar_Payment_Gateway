@@ -1,10 +1,20 @@
+process.env.NODE_ENV = 'test';
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { NinePayGatewayService, OracleService } from '@uc/banking';
 import { Sep31TransactionService, AnchorRpcService } from '@uc/stellar';
-import { Sep9ValidationService, query as rawQuery } from '@uc/core';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import {
+  Sep9ValidationService,
+  CustomerEntity,
+  BankProfileEntity,
+  Sep31TransactionEntity,
+  EncryptionService,
+} from '@uc/core';
 import * as crypto from 'crypto';
 
 function mockIpnBody(payload: any) {
@@ -17,34 +27,6 @@ function mockIpnBody(payload: any) {
   return { result: resultB64, checksum };
 }
 
-const mockQuery = jest.fn();
-const mockQueryAll = jest.fn();
-const mockAuditLog = jest.fn();
-const mockCustomerModel = {
-  findById: jest.fn(),
-  findByAccount: jest.fn(),
-  createOrUpdate: jest.fn(),
-};
-const mockBankProfileModel = {
-  create: jest.fn(),
-  findByCustomerId: jest.fn(),
-  findByRefId: jest.fn(),
-  markVerified: jest.fn(),
-};
-
-jest.mock('@uc/core', () => {
-  const original = jest.requireActual('@uc/core');
-  return {
-    ...original,
-    query: (...args: any[]) => mockQuery(...args),
-    queryAll: (...args: any[]) => mockQueryAll(...args),
-    auditLog: (...args: any[]) => mockAuditLog(...args),
-    decrypt: jest.fn().mockReturnValue('decrypted-value'),
-    CustomerModel: mockCustomerModel,
-    BankProfileModel: mockBankProfileModel,
-  };
-});
-
 describe('E2E Flow Tests', () => {
   let app: INestApplication;
   let mockNinePayGateway: Record<string, jest.Mock>;
@@ -53,8 +35,15 @@ describe('E2E Flow Tests', () => {
   let mockAnchorRpc: Record<string, jest.Mock>;
   let mockSep9Validation: Record<string, jest.Mock>;
 
+  let customerRepo: Repository<CustomerEntity>;
+  let bankProfileRepo: Repository<BankProfileEntity>;
+  let sep31Repo: Repository<Sep31TransactionEntity>;
+  let encryption: EncryptionService;
+
   beforeAll(async () => {
-    process.env.ENCRYPTION_SECRET = 'a_very_secure_secret_key_that_is_at_least_32_bytes_long!';
+    process.env.NODE_ENV = 'test';
+    process.env.ENCRYPTION_SECRET =
+      'a_very_secure_secret_key_that_is_at_least_32_bytes_long!';
     process.env.NINEPAY_CHECKSUM_KEY = 'test-key';
 
     mockNinePayGateway = {
@@ -101,23 +90,37 @@ describe('E2E Flow Tests', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api');
     await app.init();
+
+    customerRepo = moduleFixture.get<Repository<CustomerEntity>>(
+      getRepositoryToken(CustomerEntity),
+    );
+    bankProfileRepo = moduleFixture.get<Repository<BankProfileEntity>>(
+      getRepositoryToken(BankProfileEntity),
+    );
+    sep31Repo = moduleFixture.get<Repository<Sep31TransactionEntity>>(
+      getRepositoryToken(Sep31TransactionEntity),
+    );
+    encryption = moduleFixture.get<EncryptionService>(EncryptionService);
   });
 
   afterAll(async () => {
     await app.close();
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
+    await customerRepo.clear();
+    await bankProfileRepo.clear();
+    await sep31Repo.clear();
   });
 
   describe('Customer KYC Controller', () => {
     it('GET /customer unknown id → NEEDS_INFO', async () => {
-      mockCustomerModel.findById.mockResolvedValue(null);
-
-      const res = await request(app.getHttpServer())
-        .get('/customer?id=unknown-uuid&type=sep31-receiver');
+      const res = await request(app.getHttpServer()).get(
+        '/api/customer?id=unknown-uuid&type=sep31-receiver',
+      );
 
       expect(res.status).toBe(200);
       expect(res.body.status).toBe('NEEDS_INFO');
@@ -125,21 +128,20 @@ describe('E2E Flow Tests', () => {
     });
 
     it('PUT /customer creates or updates KYC', async () => {
-      mockCustomerModel.createOrUpdate.mockResolvedValue({
-        id: 'new-cust-uuid',
-        status: 'ACCEPTED',
+      mockSep9Validation.validate.mockReturnValue({
+        isValid: true,
+        errors: [],
       });
 
-      const res = await request(app.getHttpServer())
-        .put('/customer')
-        .send({
-          first_name: 'A',
-          last_name: 'B',
-          email_address: 'a@b.c',
-          id_number: '12345',
-          id_country: 'VNM',
-          type: 'sep31-receiver',
-        });
+      const res = await request(app.getHttpServer()).put('/api/customer').send({
+        id: 'new-cust-uuid',
+        first_name: 'A',
+        last_name: 'B',
+        email_address: 'a@b.c',
+        id_number: '12345',
+        id_country: 'VNM',
+        type: 'sep31-receiver',
+      });
 
       expect(res.status).toBe(202);
       expect(res.body.id).toBe('new-cust-uuid');
@@ -151,12 +153,10 @@ describe('E2E Flow Tests', () => {
         errors: ["Field 'firstName' must be snake_case."],
       });
 
-      const res = await request(app.getHttpServer())
-        .put('/customer')
-        .send({
-          firstName: 'A',
-          type: 'sep31-receiver',
-        });
+      const res = await request(app.getHttpServer()).put('/api/customer').send({
+        firstName: 'A',
+        type: 'sep31-receiver',
+      });
 
       expect(res.status).toBe(400);
     });
@@ -173,8 +173,9 @@ describe('E2E Flow Tests', () => {
         method: 'single',
       });
 
-      const res = await request(app.getHttpServer())
-        .get('/rate?type=indicative&sell_asset=stellar:USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5&buy_asset=iso4217:VND&sell_amount=10');
+      const res = await request(app.getHttpServer()).get(
+        '/api/rate?type=indicative&sell_asset=stellar:USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5&buy_asset=iso4217:VND&sell_amount=10',
+      );
 
       expect(res.status).toBe(200);
       expect(res.body.rate.price).toBe('0.0000393701');
@@ -188,6 +189,7 @@ describe('E2E Flow Tests', () => {
 
       const res = await request(app.getHttpServer())
         .post('/api/v1/bank-vault/inquiry')
+        .set('x-uctalent-signature', 'bypass')
         .send({
           bankCode: '970436',
           accountNumber: '123456',
@@ -208,7 +210,8 @@ describe('E2E Flow Tests', () => {
       });
 
       const res = await request(app.getHttpServer())
-        .post('/sep31/initiate')
+        .post('/api/sep31/initiate')
+        .set('x-uctalent-signature', 'bypass')
         .send({
           amount: '10',
           sender_id: 'sender-1',
@@ -223,10 +226,13 @@ describe('E2E Flow Tests', () => {
 
   describe('IPN Controller', () => {
     it('POST /ipn callback triggers SUCCESS process', async () => {
-      mockQuery.mockImplementation(async (sql: string) => {
-        if (sql.includes('disbursement_audit_log')) return null;
-        return { rows: [] };
-      });
+      // Seed transaction
+      const tx = new Sep31TransactionEntity();
+      tx.id = 'tx-123';
+      tx.status = 'pending_external';
+      tx.amountIn = '100';
+      tx.assetCode = 'USDC';
+      await sep31Repo.save(tx);
 
       const ipnPayload = mockIpnBody({
         invoice_no: 'inv-123',
@@ -236,12 +242,50 @@ describe('E2E Flow Tests', () => {
       });
 
       const res = await request(app.getHttpServer())
-        .post('/ipn')
+        .post('/api/ipn')
         .send(ipnPayload);
 
       expect(res.status).toBe(200);
       expect(res.body.message).toBe('Acknowledged');
-      expect(mockAnchorRpc.notifyOffchainFundsAvailable).toHaveBeenCalledWith('tx-123', 'napas-123');
+      expect(mockAnchorRpc.notifyOffchainFundsAvailable).toHaveBeenCalledWith(
+        'tx-123',
+        'napas-123',
+      );
+
+      // Verify transaction status updated to completed
+      const updated = await sep31Repo.findOne({ where: { id: 'tx-123' } });
+      expect(updated?.status).toBe('completed');
+    });
+  });
+
+  describe('Anchor Controller (Disburse & HMAC Guard)', () => {
+    it('POST /anchor/disburse with invalid signature returns 401', async () => {
+      await request(app.getHttpServer())
+        .post('/api/anchor/disburse')
+        .set('x-uctalent-signature', 'invalid')
+        .send({ stellarTxHash: '0xmock' })
+        .expect(401);
+    });
+
+    it('POST /anchor/disburse with bypass signature succeeds', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/anchor/disburse')
+        .set('x-uctalent-signature', 'bypass')
+        .send({
+          stellarTxHash: '0xmock_tx_hash_12345',
+          stellarMemo: 'TEST_MEMO_001',
+          oracleRate: 25450,
+          splits: {
+            talent: { amountUsdc: 80, kycId: 'abc123' },
+            scout: { amountUsdc: 0, kycId: null },
+            platform: { amountUsdc: 20, kycId: null },
+          },
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('processing');
+      expect(res.body.disbursements).toBeDefined();
+      expect(res.body.disbursements.length).toBeGreaterThan(0);
     });
   });
 });

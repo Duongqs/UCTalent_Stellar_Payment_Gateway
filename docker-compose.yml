@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: uc-cross-border-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: uct_rails_dev_root
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-DcglAQ2zrRNMiihqm1AMmVwBuY8q3ebB}
+      POSTGRES_DB: uct_cross_border_dev
+    ports:
+      - "15432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - internal-backend
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: uc-cross-border-api
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+    networks:
+      - internal-backend
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: uc-cross-border-worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+    networks:
+      - internal-backend
+
+networks:
+  internal-backend:
+    driver: bridge
+
+volumes:
+  pgdata:

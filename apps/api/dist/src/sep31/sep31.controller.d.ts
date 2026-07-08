@@ -1,17 +1,27 @@
 import { Sep31TransactionService } from '@uc/stellar';
+import { Sep31CoreService } from '@uc/core';
+import { InitiateDisbursementDto } from './dtos/initiate-disbursement.dto';
 export declare class Sep31Controller {
+    private readonly sep31CoreService;
     private readonly sep31Service;
-    constructor(sep31Service: Sep31TransactionService);
-    initiateDisbursement(body: {
-        amount?: string;
-        sender_id?: string;
-        receiver_id?: string;
-        quote_id?: string;
-        idempotency_key?: string;
-    }): Promise<{
+    constructor(sep31CoreService: Sep31CoreService, sep31Service: Sep31TransactionService);
+    getInfo(): Promise<{
+        receive: {
+            USDC: {
+                enabled: boolean;
+                fee_fixed: number;
+                fee_percent: number;
+                min_amount: number;
+                max_amount: number;
+                quotes_supported: boolean;
+                quotes_required: boolean;
+            };
+        };
+    }>;
+    initiateDisbursement(body: InitiateDisbursementDto): Promise<{
         success: boolean;
-        transactionId: any;
-        status: any;
+        transactionId: string;
+        status: string;
         stellar_account?: undefined;
         stellar_memo?: undefined;
         stellar_memo_type?: undefined;

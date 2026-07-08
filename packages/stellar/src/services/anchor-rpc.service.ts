@@ -1,9 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
+import { EnvService } from '@uc/core';
 
 @Injectable()
 export class AnchorRpcService {
-  private platformUrl = process.env.ANCHOR_PLATFORM_URL || process.env.PLATFORM_SERVER_URL || 'http://localhost:8085';
+  constructor(private readonly envService: EnvService) {}
+
+  private get platformUrl(): string {
+    return this.envService.get('PLATFORM_SERVER_URL') || this.envService.get('ANCHOR_PLATFORM_URL') || 'http://localhost:8085';
+  }
 
   private async patchTransaction(id: string, updates: any) {
     try {
@@ -29,12 +34,13 @@ export class AnchorRpcService {
   }
 
   async notifyOnchainFundsReceived(transactionId: string, amount_in: string, stellar_transaction_id: string) {
+    const usdcIssuer = this.envService.get('USDC_ISSUER') || 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5';
     return this.patchTransaction(transactionId, {
       status: 'pending_receiver',
       stellar_transaction_id,
       amount_in: {
         amount: amount_in,
-        asset: `stellar:USDC:${process.env.USDC_ISSUER || 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5'}`
+        asset: `stellar:USDC:${usdcIssuer}`
       }
     });
   }

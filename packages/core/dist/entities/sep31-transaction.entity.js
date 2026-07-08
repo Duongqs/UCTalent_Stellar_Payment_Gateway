@@ -76,6 +76,10 @@ __decorate([
     __metadata("design:type", String)
 ], Sep31TransactionEntity.prototype, "taxCode", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ name: 'retry_count', type: 'int', default: 0 }),
+    __metadata("design:type", Number)
+], Sep31TransactionEntity.prototype, "retryCount", void 0);
+__decorate([
     (0, typeorm_1.Column)({ name: 'error_message', type: 'text', nullable: true }),
     __metadata("design:type", String)
 ], Sep31TransactionEntity.prototype, "errorMessage", void 0);

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.BankProfileEntity = exports.CustomerEntity = exports.DisbursementAuditLogEntity = exports.BridgeEventQueueEntity = exports.FirmQuoteEntity = exports.Sep31TransactionEntity = exports.BaseEntity = void 0;
+exports.SyncStateEntity = exports.BankProfileEntity = exports.CustomerEntity = exports.DisbursementAuditLogEntity = exports.BridgeEventQueueEntity = exports.FirmQuoteEntity = exports.Sep31TransactionEntity = exports.BaseEntity = void 0;
 var base_entity_1 = require("./base.entity");
 Object.defineProperty(exports, "BaseEntity", { enumerable: true, get: function () { return base_entity_1.BaseEntity; } });
 var sep31_transaction_entity_1 = require("./sep31-transaction.entity");
@@ -15,4 +15,6 @@ var customer_entity_1 = require("./customer.entity");
 Object.defineProperty(exports, "CustomerEntity", { enumerable: true, get: function () { return customer_entity_1.CustomerEntity; } });
 var bank_profile_entity_1 = require("./bank-profile.entity");
 Object.defineProperty(exports, "BankProfileEntity", { enumerable: true, get: function () { return bank_profile_entity_1.BankProfileEntity; } });
+var sync_state_entity_1 = require("./sync-state.entity");
+Object.defineProperty(exports, "SyncStateEntity", { enumerable: true, get: function () { return sync_state_entity_1.SyncStateEntity; } });
 //# sourceMappingURL=index.js.map

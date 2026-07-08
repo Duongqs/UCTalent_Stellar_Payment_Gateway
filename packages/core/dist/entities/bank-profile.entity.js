@@ -44,7 +44,7 @@ __decorate([
     __metadata("design:type", Boolean)
 ], BankProfileEntity.prototype, "isVerified", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'verified_at', type: 'timestamptz', nullable: true }),
+    (0, typeorm_1.Column)({ name: 'verified_at', nullable: true }),
     __metadata("design:type", Date)
 ], BankProfileEntity.prototype, "verifiedAt", void 0);
 exports.BankProfileEntity = BankProfileEntity = __decorate([

@@ -9,6 +9,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DatabaseModule = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
+const env_service_1 = require("../config/env.service");
+const env_module_1 = require("../config/env.module");
 let DatabaseModule = class DatabaseModule {
 };
 exports.DatabaseModule = DatabaseModule;
@@ -16,17 +18,30 @@ exports.DatabaseModule = DatabaseModule = __decorate([
     (0, common_1.Module)({
         imports: [
             typeorm_1.TypeOrmModule.forRootAsync({
-                useFactory: () => ({
-                    type: 'postgres',
-                    host: process.env.POSTGRES_HOST || 'localhost',
-                    port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
-                    username: process.env.POSTGRES_USER || 'postgres',
-                    password: process.env.POSTGRES_PASSWORD || 'password',
-                    database: process.env.POSTGRES_DB || 'uct_cross_border_dev',
-                    autoLoadEntities: true,
-                    synchronize: process.env.NODE_ENV !== 'production',
-                    logging: process.env.NODE_ENV === 'local' ? ['error', 'warn'] : false,
-                }),
+                imports: [env_module_1.EnvModule],
+                inject: [env_service_1.EnvService],
+                useFactory: (envService) => {
+                    if (envService.get('NODE_ENV') === 'test') {
+                        return {
+                            type: 'better-sqlite3',
+                            database: ':memory:',
+                            autoLoadEntities: true,
+                            synchronize: true,
+                            dropSchema: true,
+                        };
+                    }
+                    return {
+                        type: 'postgres',
+                        host: envService.get('POSTGRES_HOST'),
+                        port: envService.get('POSTGRES_PORT'),
+                        username: envService.get('POSTGRES_USER'),
+                        password: envService.get('POSTGRES_PASSWORD'),
+                        database: envService.get('POSTGRES_DB'),
+                        autoLoadEntities: true,
+                        synchronize: envService.get('NODE_ENV') !== 'production',
+                        logging: envService.get('NODE_ENV') === 'local' ? ['error', 'warn'] : false,
+                    };
+                },
             }),
         ],
     })

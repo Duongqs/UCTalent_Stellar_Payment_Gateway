@@ -11,15 +11,24 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HealthController = void 0;
 const common_1 = require("@nestjs/common");
+const typeorm_1 = require("typeorm");
 const banking_1 = require("@uc/banking");
-const core_1 = require("@uc/core");
 let HealthController = class HealthController {
+    dataSource;
     oracleService;
-    constructor(oracleService) {
+    constructor(dataSource, oracleService) {
+        this.dataSource = dataSource;
         this.oracleService = oracleService;
     }
     async getHealth() {
-        const dbHealth = await (0, core_1.checkHealth)();
+        const start = Date.now();
+        let dbStatus = 'error';
+        try {
+            await this.dataSource.query('SELECT 1');
+            dbStatus = 'ok';
+        }
+        catch (e) { }
+        const dbHealth = { status: dbStatus, latency_ms: Date.now() - start };
         const circuitBreaker = this.oracleService.getCircuitBreakerState();
         const healthy = dbHealth.status === 'ok' && circuitBreaker !== 'OPEN';
         const response = {
@@ -44,6 +53,7 @@ __decorate([
 ], HealthController.prototype, "getHealth", null);
 exports.HealthController = HealthController = __decorate([
     (0, common_1.Controller)('health'),
-    __metadata("design:paramtypes", [banking_1.OracleService])
+    __metadata("design:paramtypes", [typeorm_1.DataSource,
+        banking_1.OracleService])
 ], HealthController);
 //# sourceMappingURL=health.controller.js.map

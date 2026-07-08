@@ -7,7 +7,6 @@ export abstract class BaseEntity {
 
   @Column({
     name: 'created_at',
-    type: 'timestamptz',
     transformer: {
       to: (value: Date) => value || new Date(),
       from: (value: Date) => value,
@@ -17,7 +16,6 @@ export abstract class BaseEntity {
 
   @Column({
     name: 'updated_at',
-    type: 'timestamptz',
     transformer: {
       to: (value: Date) => value || new Date(),
       from: (value: Date) => value,

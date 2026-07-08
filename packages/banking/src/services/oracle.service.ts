@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
+import { EnvService } from '@uc/core';
 
 interface OracleSource {
   name: string;
@@ -15,13 +16,7 @@ export interface OracleResult {
   method: 'median' | 'single';
 }
 
-const BOUNDS = {
-  MIN: parseInt(process.env.ORACLE_HARD_BOUND_MIN || '23000'),
-  MAX: parseInt(process.env.ORACLE_HARD_BOUND_MAX || '28000'),
-};
 const OUTLIER_THRESHOLD_PCT = 3;
-const SAFETY_SPREAD = parseFloat(process.env.ORACLE_SAFETY_SPREAD || '0.99');
-const CACHE_TTL_MS = parseInt(process.env.ORACLE_CACHE_TTL_MS || '60000');
 const SOURCE_TIMEOUT_MS = 5_000;
 
 enum CircuitState { CLOSED, OPEN, HALF_OPEN }
@@ -32,6 +27,8 @@ class OracleCircuitBreaker {
   private lastFailureAt: Date | null = null;
   private readonly FAILURE_THRESHOLD = 3;
   private readonly RECOVERY_TIMEOUT_MS = 30_000;
+
+  constructor(private readonly envService: EnvService) {}
 
   isOpen(): boolean {
     if (this.state !== CircuitState.OPEN) return false;
@@ -69,8 +66,9 @@ class OracleCircuitBreaker {
 
   private emitAlert(type: string, payload: Record<string, any>): void {
     console.error(`[ALERT:${type}]`, JSON.stringify(payload));
-    if (process.env.SLACK_ALERT_WEBHOOK) {
-      axios.post(process.env.SLACK_ALERT_WEBHOOK, {
+    const slackWebhook = this.envService.get('SLACK_ALERT_WEBHOOK');
+    if (slackWebhook) {
+      axios.post(slackWebhook, {
         text: `🚨 *${type}*\n\`\`\`${JSON.stringify(payload, null, 2)}\`\`\``,
       }).catch(() => {});
     }
@@ -80,7 +78,11 @@ class OracleCircuitBreaker {
 @Injectable()
 export class OracleService {
   private cache: OracleResult | null = null;
-  private circuitBreaker = new OracleCircuitBreaker();
+  private circuitBreaker: OracleCircuitBreaker;
+
+  constructor(private readonly envService: EnvService) {
+    this.circuitBreaker = new OracleCircuitBreaker(this.envService);
+  }
 
   private sources: OracleSource[] = [
     {
@@ -134,7 +136,7 @@ export class OracleService {
     {
       name: 'NinePay_Merchant_Rate',
       fetch: async () => {
-        const apiUrl = process.env.NINEPAY_API_URL || 'https://sandbox.9pay.vn';
+        const apiUrl = this.envService.get('NINEPAY_API_URL') || 'https://sandbox.9pay.vn';
         const res = await axios.get(
           `${apiUrl}/v1/exchange-rate?currency=USD`,
           { timeout: 2000 }
@@ -181,7 +183,8 @@ export class OracleService {
       throw new Error('CIRCUIT_OPEN: FX Oracle unavailable. All disbursements halted for safety.');
     }
 
-    if (this.cache && Date.now() - this.cache.cachedAt.getTime() < CACHE_TTL_MS) {
+    const cacheTtlMs = this.envService.get('ORACLE_CACHE_TTL_MS') ?? 60000;
+    if (this.cache && Date.now() - this.cache.cachedAt.getTime() < cacheTtlMs) {
       return this.cache;
     }
 
@@ -193,6 +196,12 @@ export class OracleService {
         value: await s.fetch(),
       }))
     );
+
+    const bounds = {
+      MIN: this.envService.get('ORACLE_HARD_BOUND_MIN') ?? 23000,
+      MAX: this.envService.get('ORACLE_HARD_BOUND_MAX') ?? 28000,
+    };
+    const safetySpread = this.envService.get('ORACLE_SAFETY_SPREAD') ?? 0.99;
 
     const rawRates: Record<string, number | null> = {};
     const successRates: { name: string; value: number }[] = [];
@@ -206,7 +215,7 @@ export class OracleService {
         const rate = result.value.value;
         rawRates[sourceName] = rate;
 
-        if (rate < BOUNDS.MIN || rate > BOUNDS.MAX) {
+        if (rate < bounds.MIN || rate > bounds.MAX) {
           droppedSources.push(`${sourceName} (${rate.toFixed(0)}, out of bounds)`);
         } else {
           successRates.push({ name: sourceName, value: rate });
@@ -243,9 +252,9 @@ export class OracleService {
       method = 'median';
     }
 
-    finalRate = finalRate * SAFETY_SPREAD;
+    finalRate = finalRate * safetySpread;
 
-    if (finalRate < BOUNDS.MIN || finalRate > BOUNDS.MAX) {
+    if (finalRate < bounds.MIN || finalRate > bounds.MAX) {
       throw new Error(`[FX Oracle] Final rate ${finalRate.toFixed(0)} out of safe bounds after spread. Disbursement halted.`);
     }
 

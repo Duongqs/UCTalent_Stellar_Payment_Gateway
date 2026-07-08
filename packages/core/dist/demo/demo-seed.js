@@ -33,11 +33,42 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-const db_1 = require("../db");
+exports.pool = void 0;
+const pg_1 = require("pg");
 const encryption_service_1 = require("../services/encryption.service");
+const env_service_1 = require("../config/env.service");
+const env_config_1 = require("../config/env.config");
 const crypto = __importStar(require("crypto"));
 const dotenv = __importStar(require("dotenv"));
 dotenv.config();
+const envConfig = env_config_1.envSchema.safeParse(process.env).data || {};
+const mockConfigService = {
+    get: (key) => envConfig[key],
+};
+const envService = new env_service_1.EnvService(mockConfigService);
+const encryptionService = new encryption_service_1.EncryptionService(envService);
+function encrypt(text) {
+    return encryptionService.encrypt(text);
+}
+const host = process.env.POSTGRES_HOST || 'localhost';
+const port = parseInt(process.env.POSTGRES_PORT || '15432', 10);
+const user = process.env.POSTGRES_USER || 'uct_rails_dev_root';
+const password = process.env.POSTGRES_PASSWORD || '';
+const database = process.env.POSTGRES_DB || 'uct_cross_border_dev';
+exports.pool = new pg_1.Pool({
+    host,
+    port,
+    user,
+    password,
+    database,
+    max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000,
+});
+async function query(text, params) {
+    const result = await exports.pool.query(text, params);
+    return result.rows[0] ?? null;
+}
 const KYC_SALT = process.env.KYC_SALT || 'uctalent-salt-2026';
 function computeKycId(seedStr) {
     return crypto.createHash('sha256').update(seedStr + KYC_SALT).digest('hex');
@@ -45,13 +76,13 @@ function computeKycId(seedStr) {
 async function seed() {
     console.log('🌱 Starting UCTalent Cross-Border Demo Seeding...');
     try {
-        await (0, db_1.query)('BEGIN');
+        await query('BEGIN');
         const recruiterEmail = 'test-recruiter@example.com';
         const recruiterId = 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d';
         const recruiterRes = await queryAll('SELECT id FROM users WHERE email = $1', [recruiterEmail]);
         if (recruiterRes.length === 0) {
             console.log('  Adding Recruiter User...');
-            await (0, db_1.query)(`
+            await query(`
         INSERT INTO users (id, name, email, encrypted_password, created_at, updated_at)
         VALUES ($1, 'Test Recruiter', $2, 'noop', NOW(), NOW())
       `, [recruiterId, recruiterEmail]);
@@ -63,7 +94,7 @@ async function seed() {
         const orgRes = await queryAll('SELECT id FROM organizations WHERE id = $1', [orgId]);
         if (orgRes.length === 0) {
             console.log('  Adding Organization...');
-            await (0, db_1.query)(`
+            await query(`
         INSERT INTO organizations (id, name, status, created_at, updated_at)
         VALUES ($1, 'Test Company', 'active', NOW(), NOW())
       `, [orgId]);
@@ -76,7 +107,7 @@ async function seed() {
         const talentRes = await queryAll('SELECT id FROM users WHERE email = $1', [talentEmail]);
         if (talentRes.length === 0) {
             console.log('  Adding Talent User Nguyen Van A...');
-            await (0, db_1.query)(`
+            await query(`
         INSERT INTO users (id, name, email, encrypted_password, created_at, updated_at)
         VALUES ($1, 'Nguyen Van A', $2, 'noop', NOW(), NOW())
       `, [talentId, talentEmail]);
@@ -88,7 +119,7 @@ async function seed() {
         const profileRes = await queryAll('SELECT id FROM talents WHERE id = $1', [talentProfileId]);
         if (profileRes.length === 0) {
             console.log('  Adding Talent Profile...');
-            await (0, db_1.query)(`
+            await query(`
         INSERT INTO talents (id, user_id, status, created_at, updated_at)
         VALUES ($1, $2, 'active', NOW(), NOW())
       `, [talentProfileId, talentId]);
@@ -98,7 +129,7 @@ async function seed() {
         const scoutRes = await queryAll('SELECT id FROM users WHERE email = $1', [scoutEmail]);
         if (scoutRes.length === 0) {
             console.log('  Adding Scout User Nguyen Van B...');
-            await (0, db_1.query)(`
+            await query(`
         INSERT INTO users (id, name, email, encrypted_password, created_at, updated_at)
         VALUES ($1, 'Nguyen Van B', $2, 'noop', NOW(), NOW())
       `, [scoutId, scoutEmail]);
@@ -111,10 +142,10 @@ async function seed() {
         const devBankRes = await queryAll('SELECT id FROM user_bank_accounts WHERE kyc_id = $1', [devKycId]);
         if (devBankRes.length === 0) {
             console.log('  Adding Developer Bank Account (BIDV)...');
-            await (0, db_1.query)(`
+            await query(`
         INSERT INTO user_bank_accounts (id, user_id, bank_code, account_number, account_name, kyc_id, is_default, created_at, updated_at)
         VALUES (uuid_generate_v4(), $1, 'BIDV', $2, 'NGUYEN VAN A', $3, true, NOW(), NOW())
-      `, [talentId, (0, encryption_service_1.encrypt)('96311300000169969'), devKycId]);
+      `, [talentId, encrypt('96311300000169969'), devKycId]);
         }
         else {
             console.log('  Developer Bank Account already exists.');
@@ -122,10 +153,10 @@ async function seed() {
         const scoutBankRes = await queryAll('SELECT id FROM user_bank_accounts WHERE kyc_id = $1', [scoutKycId]);
         if (scoutBankRes.length === 0) {
             console.log('  Adding Scout Bank Account (TCB)...');
-            await (0, db_1.query)(`
+            await query(`
         INSERT INTO user_bank_accounts (id, user_id, bank_code, account_number, account_name, kyc_id, is_default, created_at, updated_at)
         VALUES (uuid_generate_v4(), $1, 'TCB', $2, 'NGUYEN VAN B', $3, true, NOW(), NOW())
-      `, [scoutId, (0, encryption_service_1.encrypt)('96311300000170170'), scoutKycId]);
+      `, [scoutId, encrypt('96311300000170170'), scoutKycId]);
         }
         else {
             console.log('  Scout Bank Account already exists.');
@@ -136,7 +167,7 @@ async function seed() {
             console.log('  Adding Freelance Job...');
             const maxNumRes = await queryAll('SELECT COALESCE(MAX(job_number), 0) as max_num FROM jobs');
             const nextJobNum = parseInt(maxNumRes[0]?.max_num || '0', 10) + 1;
-            await (0, db_1.query)(`
+            await query(`
         INSERT INTO jobs (
           id, job_number, title, status, is_freelance, milestones, 
           organization_id, created_by, created_at, updated_at, 
@@ -149,7 +180,7 @@ async function seed() {
         else {
             console.log('  Freelance Job already exists.');
         }
-        await (0, db_1.query)('COMMIT');
+        await query('COMMIT');
         console.log('✅ Seeding completed successfully!');
         console.log(`
 ℹ️  Demo Setup Information:
@@ -169,15 +200,15 @@ async function seed() {
     `);
     }
     catch (err) {
-        await (0, db_1.query)('ROLLBACK');
+        await query('ROLLBACK');
         console.error('❌ Seeding failed:', err);
     }
     finally {
-        await db_1.pool.end();
+        await exports.pool.end();
     }
 }
 async function queryAll(text, params) {
-    const result = await db_1.pool.query(text, params);
+    const result = await exports.pool.query(text, params);
     return result.rows;
 }
 seed();

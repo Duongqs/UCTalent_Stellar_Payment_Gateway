@@ -16,50 +16,70 @@ exports.Sep31Controller = void 0;
 const common_1 = require("@nestjs/common");
 const stellar_1 = require("@uc/stellar");
 const core_1 = require("@uc/core");
+const initiate_disbursement_dto_1 = require("./dtos/initiate-disbursement.dto");
+const anchor_webhook_guard_1 = require("./guards/anchor-webhook.guard");
 const crypto_1 = require("crypto");
 let Sep31Controller = class Sep31Controller {
+    sep31CoreService;
     sep31Service;
-    constructor(sep31Service) {
+    constructor(sep31CoreService, sep31Service) {
+        this.sep31CoreService = sep31CoreService;
         this.sep31Service = sep31Service;
+    }
+    async getInfo() {
+        return {
+            receive: {
+                USDC: {
+                    enabled: true,
+                    fee_fixed: 0,
+                    fee_percent: 0,
+                    min_amount: 1,
+                    max_amount: 1000000,
+                    quotes_supported: true,
+                    quotes_required: true,
+                },
+            },
+        };
     }
     async initiateDisbursement(body) {
         const { amount, sender_id, receiver_id, quote_id, idempotency_key } = body;
-        if (!amount || !sender_id || !receiver_id) {
-            throw new common_1.BadRequestException('Missing required fields');
-        }
         const tempId = (0, crypto_1.randomUUID)();
-        if (idempotency_key) {
-            try {
-                await (0, core_1.query)(`INSERT INTO sep31_transactions (id, amount_in, asset_code, sender_id, receiver_id, status, idempotency_key, quote_id)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [tempId, amount, 'USDC', sender_id, receiver_id, 'processing_lock', idempotency_key, quote_id || null]);
-            }
-            catch (error) {
-                if (error.code === '23505') {
-                    const existingTxList = await (0, core_1.queryAll)('SELECT id, status FROM sep31_transactions WHERE idempotency_key = $1', [idempotency_key]);
-                    if (existingTxList.length > 0) {
-                        const row = existingTxList[0];
-                        if (row.status === 'processing_lock') {
-                            console.log(`[SEP31] Concurrent idempotency hit for key ${idempotency_key} (still processing).`);
-                            throw new common_1.ConflictException('Transaction is currently processing. Please wait.');
-                        }
-                        if (row.status === 'error') {
-                            console.log(`[SEP31] Concurrent idempotency hit for key ${idempotency_key} (failed ambiguously).`);
-                            throw new common_1.ConflictException('Previous attempt failed ambiguously. Please contact support or use a new transaction.');
-                        }
-                        console.log(`[SEP31] Concurrent idempotency hit for key ${idempotency_key}. Returning existing tx.`);
-                        return {
-                            success: true,
-                            transactionId: row.id,
-                            status: row.status,
-                        };
-                    }
-                }
-                throw error;
-            }
+        try {
+            const tx = this.sep31CoreService.create({
+                id: tempId,
+                amountIn: amount,
+                assetCode: 'USDC',
+                senderId: sender_id,
+                receiverId: receiver_id,
+                status: 'processing_lock',
+                idempotencyKey: idempotency_key || undefined,
+                quoteId: quote_id || undefined,
+            });
+            await this.sep31CoreService.insert(tx);
         }
-        else {
-            await (0, core_1.query)(`INSERT INTO sep31_transactions (id, amount_in, asset_code, sender_id, receiver_id, status, quote_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [tempId, amount, 'USDC', sender_id, receiver_id, 'processing_lock', quote_id || null]);
+        catch (error) {
+            const isUniqueConstraint = error.code === '23505' ||
+                (error.message && error.message.includes('UNIQUE constraint failed'));
+            if (isUniqueConstraint && idempotency_key) {
+                const row = await this.sep31CoreService.findByIdempotencyKey(idempotency_key);
+                if (row) {
+                    if (row.status === 'processing_lock') {
+                        console.log(`[SEP31] Concurrent idempotency hit for key ${idempotency_key} (still processing).`);
+                        throw new common_1.ConflictException('Transaction is currently processing. Please wait.');
+                    }
+                    if (row.status === 'error') {
+                        console.log(`[SEP31] Concurrent idempotency hit for key ${idempotency_key} (failed ambiguously).`);
+                        throw new common_1.ConflictException('Previous attempt failed ambiguously. Please contact support or use a new transaction.');
+                    }
+                    console.log(`[SEP31] Concurrent idempotency hit for key ${idempotency_key}. Returning existing tx.`);
+                    return {
+                        success: true,
+                        transactionId: row.id,
+                        status: row.status,
+                    };
+                }
+            }
+            throw error;
         }
         console.log(`[SEP31] Initiating disbursement for ${amount} USDC to receiver ${receiver_id}`);
         let transactionResponse;
@@ -75,16 +95,22 @@ let Sep31Controller = class Sep31Controller {
         catch (apError) {
             const msg = apError.message || '';
             const code = apError.code || '';
-            const isAmbiguous = msg.includes('timeout') || msg.includes('socket hang up') || code === 'ECONNABORTED' || code === 'ECONNRESET';
+            const isAmbiguous = msg.includes('timeout') ||
+                msg.includes('socket hang up') ||
+                code === 'ECONNABORTED' ||
+                code === 'ECONNRESET';
             if (isAmbiguous) {
-                await (0, core_1.query)(`UPDATE sep31_transactions SET status = 'error', error_message = $1, updated_at = now() WHERE id = $2`, ['Ambiguous timeout during AP call', tempId]);
+                await this.sep31CoreService.update(tempId, {
+                    status: 'error',
+                    errorMessage: 'Ambiguous timeout during AP call',
+                });
                 throw new common_1.BadGatewayException({
                     error: 'ambiguous_timeout',
-                    message: 'Transaction is in an ambiguous state due to network timeout. Please contact support.'
+                    message: 'Transaction is in an ambiguous state due to network timeout. Please contact support.',
                 });
             }
             else {
-                await (0, core_1.query)(`DELETE FROM sep31_transactions WHERE id = $1`, [tempId]);
+                await this.sep31CoreService.delete(tempId);
                 if (msg.includes('CUSTOMER_NEEDS_INFO')) {
                     throw new common_1.BadRequestException({ error: 'customer_info_needed' });
                 }
@@ -96,9 +122,10 @@ let Sep31Controller = class Sep31Controller {
         }
         const transactionId = transactionResponse.id;
         console.log(`[SEP31] Transaction created on AP. ID: ${transactionId}`);
-        await (0, core_1.query)(`UPDATE sep31_transactions 
-       SET id = $1, status = 'pending_sender', updated_at = now()
-       WHERE id = $2`, [transactionId, tempId]);
+        await this.sep31CoreService.updateWithQueryBuilder(tempId, {
+            id: transactionId,
+            status: 'pending_sender',
+        });
         return {
             success: true,
             transactionId,
@@ -111,15 +138,24 @@ let Sep31Controller = class Sep31Controller {
 };
 exports.Sep31Controller = Sep31Controller;
 __decorate([
+    (0, common_1.Get)('info'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], Sep31Controller.prototype, "getInfo", null);
+__decorate([
     (0, common_1.Post)('initiate'),
+    (0, common_1.UseGuards)(anchor_webhook_guard_1.AnchorWebhookGuard),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [initiate_disbursement_dto_1.InitiateDisbursementDto]),
     __metadata("design:returntype", Promise)
 ], Sep31Controller.prototype, "initiateDisbursement", null);
 exports.Sep31Controller = Sep31Controller = __decorate([
     (0, common_1.Controller)('sep31'),
-    __metadata("design:paramtypes", [stellar_1.Sep31TransactionService])
+    __metadata("design:paramtypes", [core_1.Sep31CoreService,
+        stellar_1.Sep31TransactionService])
 ], Sep31Controller);
 //# sourceMappingURL=sep31.controller.js.map

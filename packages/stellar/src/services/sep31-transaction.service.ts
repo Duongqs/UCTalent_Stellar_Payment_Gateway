@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import * as crypto from 'crypto';
+import { EnvService } from '@uc/core';
 
 export interface Sep31TransactionPayload {
   amount: string;
@@ -12,7 +13,11 @@ export interface Sep31TransactionPayload {
 
 @Injectable()
 export class Sep31TransactionService {
-  private anchorUrl = process.env.ANCHOR_PLATFORM_URL || 'http://localhost:8082';
+  constructor(private readonly envService: EnvService) {}
+
+  private get anchorUrl(): string {
+    return this.envService.get('ANCHOR_PLATFORM_URL') || 'http://localhost:8082';
+  }
 
   private generateMockJwt(): string {
     const secret = 'super_secret_jwt_key_that_is_at_least_32_bytes_long!';

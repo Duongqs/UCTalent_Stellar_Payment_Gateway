@@ -5,3 +5,24 @@ DIRECT_PAYMENT_SERVER = "http://localhost:8080/sep31"
 WEB_AUTH_ENDPOINT = "http://localhost:8080/auth"
 KYC_SERVER = "http://localhost:8080/sep12"
 QUOTE_SERVER = "http://localhost:8080/sep38"
+
+
+# dev.stellar.toml
+# ACCOUNTS = ["add your public keys for your distribution accounts here"]
+# SIGNING_KEY = "add your signing key here"
+# NETWORK_PASSPHRASE = "Test SDF Network ; September 2015"
+
+# DIRECT_PAYMENT_SERVER = "http://localhost:8080/sep31"
+# WEB_AUTH_ENDPOINT = "http://localhost:8080/auth"
+
+# [[CURRENCIES]]
+# code = "USDC"
+# issuer = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
+# status = "test"
+# is_asset_anchored = false
+# desc = "USD Coin issued by Circle"
+
+# [DOCUMENTATION]
+# ORG_NAME = "Your organization"
+# ORG_URL = "Your website"
+# ORG_DESCRIPTION = "A description of your organization"

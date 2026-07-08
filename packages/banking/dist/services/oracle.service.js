@@ -5,6 +5,9 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -12,13 +15,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.OracleService = void 0;
 const common_1 = require("@nestjs/common");
 const axios_1 = __importDefault(require("axios"));
-const BOUNDS = {
-    MIN: parseInt(process.env.ORACLE_HARD_BOUND_MIN || '23000'),
-    MAX: parseInt(process.env.ORACLE_HARD_BOUND_MAX || '28000'),
-};
+const core_1 = require("@uc/core");
 const OUTLIER_THRESHOLD_PCT = 3;
-const SAFETY_SPREAD = parseFloat(process.env.ORACLE_SAFETY_SPREAD || '0.99');
-const CACHE_TTL_MS = parseInt(process.env.ORACLE_CACHE_TTL_MS || '60000');
 const SOURCE_TIMEOUT_MS = 5_000;
 var CircuitState;
 (function (CircuitState) {
@@ -27,7 +25,8 @@ var CircuitState;
     CircuitState[CircuitState["HALF_OPEN"] = 2] = "HALF_OPEN";
 })(CircuitState || (CircuitState = {}));
 class OracleCircuitBreaker {
-    constructor() {
+    constructor(envService) {
+        this.envService = envService;
         this.state = CircuitState.CLOSED;
         this.consecutiveFailures = 0;
         this.lastFailureAt = null;
@@ -67,17 +66,18 @@ class OracleCircuitBreaker {
     }
     emitAlert(type, payload) {
         console.error(`[ALERT:${type}]`, JSON.stringify(payload));
-        if (process.env.SLACK_ALERT_WEBHOOK) {
-            axios_1.default.post(process.env.SLACK_ALERT_WEBHOOK, {
+        const slackWebhook = this.envService.get('SLACK_ALERT_WEBHOOK');
+        if (slackWebhook) {
+            axios_1.default.post(slackWebhook, {
                 text: `🚨 *${type}*\n\`\`\`${JSON.stringify(payload, null, 2)}\`\`\``,
             }).catch(() => { });
         }
     }
 }
 let OracleService = class OracleService {
-    constructor() {
+    constructor(envService) {
+        this.envService = envService;
         this.cache = null;
-        this.circuitBreaker = new OracleCircuitBreaker();
         this.sources = [
             {
                 name: 'CoinGecko_USDC',
@@ -122,7 +122,7 @@ let OracleService = class OracleService {
             {
                 name: 'NinePay_Merchant_Rate',
                 fetch: async () => {
-                    const apiUrl = process.env.NINEPAY_API_URL || 'https://sandbox.9pay.vn';
+                    const apiUrl = this.envService.get('NINEPAY_API_URL') || 'https://sandbox.9pay.vn';
                     const res = await axios_1.default.get(`${apiUrl}/v1/exchange-rate?currency=USD`, { timeout: 2000 });
                     const rate = res.data?.data?.exchangeRate;
                     if (!rate || typeof rate !== 'number')
@@ -131,6 +131,7 @@ let OracleService = class OracleService {
                 },
             }
         ];
+        this.circuitBreaker = new OracleCircuitBreaker(this.envService);
     }
     calculateMedian(values) {
         if (values.length === 0)
@@ -162,7 +163,8 @@ let OracleService = class OracleService {
         if (this.circuitBreaker.isOpen()) {
             throw new Error('CIRCUIT_OPEN: FX Oracle unavailable. All disbursements halted for safety.');
         }
-        if (this.cache && Date.now() - this.cache.cachedAt.getTime() < CACHE_TTL_MS) {
+        const cacheTtlMs = this.envService.get('ORACLE_CACHE_TTL_MS') ?? 60000;
+        if (this.cache && Date.now() - this.cache.cachedAt.getTime() < cacheTtlMs) {
             return this.cache;
         }
         console.log('[FX Oracle] Fetching from all sources...');
@@ -170,6 +172,11 @@ let OracleService = class OracleService {
             name: s.name,
             value: await s.fetch(),
         })));
+        const bounds = {
+            MIN: this.envService.get('ORACLE_HARD_BOUND_MIN') ?? 23000,
+            MAX: this.envService.get('ORACLE_HARD_BOUND_MAX') ?? 28000,
+        };
+        const safetySpread = this.envService.get('ORACLE_SAFETY_SPREAD') ?? 0.99;
         const rawRates = {};
         const successRates = [];
         const droppedSources = [];
@@ -179,7 +186,7 @@ let OracleService = class OracleService {
             if (result.status === 'fulfilled') {
                 const rate = result.value.value;
                 rawRates[sourceName] = rate;
-                if (rate < BOUNDS.MIN || rate > BOUNDS.MAX) {
+                if (rate < bounds.MIN || rate > bounds.MAX) {
                     droppedSources.push(`${sourceName} (${rate.toFixed(0)}, out of bounds)`);
                 }
                 else {
@@ -213,8 +220,8 @@ let OracleService = class OracleService {
             finalRate = this.calculateMedian(validRates);
             method = 'median';
         }
-        finalRate = finalRate * SAFETY_SPREAD;
-        if (finalRate < BOUNDS.MIN || finalRate > BOUNDS.MAX) {
+        finalRate = finalRate * safetySpread;
+        if (finalRate < bounds.MIN || finalRate > bounds.MAX) {
             throw new Error(`[FX Oracle] Final rate ${finalRate.toFixed(0)} out of safe bounds after spread. Disbursement halted.`);
         }
         const oracleResult = {
@@ -251,6 +258,7 @@ let OracleService = class OracleService {
 };
 exports.OracleService = OracleService;
 exports.OracleService = OracleService = __decorate([
-    (0, common_1.Injectable)()
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [core_1.EnvService])
 ], OracleService);
 //# sourceMappingURL=oracle.service.js.map

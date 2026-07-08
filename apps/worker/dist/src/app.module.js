@@ -15,21 +15,18 @@ const banking_1 = require("@uc/banking");
 const soroban_listener_service_1 = require("./soroban-listener/soroban-listener.service");
 const event_consumer_service_1 = require("./soroban-listener/event-consumer.service");
 const disbursement_poller_service_1 = require("./disbursement/disbursement-poller.service");
+const pending_clearing_processor_service_1 = require("./disbursement/pending-clearing-processor.service");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
-        imports: [
-            schedule_1.ScheduleModule.forRoot(),
-            core_1.CoreModule,
-            stellar_1.StellarModule,
-            banking_1.BankingModule,
-        ],
+        imports: [schedule_1.ScheduleModule.forRoot(), core_1.CoreModule, stellar_1.StellarModule, banking_1.BankingModule],
         providers: [
             soroban_listener_service_1.SorobanListenerService,
             event_consumer_service_1.EventConsumerService,
             disbursement_poller_service_1.DisbursementPollerService,
+            pending_clearing_processor_service_1.PendingClearingProcessorService,
         ],
     })
 ], AppModule);

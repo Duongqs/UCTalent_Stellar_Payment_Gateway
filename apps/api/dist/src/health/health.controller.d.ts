@@ -1,7 +1,9 @@
+import { DataSource } from 'typeorm';
 import { OracleService } from '@uc/banking';
 export declare class HealthController {
+    private readonly dataSource;
     private readonly oracleService;
-    constructor(oracleService: OracleService);
+    constructor(dataSource: DataSource, oracleService: OracleService);
     getHealth(): Promise<{
         status: string;
         checks: {

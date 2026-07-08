@@ -26,6 +26,6 @@ export class BankProfileEntity extends BaseEntity {
   @Column({ name: 'is_verified', type: 'boolean', default: false })
   isVerified: boolean;
 
-  @Column({ name: 'verified_at', type: 'timestamptz', nullable: true })
+  @Column({ name: 'verified_at', nullable: true })
   verifiedAt: Date;
 }
