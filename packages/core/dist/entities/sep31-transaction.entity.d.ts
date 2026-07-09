@@ -17,4 +17,5 @@ export declare class Sep31TransactionEntity extends BaseEntity {
     taxCode: string;
     retryCount: number;
     errorMessage: string;
+    expiresAt: Date;
 }

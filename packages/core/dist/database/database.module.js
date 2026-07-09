@@ -26,7 +26,7 @@ exports.DatabaseModule = DatabaseModule = __decorate([
                             type: 'better-sqlite3',
                             database: ':memory:',
                             autoLoadEntities: true,
-                            synchronize: true,
+                            synchronize: false,
                             dropSchema: true,
                         };
                     }
@@ -38,7 +38,7 @@ exports.DatabaseModule = DatabaseModule = __decorate([
                         password: envService.get('POSTGRES_PASSWORD'),
                         database: envService.get('POSTGRES_DB'),
                         autoLoadEntities: true,
-                        synchronize: envService.get('NODE_ENV') !== 'production',
+                        synchronize: false,
                         logging: envService.get('NODE_ENV') === 'local' ? ['error', 'warn'] : false,
                     };
                 },

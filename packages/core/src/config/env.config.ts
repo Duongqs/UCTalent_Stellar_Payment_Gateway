@@ -9,6 +9,7 @@ export const envSchema = z.object({
   POSTGRES_USER: z.string().default('postgres'),
   POSTGRES_PASSWORD: z.string().default('password'),
   POSTGRES_DB: z.string().default('uct_cross_border_dev'),
+  POSTGRES_DB_TEST: z.string().default('uct_cross_border_dev_test'),
 
   SOROBAN_RPC_URL: z.string().default('https://soroban-testnet.stellar.org'),
   NETWORK_PASSPHRASE: z.string().default('Test SDF Network ; September 2015'),

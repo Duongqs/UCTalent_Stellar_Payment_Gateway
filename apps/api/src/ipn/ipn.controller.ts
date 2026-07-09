@@ -2,28 +2,45 @@ import {
   Controller,
   Post,
   Body,
+  Req,
+  HttpException,
   HttpCode,
   HttpStatus,
   UnauthorizedException,
   InternalServerErrorException,
 } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { AnchorRpcService } from '@uc/stellar';
 import { Sep31CoreService, EnvService } from '@uc/core';
+import { NinePayGatewayService } from '@uc/banking';
 import { IpnDto } from './dtos/ipn.dto';
 import * as crypto from 'crypto';
 import axios from 'axios';
 
 @Controller('ipn')
 export class IpnController {
+  private readonly requestCounts = new Map<string, number[]>();
+
   constructor(
     private readonly sep31CoreService: Sep31CoreService,
     private readonly anchorRpc: AnchorRpcService,
     private readonly envService: EnvService,
+    private readonly ninePayGatewayService: NinePayGatewayService,
   ) {}
 
   @Post()
   @HttpCode(HttpStatus.OK)
-  async handleIpn(@Body() body: IpnDto) {
+  async handleIpn(@Req() request: any, @Body() body: IpnDto) {
+    const clientIp = request?.headers?.['x-forwarded-for'] || request?.socket?.remoteAddress || 'unknown';
+    const now = Date.now();
+    const requests = this.requestCounts.get(clientIp as string) || [];
+    const recent = requests.filter(time => now - time < 60000);
+    if (recent.length > 20) {
+      throw new HttpException('Too Many Requests', HttpStatus.TOO_MANY_REQUESTS);
+    }
+    recent.push(now);
+    this.requestCounts.set(clientIp as string, recent);
+
     const resultB64 = body.result;
     const receivedChecksum = body.checksum;
 
@@ -175,6 +192,78 @@ export class IpnController {
     } catch (error: any) {
       console.error('[IPN] Error handling webhook:', error);
       throw new InternalServerErrorException('Internal server error');
+    }
+  }
+
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async pollPendingExternal() {
+    try {
+      console.log('[IPN Cron] Polling 9Pay for pending_external transactions...');
+      const pendingTransactions = await this.sep31CoreService.findPendingExternal();
+      for (const tx of pendingTransactions) {
+        console.log(`[IPN Cron] Checking status for transaction: ${tx.id} (invoice: ${tx.id})`);
+        const result = await this.ninePayGatewayService.checkStatus(tx.id);
+        
+        if (result && result.status !== undefined) {
+          // Status 5 is typically SUCCESS in 9Pay
+          if (result.status === 5) {
+            console.log(`[IPN Cron] Transaction ${tx.id} is SUCCESS in 9Pay. Simulating IPN handling.`);
+            await this.handleIpn(
+              { headers: {}, socket: {} }, 
+              { 
+                result: Buffer.from(JSON.stringify({
+                  invoice_no: tx.id,
+                  transaction_id: tx.id,
+                  external_transaction_id: result.transaction_id || `simulated-${Date.now()}`,
+                  status: 'SUCCESS'
+                })).toString('base64'),
+                checksum: crypto
+                  .createHash('sha256')
+                  .update(
+                    Buffer.from(JSON.stringify({
+                      invoice_no: tx.id,
+                      transaction_id: tx.id,
+                      external_transaction_id: result.transaction_id || `simulated-${Date.now()}`,
+                      status: 'SUCCESS'
+                    })).toString('base64') + (this.envService.get('NINEPAY_CHECKSUM_KEY') || '')
+                  )
+                  .digest('hex')
+                  .toUpperCase()
+              } as any
+            );
+          } else if (result.status === 3 || result.status === 6) {
+            // Status 3/6 are typically FAILED
+            console.log(`[IPN Cron] Transaction ${tx.id} FAILED in 9Pay (status: ${result.status}). Simulating IPN failure.`);
+            await this.handleIpn(
+              { headers: {}, socket: {} }, 
+              { 
+                result: Buffer.from(JSON.stringify({
+                  invoice_no: tx.id,
+                  transaction_id: tx.id,
+                  external_transaction_id: result.transaction_id || '',
+                  status: 'FAILED'
+                })).toString('base64'),
+                checksum: crypto
+                  .createHash('sha256')
+                  .update(
+                    Buffer.from(JSON.stringify({
+                      invoice_no: tx.id,
+                      transaction_id: tx.id,
+                      external_transaction_id: result.transaction_id || '',
+                      status: 'FAILED'
+                    })).toString('base64') + (this.envService.get('NINEPAY_CHECKSUM_KEY') || '')
+                  )
+                  .digest('hex')
+                  .toUpperCase()
+              } as any
+            );
+          } else {
+            console.log(`[IPN Cron] Transaction ${tx.id} is still pending (status: ${result.status}).`);
+          }
+        }
+      }
+    } catch (error: any) {
+      console.error('[IPN Cron] Error polling pending_external:', error.message);
     }
   }
 }

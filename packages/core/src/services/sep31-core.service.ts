@@ -24,6 +24,10 @@ export class Sep31CoreService {
     return this.sep31Repo.find({ where: { stellarTxHash } });
   }
 
+  async findPendingExternal(): Promise<Sep31TransactionEntity[]> {
+    return this.sep31Repo.find({ where: { status: 'pending_external' } });
+  }
+
   create(data: Partial<Sep31TransactionEntity>): Sep31TransactionEntity {
     return this.sep31Repo.create(data);
   }

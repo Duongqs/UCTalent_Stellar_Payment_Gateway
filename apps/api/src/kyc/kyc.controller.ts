@@ -12,7 +12,6 @@ import {
 import {
   CustomerEntity,
   Sep9ValidationService,
-  EncryptionService,
   AuditLogService,
   CustomerService,
   KYCStatus,
@@ -26,21 +25,11 @@ export function computeKycStatus(
     first_name?: string;
     last_name?: string;
     email_address?: string;
-    id_number?: string;
   },
 ): KYCStatus {
-  const { first_name, last_name, email_address, id_number } = fields;
+  const { first_name, last_name, email_address } = fields;
 
-  if (type === 'sep31-sender' && first_name && last_name && email_address) {
-    return 'ACCEPTED';
-  }
-  if (
-    type === 'sep31-receiver' &&
-    first_name &&
-    last_name &&
-    email_address &&
-    id_number
-  ) {
+  if (first_name && last_name && email_address) {
     return 'ACCEPTED';
   }
   if (first_name && last_name) {
@@ -53,7 +42,6 @@ export function computeKycStatus(
 export class KycController {
   constructor(
     private readonly customerService: CustomerService,
-    private readonly encryption: EncryptionService,
     private readonly sep9Validation: Sep9ValidationService,
     private readonly auditLog: AuditLogService,
   ) {}
@@ -98,19 +86,6 @@ export class KycController {
           },
         };
 
-        if (type === 'sep31-receiver') {
-          fields.id_number = {
-            description: 'National ID (CCCD)',
-            type: 'string',
-            optional: false,
-          };
-          fields.id_country = {
-            description: 'ID issuing country (ISO 3166-1 alpha-3)',
-            type: 'string',
-            optional: false,
-          };
-        }
-
         return {
           ...(id || account ? { id: id || account } : {}),
           status: 'NEEDS_INFO',
@@ -137,13 +112,6 @@ export class KycController {
           type: 'string',
           status: 'ACCEPTED',
         };
-      if (customer.idNumberEnc)
-        provided_fields.id_number = {
-          description: 'National ID Number',
-          type: 'string',
-          status: 'ACCEPTED',
-        };
-
       return {
         id: customer.id,
         status: customer.status,
@@ -175,10 +143,6 @@ export class KycController {
       }
 
       const status = computeKycStatus(body.type, body);
-      const encIdNumber = body.id_number
-        ? this.encryption.encrypt(body.id_number)
-        : undefined;
-
       let customer: CustomerEntity;
       if (idToUpdate) {
         customer =
@@ -195,8 +159,6 @@ export class KycController {
       if (body.first_name) customer.firstName = body.first_name;
       if (body.last_name) customer.lastName = body.last_name;
       if (body.email_address) customer.emailAddress = body.email_address;
-      if (encIdNumber) customer.idNumberEnc = encIdNumber;
-      if (body.id_type) customer.idType = body.id_type;
       customer.customerType = body.type;
       customer.status = status;
 

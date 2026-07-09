@@ -18,12 +18,6 @@ export class CustomerEntity extends BaseEntity {
   @Column({ name: 'email_address', type: 'varchar', nullable: true })
   emailAddress: string;
 
-  @Column({ name: 'id_number_enc', type: 'varchar', nullable: true })
-  idNumberEnc: string;
-
-  @Column({ name: 'id_type', type: 'varchar', nullable: true })
-  idType: string;
-
   @Column({ type: 'varchar', default: 'PROCESSING' })
   status: KYCStatus;
 

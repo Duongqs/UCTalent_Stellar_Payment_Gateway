@@ -13,4 +13,5 @@ export declare class NinePayGatewayService {
     private request;
     lookupAccount(accountNumber: string, bankCode: string): Promise<string | null>;
     disburse(amount: number, invoiceNo: string, bankCode: string, accountNumber: string, description: string, kycName: string, complianceMeta?: Record<string, string>): Promise<any>;
+    checkStatus(invoiceNo: string): Promise<any>;
 }

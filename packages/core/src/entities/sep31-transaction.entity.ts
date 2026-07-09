@@ -55,4 +55,7 @@ export class Sep31TransactionEntity extends BaseEntity {
 
   @Column({ name: 'error_message', type: 'text', nullable: true })
   errorMessage: string;
+
+  @Column({ name: 'expires_at', type: 'timestamp', nullable: true })
+  expiresAt: Date;
 }

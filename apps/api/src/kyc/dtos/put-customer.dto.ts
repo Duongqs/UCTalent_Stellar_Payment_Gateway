@@ -25,15 +25,4 @@ export class PutCustomerDto {
   @IsOptional()
   email_address?: string;
 
-  @IsString()
-  @IsOptional()
-  id_number?: string;
-
-  @IsString()
-  @IsOptional()
-  id_country?: string;
-
-  @IsString()
-  @IsOptional()
-  id_type?: string;
 }

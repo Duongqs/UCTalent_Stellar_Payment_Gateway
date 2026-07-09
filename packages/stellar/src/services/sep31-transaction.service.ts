@@ -20,7 +20,7 @@ export class Sep31TransactionService {
   }
 
   private generateMockJwt(): string {
-    const secret = 'super_secret_jwt_key_that_is_at_least_32_bytes_long!';
+    const secret = this.envService.get('JWT_SECRET') || 'super_secret_jwt_key_that_is_at_least_32_bytes_long!';
     const header = { alg: 'HS256', typ: 'JWT' };
     const payload = {
       iss: 'http://localhost:8080',

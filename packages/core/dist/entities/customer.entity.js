@@ -32,14 +32,6 @@ __decorate([
     __metadata("design:type", String)
 ], CustomerEntity.prototype, "emailAddress", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'id_number_enc', type: 'varchar', nullable: true }),
-    __metadata("design:type", String)
-], CustomerEntity.prototype, "idNumberEnc", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ name: 'id_type', type: 'varchar', nullable: true }),
-    __metadata("design:type", String)
-], CustomerEntity.prototype, "idType", void 0);
-__decorate([
     (0, typeorm_1.Column)({ type: 'varchar', default: 'PROCESSING' }),
     __metadata("design:type", String)
 ], CustomerEntity.prototype, "status", void 0);

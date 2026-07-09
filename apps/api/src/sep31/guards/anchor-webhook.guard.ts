@@ -44,8 +44,13 @@ export class AnchorWebhookGuard implements CanActivate {
       throw new UnauthorizedException('IP not whitelisted');
     }
 
-    if (signature === 'bypass') {
-      return true;
+    const timestampStr = request.headers['x-uctalent-timestamp'] as string;
+    if (timestampStr) {
+      const timestamp = parseInt(timestampStr, 10);
+      const now = Date.now();
+      if (Math.abs(now - timestamp) > 5 * 60 * 1000) {
+        throw new UnauthorizedException('Request expired or timestamp invalid');
+      }
     }
 
     const payloadString =

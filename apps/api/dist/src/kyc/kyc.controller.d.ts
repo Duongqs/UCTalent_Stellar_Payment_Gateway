@@ -1,18 +1,16 @@
-import { Sep9ValidationService, EncryptionService, AuditLogService, CustomerService, KYCStatus } from '@uc/core';
+import { Sep9ValidationService, AuditLogService, CustomerService, KYCStatus } from '@uc/core';
 import { PutCustomerDto } from './dtos/put-customer.dto';
 import { GetCustomerDto } from './dtos/get-customer.dto';
 export declare function computeKycStatus(type: string, fields: {
     first_name?: string;
     last_name?: string;
     email_address?: string;
-    id_number?: string;
 }): KYCStatus;
 export declare class KycController {
     private readonly customerService;
-    private readonly encryption;
     private readonly sep9Validation;
     private readonly auditLog;
-    constructor(customerService: CustomerService, encryption: EncryptionService, sep9Validation: Sep9ValidationService, auditLog: AuditLogService);
+    constructor(customerService: CustomerService, sep9Validation: Sep9ValidationService, auditLog: AuditLogService);
     getCustomer(query: GetCustomerDto): Promise<{
         status: string;
         fields: Record<string, any>;

@@ -5,8 +5,6 @@ export declare class CustomerEntity extends BaseEntity {
     firstName: string;
     lastName: string;
     emailAddress: string;
-    idNumberEnc: string;
-    idType: string;
     status: KYCStatus;
     customerType: string;
 }

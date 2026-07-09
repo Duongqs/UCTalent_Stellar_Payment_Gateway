@@ -173,6 +173,20 @@ let NinePayGatewayService = class NinePayGatewayService {
             throw error;
         }
     }
+    async checkStatus(invoiceNo) {
+        if (this.envService.get('NINEPAY_MODE') === 'mock' || this.envService.get('USE_MOCK_NINEPAY') === 'true') {
+            return { status: 5, message: 'Mock Success' };
+        }
+        try {
+            const params = { request_id: invoiceNo };
+            const result = await this.request('POST', '/disbursement/check-transaction', params);
+            return result;
+        }
+        catch (error) {
+            console.error(`9Pay checkStatus Error for ${invoiceNo}:`, error.message);
+            return null;
+        }
+    }
 };
 exports.NinePayGatewayService = NinePayGatewayService;
 exports.NinePayGatewayService = NinePayGatewayService = __decorate([

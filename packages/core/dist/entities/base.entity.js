@@ -33,6 +33,7 @@ __decorate([
 __decorate([
     (0, typeorm_1.Column)({
         name: 'created_at',
+        default: () => 'NOW()',
         transformer: {
             to: (value) => value || new Date(),
             from: (value) => value,
@@ -43,6 +44,7 @@ __decorate([
 __decorate([
     (0, typeorm_1.Column)({
         name: 'updated_at',
+        default: () => 'NOW()',
         transformer: {
             to: (value) => value || new Date(),
             from: (value) => value,

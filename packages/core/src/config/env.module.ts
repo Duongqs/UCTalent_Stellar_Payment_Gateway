@@ -2,6 +2,7 @@ import { Module, Global } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EnvService } from './env.service';
 import { envSchema } from './env.config';
+import * as path from 'path';
 
 function validate(config: Record<string, unknown>) {
   const result = envSchema.safeParse(config);
@@ -18,7 +19,11 @@ function validate(config: Record<string, unknown>) {
     ConfigModule.forRoot({
       validate,
       isGlobal: true,
-      envFilePath: ['.env.test', '.env'],
+      envFilePath: [
+        '.env.test',
+        '.env',
+        path.resolve(__dirname, '../../../../.env')
+      ],
     }),
   ],
   providers: [EnvService],

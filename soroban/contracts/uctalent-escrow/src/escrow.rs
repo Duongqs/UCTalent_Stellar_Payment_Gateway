@@ -269,16 +269,26 @@ pub fn release_milestone(env: &Env, client: Address, index: u32) {
         panic!("Not a milestone escrow");
     }
     let config: MilestoneConfig = env.storage().instance().get(&DataKey::MilestoneConfig).unwrap();
+
+    config.platform_address.require_auth();
+
     let mut status: MilestoneStatus = env.storage().instance().get(&DataKey::MilestoneStatus).unwrap();
 
     if client != config.client { panic!("Only client can initiate release"); }
-    config.platform_address.require_auth();
 
     if !status.is_deposited { panic!("Not deposited"); }
     if status.is_cancelled { panic!("Already cancelled"); }
 
     let idx = index as usize;
     if idx >= config.milestones.len() as usize { panic!("Invalid milestone index"); }
+
+    // Enforce sequential release: previous milestone must be completed
+    if idx > 0 {
+        let prev_milestone = status.milestones.get((index - 1) as u32).unwrap();
+        if !prev_milestone.is_completed {
+            panic!("Previous milestone must be completed first");
+        }
+    }
 
     let mut milestone = status.milestones.get(index).unwrap();
     if milestone.is_completed { panic!("Milestone already released"); }

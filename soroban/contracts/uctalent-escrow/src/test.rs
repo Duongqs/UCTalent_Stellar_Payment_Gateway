@@ -442,4 +442,22 @@ fn test_update_milestone_amount_refunds() {
     assert_eq!(ctx.token().balance(&ctx.client), 15_600_000); // 20M - 4.4M = 15.6M
 }
 
+#[test]
+#[should_panic(expected = "Previous milestone must be completed first")]
+fn test_out_of_order_release_rejected() {
+    let ctx = TestCtx::new(10_000_000);
+    ctx.set_ledger(10);
+    let mut amounts = soroban_sdk::Vec::new(&ctx.env);
+    amounts.push_back(5_000_000);
+    amounts.push_back(3_000_000);
+    let config = ctx.default_milestone_config(amounts);
+    let escrow_addr = ctx.create_milestone_escrow(&config);
+    let ec = UCTalentContractClient::new(&ctx.env, &escrow_addr);
+    
+    ec.deposit(&ctx.client);
+    
+    // Release milestone 1 directly without releasing milestone 0 (should panic)
+    ec.release_milestone(&ctx.client, &1);
+}
+
 

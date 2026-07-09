@@ -12,8 +12,7 @@ export class Sep9ValidationService {
 
     const supportedFields = new Set([
       'id', 'account', 'type', 'first_name', 'last_name',
-      'email_address', 'id_number', 'id_type', 'id_country',
-      'bank_account_number', 'bank_number', 'bank_branch_number'
+      'email_address', 'bank_account_number', 'bank_number', 'bank_branch_number'
     ]);
 
     for (const key of Object.keys(payload)) {
@@ -25,17 +24,7 @@ export class Sep9ValidationService {
       }
     }
 
-    const type = payload.type || 'sep31-receiver';
 
-    if (type === 'sep31-receiver') {
-      if (payload.id_country && !/^[A-Z]{3}$/.test(payload.id_country)) {
-        errors.push('id_country must be ISO 3166-1 alpha-3 format (e.g. VNM)');
-      }
-
-      if (payload.id_type && !['national_id', 'passport'].includes(payload.id_type)) {
-        errors.push('id_type must be national_id or passport');
-      }
-    }
 
     return {
       isValid: errors.length === 0,

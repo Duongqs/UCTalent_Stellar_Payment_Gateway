@@ -19,4 +19,7 @@ export declare class DisbursementPollerService {
     pollPendingTransactions(): Promise<void>;
     private processTransaction;
     private haltForMissingInfo;
+    private getAmountIn;
+    private shouldAutoMockOnchainPayment;
+    private buildMockStellarTxHash;
 }

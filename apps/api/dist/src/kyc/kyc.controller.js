@@ -19,15 +19,8 @@ const core_1 = require("@uc/core");
 const put_customer_dto_1 = require("./dtos/put-customer.dto");
 const get_customer_dto_1 = require("./dtos/get-customer.dto");
 function computeKycStatus(type, fields) {
-    const { first_name, last_name, email_address, id_number } = fields;
-    if (type === 'sep31-sender' && first_name && last_name && email_address) {
-        return 'ACCEPTED';
-    }
-    if (type === 'sep31-receiver' &&
-        first_name &&
-        last_name &&
-        email_address &&
-        id_number) {
+    const { first_name, last_name, email_address } = fields;
+    if (first_name && last_name && email_address) {
         return 'ACCEPTED';
     }
     if (first_name && last_name) {
@@ -37,12 +30,10 @@ function computeKycStatus(type, fields) {
 }
 let KycController = class KycController {
     customerService;
-    encryption;
     sep9Validation;
     auditLog;
-    constructor(customerService, encryption, sep9Validation, auditLog) {
+    constructor(customerService, sep9Validation, auditLog) {
         this.customerService = customerService;
-        this.encryption = encryption;
         this.sep9Validation = sep9Validation;
         this.auditLog = auditLog;
     }
@@ -80,18 +71,6 @@ let KycController = class KycController {
                         optional: false,
                     },
                 };
-                if (type === 'sep31-receiver') {
-                    fields.id_number = {
-                        description: 'National ID (CCCD)',
-                        type: 'string',
-                        optional: false,
-                    };
-                    fields.id_country = {
-                        description: 'ID issuing country (ISO 3166-1 alpha-3)',
-                        type: 'string',
-                        optional: false,
-                    };
-                }
                 return {
                     ...(id || account ? { id: id || account } : {}),
                     status: 'NEEDS_INFO',
@@ -114,12 +93,6 @@ let KycController = class KycController {
             if (customer.emailAddress)
                 provided_fields.email_address = {
                     description: 'Email address',
-                    type: 'string',
-                    status: 'ACCEPTED',
-                };
-            if (customer.idNumberEnc)
-                provided_fields.id_number = {
-                    description: 'National ID Number',
                     type: 'string',
                     status: 'ACCEPTED',
                 };
@@ -150,9 +123,6 @@ let KycController = class KycController {
                     idToUpdate = existing.id;
             }
             const status = computeKycStatus(body.type, body);
-            const encIdNumber = body.id_number
-                ? this.encryption.encrypt(body.id_number)
-                : undefined;
             let customer;
             if (idToUpdate) {
                 customer =
@@ -173,10 +143,6 @@ let KycController = class KycController {
                 customer.lastName = body.last_name;
             if (body.email_address)
                 customer.emailAddress = body.email_address;
-            if (encIdNumber)
-                customer.idNumberEnc = encIdNumber;
-            if (body.id_type)
-                customer.idType = body.id_type;
             customer.customerType = body.type;
             customer.status = status;
             const saved = await this.customerService.save(customer);
@@ -211,7 +177,6 @@ __decorate([
 exports.KycController = KycController = __decorate([
     (0, common_1.Controller)('customer'),
     __metadata("design:paramtypes", [core_1.CustomerService,
-        core_1.EncryptionService,
         core_1.Sep9ValidationService,
         core_1.AuditLogService])
 ], KycController);

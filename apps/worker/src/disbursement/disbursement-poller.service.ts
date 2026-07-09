@@ -53,7 +53,7 @@ export class DisbursementPollerService {
 
     try {
       const response = await axios.get(
-        `${this.platformUrl}/transactions?sep=31&statuses=pending_sender`,
+        `${this.platformUrl}/transactions?sep=31&statuses=pending_sender,pending_receiver`,
         {
           timeout: 5000,
         },
@@ -76,7 +76,13 @@ export class DisbursementPollerService {
             await this.sep31Repo
               .createQueryBuilder()
               .update(Sep31TransactionEntity)
-              .set({ status: 'pending_sender', errorMessage: txError.message })
+              .set({
+                status:
+                  tx.status === 'pending_receiver'
+                    ? 'pending_receiver'
+                    : 'pending_sender',
+                errorMessage: txError.message,
+              })
               .where('id = :id AND status = :status', {
                 id: tx.id,
                 status: 'processing_lock',
@@ -96,14 +102,19 @@ export class DisbursementPollerService {
 
   private async processTransaction(tx: any) {
     const txId = tx.id;
+    const platformStatus = tx.status;
+    const amountIn = this.getAmountIn(tx);
 
     const lockResult = await this.sep31Repo
       .createQueryBuilder()
       .update(Sep31TransactionEntity)
       .set({ status: 'processing_lock' })
-      .where('id = :id AND status = :status', {
+      .where('id = :id AND status IN (:...statuses)', {
         id: txId,
-        status: 'pending_sender',
+        statuses:
+          platformStatus === 'pending_receiver'
+            ? ['pending_sender', 'pending_receiver']
+            : ['pending_sender'],
       })
       .execute();
 
@@ -113,21 +124,36 @@ export class DisbursementPollerService {
 
     const txRecord = await this.sep31Repo.findOne({ where: { id: txId } });
 
-    const stellarTxHash = txRecord?.stellarTxHash;
-    if (!stellarTxHash) {
-      await this.sep31Repo.update(txId, { status: 'pending_sender' });
-      return;
-    }
+    let stellarTxHash = txRecord?.stellarTxHash;
+    if (platformStatus !== 'pending_receiver') {
+      if (!stellarTxHash && this.shouldAutoMockOnchainPayment()) {
+        stellarTxHash = this.buildMockStellarTxHash(txId);
+        await this.sep31Repo.update(txId, { stellarTxHash });
+        await this.auditLog.log(txId, 'mock_onchain_payment', {
+          stellar_tx_hash: stellarTxHash,
+        });
+      }
 
-    await this.anchorRpc.notifyOnchainFundsReceived(
-      txId,
-      tx.amount_in,
-      stellarTxHash,
-    );
-    await this.sep31Repo.update(txId, { status: 'pending_receiver' });
-    await this.auditLog.log(txId, 'onchain_received', {
-      stellar_tx_hash: stellarTxHash,
-    });
+      if (!stellarTxHash) {
+        await this.sep31Repo.update(txId, { status: 'pending_sender' });
+        return;
+      }
+
+      await this.anchorRpc.notifyOnchainFundsReceived(
+        txId,
+        amountIn,
+        stellarTxHash,
+      );
+      await this.sep31Repo.update(txId, { status: 'pending_receiver' });
+      await this.auditLog.log(txId, 'onchain_received', {
+        stellar_tx_hash: stellarTxHash,
+      });
+    } else {
+      await this.sep31Repo.update(txId, { status: 'pending_receiver' });
+      await this.auditLog.log(txId, 'platform_pending_receiver_synced', {
+        stellar_tx_hash: stellarTxHash,
+      });
+    }
 
     const receiverId = tx.customers?.receiver?.id;
     if (!receiverId) {
@@ -188,7 +214,7 @@ export class DisbursementPollerService {
       });
     } else {
       const oracle = await this.oracleService.getSafeFxRate();
-      vndAmount = Math.floor(Number(tx.amount_in) * oracle.rate);
+      vndAmount = Math.floor(Number(amountIn) * oracle.rate);
       await this.auditLog.log(txId, 'rate_calculated', {
         rate: oracle.rate,
         method: oracle.method,
@@ -272,5 +298,26 @@ export class DisbursementPollerService {
       errorMessage: reason,
     });
     await this.auditLog.log(txId, 'halted_missing_info', { reason });
+  }
+
+  private getAmountIn(tx: any): string {
+    if (typeof tx.amount_in === 'string') return tx.amount_in;
+    if (typeof tx.amount_in?.amount === 'string') return tx.amount_in.amount;
+    if (tx.amount_expected?.amount) return tx.amount_expected.amount;
+    return '0';
+  }
+
+  private shouldAutoMockOnchainPayment(): boolean {
+    return (
+      this.envService.get('NODE_ENV') !== 'production' &&
+      (this.envService.get('NINEPAY_MODE') === 'mock' ||
+        this.envService.get('USE_MOCK_NINEPAY') === 'true' ||
+        this.envService.get('USE_MOCK_IPN') === 'true')
+    );
+  }
+
+  private buildMockStellarTxHash(txId: string): string {
+    const txSuffix = txId.replace(/-/g, '').slice(0, 16);
+    return `mock-stellar-${txSuffix}-${Date.now()}`;
   }
 }

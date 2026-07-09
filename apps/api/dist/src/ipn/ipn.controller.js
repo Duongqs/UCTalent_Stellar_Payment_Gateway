@@ -50,8 +50,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.IpnController = void 0;
 const common_1 = require("@nestjs/common");
+const schedule_1 = require("@nestjs/schedule");
 const stellar_1 = require("@uc/stellar");
 const core_1 = require("@uc/core");
+const banking_1 = require("@uc/banking");
 const ipn_dto_1 = require("./dtos/ipn.dto");
 const crypto = __importStar(require("crypto"));
 const axios_1 = __importDefault(require("axios"));
@@ -59,12 +61,24 @@ let IpnController = class IpnController {
     sep31CoreService;
     anchorRpc;
     envService;
-    constructor(sep31CoreService, anchorRpc, envService) {
+    ninePayGatewayService;
+    requestCounts = new Map();
+    constructor(sep31CoreService, anchorRpc, envService, ninePayGatewayService) {
         this.sep31CoreService = sep31CoreService;
         this.anchorRpc = anchorRpc;
         this.envService = envService;
+        this.ninePayGatewayService = ninePayGatewayService;
     }
-    async handleIpn(body) {
+    async handleIpn(request, body) {
+        const clientIp = request?.headers?.['x-forwarded-for'] || request?.socket?.remoteAddress || 'unknown';
+        const now = Date.now();
+        const requests = this.requestCounts.get(clientIp) || [];
+        const recent = requests.filter(time => now - time < 60000);
+        if (recent.length > 20) {
+            throw new common_1.HttpException('Too Many Requests', common_1.HttpStatus.TOO_MANY_REQUESTS);
+        }
+        recent.push(now);
+        this.requestCounts.set(clientIp, recent);
         const resultB64 = body.result;
         const receivedChecksum = body.checksum;
         const expectedChecksum = crypto
@@ -177,20 +191,88 @@ let IpnController = class IpnController {
             throw new common_1.InternalServerErrorException('Internal server error');
         }
     }
+    async pollPendingExternal() {
+        try {
+            console.log('[IPN Cron] Polling 9Pay for pending_external transactions...');
+            const pendingTransactions = await this.sep31CoreService.findPendingExternal();
+            for (const tx of pendingTransactions) {
+                console.log(`[IPN Cron] Checking status for transaction: ${tx.id} (invoice: ${tx.id})`);
+                const result = await this.ninePayGatewayService.checkStatus(tx.id);
+                if (result && result.status !== undefined) {
+                    if (result.status === 5) {
+                        console.log(`[IPN Cron] Transaction ${tx.id} is SUCCESS in 9Pay. Simulating IPN handling.`);
+                        await this.handleIpn({ headers: {}, socket: {} }, {
+                            result: Buffer.from(JSON.stringify({
+                                invoice_no: tx.id,
+                                transaction_id: tx.id,
+                                external_transaction_id: result.transaction_id || `simulated-${Date.now()}`,
+                                status: 'SUCCESS'
+                            })).toString('base64'),
+                            checksum: crypto
+                                .createHash('sha256')
+                                .update(Buffer.from(JSON.stringify({
+                                invoice_no: tx.id,
+                                transaction_id: tx.id,
+                                external_transaction_id: result.transaction_id || `simulated-${Date.now()}`,
+                                status: 'SUCCESS'
+                            })).toString('base64') + (this.envService.get('NINEPAY_CHECKSUM_KEY') || ''))
+                                .digest('hex')
+                                .toUpperCase()
+                        });
+                    }
+                    else if (result.status === 3 || result.status === 6) {
+                        console.log(`[IPN Cron] Transaction ${tx.id} FAILED in 9Pay (status: ${result.status}). Simulating IPN failure.`);
+                        await this.handleIpn({ headers: {}, socket: {} }, {
+                            result: Buffer.from(JSON.stringify({
+                                invoice_no: tx.id,
+                                transaction_id: tx.id,
+                                external_transaction_id: result.transaction_id || '',
+                                status: 'FAILED'
+                            })).toString('base64'),
+                            checksum: crypto
+                                .createHash('sha256')
+                                .update(Buffer.from(JSON.stringify({
+                                invoice_no: tx.id,
+                                transaction_id: tx.id,
+                                external_transaction_id: result.transaction_id || '',
+                                status: 'FAILED'
+                            })).toString('base64') + (this.envService.get('NINEPAY_CHECKSUM_KEY') || ''))
+                                .digest('hex')
+                                .toUpperCase()
+                        });
+                    }
+                    else {
+                        console.log(`[IPN Cron] Transaction ${tx.id} is still pending (status: ${result.status}).`);
+                    }
+                }
+            }
+        }
+        catch (error) {
+            console.error('[IPN Cron] Error polling pending_external:', error.message);
+        }
+    }
 };
 exports.IpnController = IpnController;
 __decorate([
     (0, common_1.Post)(),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
-    __param(0, (0, common_1.Body)()),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [ipn_dto_1.IpnDto]),
+    __metadata("design:paramtypes", [Object, ipn_dto_1.IpnDto]),
     __metadata("design:returntype", Promise)
 ], IpnController.prototype, "handleIpn", null);
+__decorate([
+    (0, schedule_1.Cron)(schedule_1.CronExpression.EVERY_5_MINUTES),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], IpnController.prototype, "pollPendingExternal", null);
 exports.IpnController = IpnController = __decorate([
     (0, common_1.Controller)('ipn'),
     __metadata("design:paramtypes", [core_1.Sep31CoreService,
         stellar_1.AnchorRpcService,
-        core_1.EnvService])
+        core_1.EnvService,
+        banking_1.NinePayGatewayService])
 ], IpnController);
 //# sourceMappingURL=ipn.controller.js.map
