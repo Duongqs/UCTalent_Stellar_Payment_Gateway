@@ -53,6 +53,7 @@ let Sep31Controller = class Sep31Controller {
                 receiverId: receiver_id,
                 status: 'processing_lock',
                 idempotencyKey: idempotency_key || undefined,
+                distributionId: idempotency_key || undefined,
                 quoteId: quote_id || undefined,
             });
             await this.sep31CoreService.insert(tx);

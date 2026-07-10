@@ -383,6 +383,14 @@
                             },
                             {
                               "key": {
+                                "symbol": "platform_wallet"
+                              },
+                              "val": {
+                                "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
+                              }
+                            },
+                            {
+                              "key": {
                                 "symbol": "private_hash"
                               },
                               "val": {
@@ -471,6 +479,14 @@
                                       },
                                       {
                                         "key": {
+                                          "symbol": "is_withdrawn"
+                                        },
+                                        "val": {
+                                          "bool": false
+                                        }
+                                      },
+                                      {
+                                        "key": {
                                           "symbol": "milestone_id"
                                         },
                                         "val": {
@@ -510,6 +526,14 @@
                                       },
                                       {
                                         "key": {
+                                          "symbol": "is_withdrawn"
+                                        },
+                                        "val": {
+                                          "bool": false
+                                        }
+                                      },
+                                      {
+                                        "key": {
                                           "symbol": "milestone_id"
                                         },
                                         "val": {
@@ -519,6 +543,14 @@
                                     ]
                                   }
                                 ]
+                              }
+                            },
+                            {
+                              "key": {
+                                "symbol": "platform_fee_released"
+                              },
+                              "val": {
+                                "bool": false
                               }
                             }
                           ]
@@ -1132,6 +1164,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "platform_wallet"
+                  },
+                  "val": {
+                    "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "private_hash"
                   },
                   "val": {
@@ -1369,7 +1409,7 @@
             "data": {
               "vec": [
                 {
-                  "string": "caught panic 'Previous milestone must be completed first' from contract function 'Symbol(obj#433)'"
+                  "string": "caught panic 'Previous milestone must be completed first' from contract function 'Symbol(obj#455)'"
                 },
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM"

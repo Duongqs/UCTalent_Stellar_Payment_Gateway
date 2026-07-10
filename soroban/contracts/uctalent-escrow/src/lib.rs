@@ -6,7 +6,7 @@ mod escrow;
 
 pub use crate::types::{
     EscrowConfig, ReferralConfig, ReferralStatus,
-    MilestoneConfig, MilestoneStatus, Milestone, DataKey,
+    MilestoneConfig, MilestoneStatus, Milestone, WithdrawalRecord, DataKey,
 };
 
 use soroban_sdk::{contract, contractimpl, Address, BytesN, Env};
@@ -99,9 +99,34 @@ impl UCTalentContract {
         escrow::release_bounty(&env, client, has_scout, scout_kyc_id);
     }
 
-    /// Milestone release
+    /// Milestone release (legacy — kept for backward compat; prefer complete_milestone + withdraw_to_anchor)
     pub fn release_milestone(env: Env, client: Address, index: u32) {
         escrow::release_milestone(&env, client, index);
+    }
+
+    /// Mark milestone as completed (state change only, no funds moved)
+    pub fn complete_milestone(env: Env, client: Address, index: u32) {
+        escrow::complete_milestone(&env, client, index);
+    }
+
+    /// Release platform fee to platform_wallet (called when candidate is hired)
+    pub fn release_platform_fee(env: Env, platform: Address) {
+        escrow::release_platform_fee(&env, platform);
+    }
+
+    /// Assign freelancer KYC ID to the escrow
+    pub fn assign_freelancer(env: Env, kyc_id: BytesN<32>) {
+        escrow::assign_freelancer(&env, kyc_id);
+    }
+
+    /// Freelancer (via platform) withdraws completed milestone funds to anchor
+    pub fn withdraw_to_anchor(env: Env, platform: Address, index: u32) {
+        escrow::withdraw_to_anchor(&env, platform, index);
+    }
+
+    /// Record withdrawal audit metadata on-chain after 9Pay confirms disbursement
+    pub fn record_withdrawal_metadata(env: Env, platform: Address, index: u32, record: WithdrawalRecord) {
+        escrow::record_withdrawal_metadata(&env, platform, index, record);
     }
 
     /// Client or Freelancer opens a dispute, freezing the milestone funds

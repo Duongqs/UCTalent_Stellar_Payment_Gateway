@@ -73,13 +73,6 @@ export class NinePayGatewayService {
   }
 
   async lookupAccount(accountNumber: string, bankCode: string): Promise<string | null> {
-    if (this.envService.get('NINEPAY_MODE') === 'mock' || this.envService.get('USE_MOCK_NINEPAY') === 'true') {
-      console.log(`[Mock 9Pay] Lookup account ${accountNumber} at ${bankCode}`);
-      if (accountNumber.includes('169969')) return 'NGUYEN VAN A';
-      if (accountNumber.includes('170170')) return 'NGUYEN VAN B';
-      return 'NGUYEN VAN A';
-    }
-
     try {
       const requestId = crypto.randomUUID();
       const params = {
@@ -119,11 +112,6 @@ export class NinePayGatewayService {
 
     this.nameMatchingService.reconcileNames(kycName, accountName, invoiceNo);
 
-    if (this.envService.get('NINEPAY_MODE') === 'mock' || this.envService.get('USE_MOCK_NINEPAY') === 'true') {
-      console.log(`[Mock 9Pay] Disbursed ${amount} VND for invoice ${invoiceNo} to account ${accountNumber}`);
-      return { status: 5, message: 'Mock Success' };
-    }
-
     try {
       const params: Record<string, string> = {
         request_id: invoiceNo,
@@ -149,9 +137,6 @@ export class NinePayGatewayService {
   }
 
   async checkStatus(invoiceNo: string) {
-    if (this.envService.get('NINEPAY_MODE') === 'mock' || this.envService.get('USE_MOCK_NINEPAY') === 'true') {
-      return { status: 5, message: 'Mock Success' };
-    }
     try {
       const params = { request_id: invoiceNo };
       const result = await this.request('POST', '/disbursement/check-transaction', params);

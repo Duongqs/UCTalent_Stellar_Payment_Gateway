@@ -58,4 +58,7 @@ export class Sep31TransactionEntity extends BaseEntity {
 
   @Column({ name: 'expires_at', type: 'timestamp', nullable: true })
   expiresAt: Date;
+
+  @Column({ name: 'distribution_id', type: 'varchar', nullable: true })
+  distributionId: string;
 }

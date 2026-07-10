@@ -74,11 +74,12 @@ pub struct ReferralStatus {
 // ─────────────────────────────────────────────────────────────────────────────
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Milestone {
+    pub struct Milestone {
     pub milestone_id: u32,
     pub amount: i128,
     pub is_completed: bool,
     pub is_disputed: bool,
+    pub is_withdrawn: bool,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -112,6 +113,8 @@ pub struct MilestoneConfig {
     pub probation_seconds: u64,
     /// Backend tracking ID — used in events so SDP can map to DB record
     pub gig_id: String,
+    /// Wallet address that receives platform fee when hired
+    pub platform_wallet: Address,
 }
 
 /// Tracks the state of a milestone-based freelance gig.
@@ -124,6 +127,27 @@ pub struct MilestoneStatus {
     pub milestones: Vec<Milestone>,
     /// True if the gig was cancelled by the client
     pub is_cancelled: bool,
+    /// True if the platform fee has been released to platform_wallet
+    pub platform_fee_released: bool,
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Withdrawal Audit Record
+// ─────────────────────────────────────────────────────────────────────────────
+/// Metadata stored on-chain after 9Pay confirms a disbursement.
+/// Enables full audit trail reconciliation between on-chain and off-chain data.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct WithdrawalRecord {
+    pub freelancer_kyc_id: BytesN<32>,
+    pub amount_usdc: i128,
+    pub amount_vnd: i128,
+    pub platform_fee_usdc: i128,
+    pub exchange_rate_bps: u64,
+    pub tax_withheld_vnd: i128,
+    pub napas_ref: String,
+    pub stellar_tx_hash: String,
+    pub timestamp: u64,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -140,4 +164,5 @@ pub enum DataKey {
     Status,
     MilestoneConfig,
     MilestoneStatus,
+    WithdrawalRecords,
 }

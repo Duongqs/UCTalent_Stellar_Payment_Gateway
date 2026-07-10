@@ -18,4 +18,5 @@ export declare class Sep31TransactionEntity extends BaseEntity {
     retryCount: number;
     errorMessage: string;
     expiresAt: Date;
+    distributionId: string;
 }

@@ -480,6 +480,14 @@
                             },
                             {
                               "key": {
+                                "symbol": "platform_wallet"
+                              },
+                              "val": {
+                                "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
+                              }
+                            },
+                            {
+                              "key": {
                                 "symbol": "private_hash"
                               },
                               "val": {
@@ -568,6 +576,14 @@
                                       },
                                       {
                                         "key": {
+                                          "symbol": "is_withdrawn"
+                                        },
+                                        "val": {
+                                          "bool": false
+                                        }
+                                      },
+                                      {
+                                        "key": {
                                           "symbol": "milestone_id"
                                         },
                                         "val": {
@@ -607,6 +623,14 @@
                                       },
                                       {
                                         "key": {
+                                          "symbol": "is_withdrawn"
+                                        },
+                                        "val": {
+                                          "bool": false
+                                        }
+                                      },
+                                      {
+                                        "key": {
                                           "symbol": "milestone_id"
                                         },
                                         "val": {
@@ -616,6 +640,14 @@
                                     ]
                                   }
                                 ]
+                              }
+                            },
+                            {
+                              "key": {
+                                "symbol": "platform_fee_released"
+                              },
+                              "val": {
+                                "bool": false
                               }
                             }
                           ]
@@ -1229,6 +1261,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "platform_wallet"
+                  },
+                  "val": {
+                    "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "private_hash"
                   },
                   "val": {
@@ -1782,6 +1822,14 @@
                           },
                           {
                             "key": {
+                              "symbol": "is_withdrawn"
+                            },
+                            "val": {
+                              "bool": false
+                            }
+                          },
+                          {
+                            "key": {
                               "symbol": "milestone_id"
                             },
                             "val": {
@@ -1821,6 +1869,14 @@
                           },
                           {
                             "key": {
+                              "symbol": "is_withdrawn"
+                            },
+                            "val": {
+                              "bool": false
+                            }
+                          },
+                          {
+                            "key": {
                               "symbol": "milestone_id"
                             },
                             "val": {
@@ -1830,6 +1886,14 @@
                         ]
                       }
                     ]
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "platform_fee_released"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 }
               ]

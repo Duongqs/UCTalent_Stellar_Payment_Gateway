@@ -21,24 +21,19 @@ exports.DatabaseModule = DatabaseModule = __decorate([
                 imports: [env_module_1.EnvModule],
                 inject: [env_service_1.EnvService],
                 useFactory: (envService) => {
-                    if (envService.get('NODE_ENV') === 'test') {
-                        return {
-                            type: 'better-sqlite3',
-                            database: ':memory:',
-                            autoLoadEntities: true,
-                            synchronize: false,
-                            dropSchema: true,
-                        };
-                    }
+                    const isTest = envService.get('NODE_ENV') === 'test';
                     return {
                         type: 'postgres',
                         host: envService.get('POSTGRES_HOST'),
                         port: envService.get('POSTGRES_PORT'),
                         username: envService.get('POSTGRES_USER'),
                         password: envService.get('POSTGRES_PASSWORD'),
-                        database: envService.get('POSTGRES_DB'),
+                        database: isTest
+                            ? (envService.get('POSTGRES_DB_TEST') || envService.get('POSTGRES_DB'))
+                            : envService.get('POSTGRES_DB'),
                         autoLoadEntities: true,
-                        synchronize: false,
+                        synchronize: isTest,
+                        dropSchema: isTest,
                         logging: envService.get('NODE_ENV') === 'local' ? ['error', 'warn'] : false,
                     };
                 },

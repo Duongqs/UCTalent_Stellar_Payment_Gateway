@@ -1,8 +1,9 @@
 use crate::types::{
     DataKey, Milestone, MilestoneConfig, MilestoneStatus, ReferralConfig, ReferralStatus,
+    WithdrawalRecord,
 };
 use soroban_sdk::{
-    token::Client as TokenClient, Address, BytesN, Env, Symbol, Vec,
+    token::Client as TokenClient, Address, BytesN, Env, Map, Symbol, Vec,
 };
 
 const INACTIVITY_TIMEOUT_SECS: u64 = 14 * 24 * 60 * 60; // 14 days
@@ -250,6 +251,7 @@ pub fn milestone_init(env: &Env, config: MilestoneConfig) {
             amount,
             is_completed: false,
             is_disputed: false,
+            is_withdrawn: false,
         });
     }
 
@@ -257,6 +259,7 @@ pub fn milestone_init(env: &Env, config: MilestoneConfig) {
         is_deposited: false,
         milestones,
         is_cancelled: false,
+        platform_fee_released: false,
     };
     env.storage().instance().set(&DataKey::MilestoneStatus, &status);
 }
@@ -295,6 +298,7 @@ pub fn release_milestone(env: &Env, client: Address, index: u32) {
     if milestone.is_disputed { panic!("Milestone is disputed"); }
 
     milestone.is_completed = true;
+    milestone.is_withdrawn = true;
     status.milestones.set(index, milestone.clone());
     env.storage().instance().set(&DataKey::MilestoneStatus, &status);
 
@@ -314,6 +318,190 @@ pub fn release_milestone(env: &Env, client: Address, index: u32) {
     );
 
     _check_and_refund_surplus(env, &config, &status);
+}
+
+/// Releases the platform fee to the platform wallet address.
+/// Called by the backend when a candidate is hired for the gig.
+pub fn release_platform_fee(env: &Env, platform: Address) {
+    platform.require_auth();
+
+    if !env.storage().instance().has(&DataKey::MilestoneConfig) {
+        panic!("Not a milestone escrow");
+    }
+    let config: MilestoneConfig = env.storage().instance().get(&DataKey::MilestoneConfig).unwrap();
+    let mut status: MilestoneStatus = env.storage().instance().get(&DataKey::MilestoneStatus).unwrap();
+
+    if platform != config.platform_address { panic!("Only platform can release fee"); }
+    if !status.is_deposited { panic!("Not deposited"); }
+    if status.platform_fee_released { panic!("Fee already released"); }
+    if status.is_cancelled { panic!("Already cancelled"); }
+
+    status.platform_fee_released = true;
+    env.storage().instance().set(&DataKey::MilestoneStatus, &status);
+
+    let mut total: i128 = 0;
+    for amount in config.milestones.iter() { total += amount; }
+    let platform_fee = (total * config.platform_rate as i128) / 10_000;
+
+    let token = TokenClient::new(env, &config.token);
+    token.transfer(&env.current_contract_address(), &config.platform_wallet, &platform_fee);
+
+    env.events().publish(
+        (Symbol::new(env, "uctalent"), Symbol::new(env, "platform_fee_released"), env.current_contract_address()),
+        (config.gig_id.clone(), platform_fee, config.platform_wallet.clone()),
+    );
+}
+
+/// Assigns the freelancer's KYC ID to the escrow after hiring.
+/// Called by the backend when a candidate is moved to hired status.
+pub fn assign_freelancer(env: &Env, kyc_id: BytesN<32>) {
+    if !env.storage().instance().has(&DataKey::MilestoneConfig) {
+        panic!("Not a milestone escrow");
+    }
+    let mut config: MilestoneConfig = env.storage().instance().get(&DataKey::MilestoneConfig).unwrap();
+    config.platform_address.require_auth();
+
+    config.freelancer_kyc_id = kyc_id;
+    env.storage().instance().set(&DataKey::MilestoneConfig, &config);
+
+    env.events().publish(
+        (Symbol::new(env, "uctalent"), Symbol::new(env, "freelancer_assigned"), env.current_contract_address()),
+        (config.gig_id.clone(), config.freelancer_kyc_id.clone()),
+    );
+}
+
+/// Marks a milestone as completed without transferring funds.
+/// Requires BOTH client and platform signatures.
+/// Funds remain in the smart contract until the freelancer withdraws.
+pub fn complete_milestone(env: &Env, client: Address, index: u32) {
+    client.require_auth();
+
+    if !env.storage().instance().has(&DataKey::MilestoneConfig) {
+        panic!("Not a milestone escrow");
+    }
+    let config: MilestoneConfig = env.storage().instance().get(&DataKey::MilestoneConfig).unwrap();
+
+    config.platform_address.require_auth();
+
+    let mut status: MilestoneStatus = env.storage().instance().get(&DataKey::MilestoneStatus).unwrap();
+
+    if client != config.client { panic!("Only client can initiate"); }
+    if !status.is_deposited { panic!("Not deposited"); }
+    if status.is_cancelled { panic!("Already cancelled"); }
+
+    let idx = index as usize;
+    if idx >= config.milestones.len() as usize { panic!("Invalid milestone index"); }
+
+    if idx > 0 {
+        let prev = status.milestones.get((index - 1) as u32).unwrap();
+        if !prev.is_completed {
+            panic!("Previous milestone must be completed first");
+        }
+    }
+
+    let mut milestone = status.milestones.get(index).unwrap();
+    if milestone.is_completed { panic!("Milestone already completed"); }
+    if milestone.is_disputed { panic!("Milestone is disputed"); }
+
+    milestone.is_completed = true;
+    status.milestones.set(index, milestone.clone());
+    env.storage().instance().set(&DataKey::MilestoneStatus, &status);
+
+    env.events().publish(
+        (Symbol::new(env, "uctalent"), Symbol::new(env, "milestone_completed"), env.current_contract_address()),
+        (config.gig_id.clone(), index, milestone.amount, config.freelancer_kyc_id.clone()),
+    );
+}
+
+/// Transfers the freelancer's share for a completed milestone to the anchor address.
+/// Only the platform can call this (on behalf of the web2 freelancer).
+pub fn withdraw_to_anchor(env: &Env, platform: Address, index: u32) {
+    platform.require_auth();
+
+    if !env.storage().instance().has(&DataKey::MilestoneConfig) {
+        panic!("Not a milestone escrow");
+    }
+    let config: MilestoneConfig = env.storage().instance().get(&DataKey::MilestoneConfig).unwrap();
+    let mut status: MilestoneStatus = env.storage().instance().get(&DataKey::MilestoneStatus).unwrap();
+
+    if platform != config.platform_address { panic!("Only platform can initiate withdrawal"); }
+    if !status.is_deposited { panic!("Not deposited"); }
+    if status.is_cancelled { panic!("Already cancelled"); }
+
+    let idx = index as usize;
+    if idx >= config.milestones.len() as usize { panic!("Invalid milestone index"); }
+
+    let mut milestone = status.milestones.get(index).unwrap();
+    if !milestone.is_completed { panic!("Milestone not completed"); }
+    if milestone.is_disputed { panic!("Milestone is disputed"); }
+    if milestone.is_withdrawn { panic!("Already withdrawn"); }
+
+    milestone.is_withdrawn = true;
+    status.milestones.set(index, milestone.clone());
+    env.storage().instance().set(&DataKey::MilestoneStatus, &status);
+
+    let milestone_amount = milestone.amount;
+    let freelancer_share = (milestone_amount * config.freelancer_rate as i128) / 10_000;
+
+    let token = TokenClient::new(env, &config.token);
+    if freelancer_share > 0 {
+        token.transfer(&env.current_contract_address(), &config.anchor_address, &freelancer_share);
+    }
+
+    env.events().publish(
+        (Symbol::new(env, "uctalent"), Symbol::new(env, "funds_withdrawn"), env.current_contract_address()),
+        (config.gig_id.clone(), index, freelancer_share, config.freelancer_kyc_id.clone()),
+    );
+
+    _check_and_refund_surplus(env, &config, &status);
+}
+
+/// Records withdrawal audit metadata on-chain after 9Pay confirms the disbursement.
+/// Only the platform can call this. The record is stored in persistent storage.
+pub fn record_withdrawal_metadata(
+    env: &Env,
+    platform: Address,
+    index: u32,
+    record: WithdrawalRecord,
+) {
+    platform.require_auth();
+
+    if !env.storage().instance().has(&DataKey::MilestoneConfig) {
+        panic!("Not a milestone escrow");
+    }
+    let config: MilestoneConfig = env.storage().instance().get(&DataKey::MilestoneConfig).unwrap();
+
+    if platform != config.platform_address { panic!("Only platform can record metadata"); }
+
+    let status: MilestoneStatus = env.storage().instance().get(&DataKey::MilestoneStatus).unwrap();
+    let idx = index as usize;
+    if idx >= config.milestones.len() as usize { panic!("Invalid milestone index"); }
+    let milestone = status.milestones.get(index).unwrap();
+    if !milestone.is_withdrawn { panic!("Milestone not yet withdrawn"); }
+
+    let mut records: Map<u32, WithdrawalRecord> = env.storage()
+        .persistent()
+        .get(&DataKey::WithdrawalRecords)
+        .unwrap_or(Map::new(env));
+    records.set(index, record.clone());
+    env.storage().persistent().set(&DataKey::WithdrawalRecords, &records);
+
+    env.events().publish(
+        (Symbol::new(env, "uctalent"), Symbol::new(env, "withdrawal_audited"), env.current_contract_address()),
+        (
+            config.gig_id.clone(),
+            index,
+            record.freelancer_kyc_id,
+            record.amount_usdc,
+            record.amount_vnd,
+            record.platform_fee_usdc,
+            record.exchange_rate_bps,
+            record.tax_withheld_vnd,
+            record.napas_ref,
+            record.stellar_tx_hash,
+            record.timestamp,
+        ),
+    );
 }
 
 /// Opens a dispute to freeze a specific milestone.
@@ -415,6 +603,7 @@ pub fn admin_resolve_dispute(env: &Env, admin: Address, index: u32, client_pct: 
     if idx >= config.milestones.len() as usize { panic!("Invalid milestone index"); }
     let mut milestone = status.milestones.get(index).unwrap();
     if milestone.is_completed { panic!("Already released"); }
+    if milestone.is_withdrawn { panic!("Already withdrawn"); }
     if !milestone.is_disputed { panic!("Milestone is not disputed"); }
 
     milestone.is_completed = true;

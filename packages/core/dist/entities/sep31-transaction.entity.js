@@ -87,6 +87,10 @@ __decorate([
     (0, typeorm_1.Column)({ name: 'expires_at', type: 'timestamp', nullable: true }),
     __metadata("design:type", Date)
 ], Sep31TransactionEntity.prototype, "expiresAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'distribution_id', type: 'varchar', nullable: true }),
+    __metadata("design:type", String)
+], Sep31TransactionEntity.prototype, "distributionId", void 0);
 exports.Sep31TransactionEntity = Sep31TransactionEntity = __decorate([
     (0, typeorm_1.Entity)({ name: 'sep31_transactions' }),
     (0, typeorm_1.Index)(['idempotencyKey'], { unique: true }),

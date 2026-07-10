@@ -110,11 +110,19 @@ let IpnController = class IpnController {
                     const backendWebhookUrl = this.envService.get('UCTALENT_BACKEND_WEBHOOK_URL');
                     const isTest = this.envService.get('NODE_ENV') === 'test';
                     if (backendWebhookUrl && !isTest) {
+                        const txRecord = await this.sep31CoreService.findById(transaction_id);
+                        const distributionId = txRecord?.distributionId || txRecord?.idempotencyKey || transaction_id;
                         const callbackPayload = {
+                            distributionId: distributionId,
                             anchorTxId: transaction_id,
                             invoiceNo: transaction_id,
                             status: 'success',
                             externalTxId: external_transaction_id,
+                            vndAmount: txRecord?.vndAmount ? Number(txRecord.vndAmount) : undefined,
+                            taxWithheld: txRecord?.withheldTaxAmount ? Number(txRecord.withheldTaxAmount) : undefined,
+                            napasRefId: txRecord?.napasRefId || external_transaction_id,
+                            stellarTxHash: txRecord?.stellarTxHash,
+                            clearingId: transaction_id,
                         };
                         const callbackPayloadString = JSON.stringify(callbackPayload);
                         const secret = this.envService.get('CROSS_BORDER_WEBHOOK_SECRET') || 'uctalent-dev-secret';
@@ -153,7 +161,10 @@ let IpnController = class IpnController {
                         const backendWebhookUrl = this.envService.get('UCTALENT_BACKEND_WEBHOOK_URL');
                         const isTest = this.envService.get('NODE_ENV') === 'test';
                         if (backendWebhookUrl && !isTest) {
+                            const txRecord = await this.sep31CoreService.findById(transaction_id);
+                            const distributionId = txRecord?.distributionId || txRecord?.idempotencyKey || transaction_id;
                             const callbackPayload = {
+                                distributionId: distributionId,
                                 anchorTxId: transaction_id,
                                 invoiceNo: transaction_id,
                                 status: 'failed',
