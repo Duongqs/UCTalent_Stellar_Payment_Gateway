@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 
 export class BankVaultInquiryDto {
   @IsString()
@@ -8,4 +8,8 @@ export class BankVaultInquiryDto {
   @IsString()
   @IsNotEmpty()
   accountNumber: string;
+
+  @IsString()
+  @IsOptional()
+  accountType?: string;
 }

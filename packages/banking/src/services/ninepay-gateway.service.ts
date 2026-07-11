@@ -23,15 +23,15 @@ export class NinePayGatewayService {
     return (this.envService.get('NINEPAY_API_URL') || 'https://sand-payment.9pay.vn').replace(/\/+$/, '');
   }
 
-  private buildHttpQuery(params: Record<string, string>): string {
+  private buildCanonicalQuery(params: Record<string, string>): string {
     if (!params || Object.keys(params).length === 0) return '';
     return Object.keys(params).sort().map(key => {
-      return encodeURIComponent(key) + '=' + encodeURIComponent(params[key] || '');
-    }).join('&').replace(/%20/g, '+');
+      return key + '=' + (params[key] || '');
+    }).join('&');
   }
 
   private createSignature(method: string, path: string, time: string, params: Record<string, string>): string {
-    const httpQuery = this.buildHttpQuery(params);
+    const httpQuery = this.buildCanonicalQuery(params);
     let message = method.toUpperCase() + '\n' + this.apiUrl + path + '\n' + time;
     if (httpQuery) {
       message += '\n' + httpQuery;
@@ -72,14 +72,18 @@ export class NinePayGatewayService {
     return response.data;
   }
 
-  async lookupAccount(accountNumber: string, bankCode: string): Promise<string | null> {
+  async lookupAccount(
+    accountNumber: string,
+    bankCode: string,
+    accountType: string = '0',
+  ): Promise<string | null> {
     try {
       const requestId = crypto.randomUUID();
       const params = {
         request_id: requestId,
         bank_code: bankCode,
         account_no: accountNumber,
-        account_type: '0',
+        account_type: accountType,
       };
 
       const result = await this.request('POST', '/disbursement/check-account', params);

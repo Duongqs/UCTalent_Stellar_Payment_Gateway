@@ -28,12 +28,13 @@ export class BankVaultController {
   @Post('inquiry')
   @HttpCode(HttpStatus.OK)
   async inquiry(@Body() body: BankVaultInquiryDto) {
-    const { bankCode, accountNumber } = body;
+    const { bankCode, accountNumber, accountType } = body;
 
     try {
       const accountName = await this.ninePayGateway.lookupAccount(
         accountNumber,
         bankCode,
+        accountType || '0',
       );
       if (!accountName) {
         throw new NotFoundException('Account not found or invalid');

@@ -30,9 +30,9 @@ let BankVaultController = class BankVaultController {
         this.ninePayGateway = ninePayGateway;
     }
     async inquiry(body) {
-        const { bankCode, accountNumber } = body;
+        const { bankCode, accountNumber, accountType } = body;
         try {
-            const accountName = await this.ninePayGateway.lookupAccount(accountNumber, bankCode);
+            const accountName = await this.ninePayGateway.lookupAccount(accountNumber, bankCode, accountType || '0');
             if (!accountName) {
                 throw new common_1.NotFoundException('Account not found or invalid');
             }

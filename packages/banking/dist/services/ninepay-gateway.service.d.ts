@@ -7,11 +7,11 @@ export declare class NinePayGatewayService {
     private get merchantKey();
     private get secretKey();
     private get apiUrl();
-    private buildHttpQuery;
+    private buildCanonicalQuery;
     private createSignature;
     private buildAuthHeader;
     private request;
-    lookupAccount(accountNumber: string, bankCode: string): Promise<string | null>;
+    lookupAccount(accountNumber: string, bankCode: string, accountType?: string): Promise<string | null>;
     disburse(amount: number, invoiceNo: string, bankCode: string, accountNumber: string, description: string, kycName: string, complianceMeta?: Record<string, string>): Promise<any>;
     checkStatus(invoiceNo: string): Promise<any>;
 }

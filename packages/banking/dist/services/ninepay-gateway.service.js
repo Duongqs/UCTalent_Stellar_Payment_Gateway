@@ -65,15 +65,15 @@ let NinePayGatewayService = class NinePayGatewayService {
     get apiUrl() {
         return (this.envService.get('NINEPAY_API_URL') || 'https://sand-payment.9pay.vn').replace(/\/+$/, '');
     }
-    buildHttpQuery(params) {
+    buildCanonicalQuery(params) {
         if (!params || Object.keys(params).length === 0)
             return '';
         return Object.keys(params).sort().map(key => {
-            return encodeURIComponent(key) + '=' + encodeURIComponent(params[key] || '');
-        }).join('&').replace(/%20/g, '+');
+            return key + '=' + (params[key] || '');
+        }).join('&');
     }
     createSignature(method, path, time, params) {
-        const httpQuery = this.buildHttpQuery(params);
+        const httpQuery = this.buildCanonicalQuery(params);
         let message = method.toUpperCase() + '\n' + this.apiUrl + path + '\n' + time;
         if (httpQuery) {
             message += '\n' + httpQuery;
@@ -109,22 +109,14 @@ let NinePayGatewayService = class NinePayGatewayService {
         const response = await (0, axios_1.default)(config);
         return response.data;
     }
-    async lookupAccount(accountNumber, bankCode) {
-        if (this.envService.get('NINEPAY_MODE') === 'mock' || this.envService.get('USE_MOCK_NINEPAY') === 'true') {
-            console.log(`[Mock 9Pay] Lookup account ${accountNumber} at ${bankCode}`);
-            if (accountNumber.includes('169969'))
-                return 'NGUYEN VAN A';
-            if (accountNumber.includes('170170'))
-                return 'NGUYEN VAN B';
-            return 'NGUYEN VAN A';
-        }
+    async lookupAccount(accountNumber, bankCode, accountType = '0') {
         try {
             const requestId = crypto.randomUUID();
             const params = {
                 request_id: requestId,
                 bank_code: bankCode,
                 account_no: accountNumber,
-                account_type: '0',
+                account_type: accountType,
             };
             const result = await this.request('POST', '/disbursement/check-account', params);
             if (result.status === 5 && result.account_name) {
@@ -146,10 +138,6 @@ let NinePayGatewayService = class NinePayGatewayService {
             throw new Error(`RECONCILIATION_FAILED: Cannot lookup account ${accountNumber} at bank ${bankCode}`);
         }
         this.nameMatchingService.reconcileNames(kycName, accountName, invoiceNo);
-        if (this.envService.get('NINEPAY_MODE') === 'mock' || this.envService.get('USE_MOCK_NINEPAY') === 'true') {
-            console.log(`[Mock 9Pay] Disbursed ${amount} VND for invoice ${invoiceNo} to account ${accountNumber}`);
-            return { status: 5, message: 'Mock Success' };
-        }
         try {
             const params = {
                 request_id: invoiceNo,
@@ -174,9 +162,6 @@ let NinePayGatewayService = class NinePayGatewayService {
         }
     }
     async checkStatus(invoiceNo) {
-        if (this.envService.get('NINEPAY_MODE') === 'mock' || this.envService.get('USE_MOCK_NINEPAY') === 'true') {
-            return { status: 5, message: 'Mock Success' };
-        }
         try {
             const params = { request_id: invoiceNo };
             const result = await this.request('POST', '/disbursement/check-transaction', params);
