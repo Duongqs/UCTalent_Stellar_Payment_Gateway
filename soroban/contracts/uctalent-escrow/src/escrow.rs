@@ -273,8 +273,6 @@ pub fn release_milestone(env: &Env, client: Address, index: u32) {
     }
     let config: MilestoneConfig = env.storage().instance().get(&DataKey::MilestoneConfig).unwrap();
 
-    config.platform_address.require_auth();
-
     let mut status: MilestoneStatus = env.storage().instance().get(&DataKey::MilestoneStatus).unwrap();
 
     if client != config.client { panic!("Only client can initiate release"); }
@@ -380,8 +378,6 @@ pub fn complete_milestone(env: &Env, client: Address, index: u32) {
         panic!("Not a milestone escrow");
     }
     let config: MilestoneConfig = env.storage().instance().get(&DataKey::MilestoneConfig).unwrap();
-
-    config.platform_address.require_auth();
 
     let mut status: MilestoneStatus = env.storage().instance().get(&DataKey::MilestoneStatus).unwrap();
 
@@ -612,14 +608,13 @@ pub fn admin_resolve_dispute(env: &Env, admin: Address, index: u32, client_pct: 
     env.storage().instance().set(&DataKey::MilestoneStatus, &status);
 
     let milestone_amount = milestone.amount;
-    let platform_share = (milestone_amount * config.platform_rate as i128) / 10_000;
     let net_amount = (milestone_amount * config.freelancer_rate as i128) / 10_000;
     let client_share = (net_amount * client_pct as i128) / 100;
     let developer_share = net_amount - client_share;
 
     let token = TokenClient::new(env, &config.token);
-    if platform_share + developer_share > 0 {
-        token.transfer(&env.current_contract_address(), &config.anchor_address, &(platform_share + developer_share));
+    if developer_share > 0 {
+        token.transfer(&env.current_contract_address(), &config.anchor_address, &developer_share);
     }
     if client_share > 0 {
         token.transfer(&env.current_contract_address(), &config.client, &client_share);
@@ -627,7 +622,7 @@ pub fn admin_resolve_dispute(env: &Env, admin: Address, index: u32, client_pct: 
 
     env.events().publish(
         (Symbol::new(env, "uctalent"), Symbol::new(env, "dispute_resolved"), env.current_contract_address()),
-        (config.gig_id.clone(), index, milestone_amount, developer_share, platform_share),
+        (config.gig_id.clone(), index, milestone_amount, developer_share, 0i128),
     );
 
     _check_and_refund_surplus(env, &config, &status);
