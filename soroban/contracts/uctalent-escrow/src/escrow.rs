@@ -28,6 +28,7 @@ pub fn referral_init(env: &Env, config: ReferralConfig) {
         is_disputed: false,
         is_released: false,
         is_refunded: false,
+        deposit_timestamp: 0,
     };
     env.storage().instance().set(&DataKey::Status, &status);
 }
@@ -50,6 +51,7 @@ pub fn deposit(env: &Env, client: Address) {
         let token = TokenClient::new(env, &config.token);
         token.transfer(&client, &env.current_contract_address(), &config.bounty_amount);
         status.is_deposited = true;
+        status.deposit_timestamp = env.ledger().timestamp();
         env.storage().instance().set(&DataKey::Status, &status);
 
     } else if env.storage().instance().has(&DataKey::MilestoneConfig) {
@@ -96,6 +98,10 @@ pub fn release_bounty(env: &Env, client: Address, has_scout: bool, scout_kyc_id:
     if status.is_disputed { panic!("Escrow is disputed"); }
     if status.is_released { panic!("Already released"); }
     if status.is_refunded { panic!("Already refunded"); }
+
+    if env.ledger().timestamp() < status.deposit_timestamp + config.dispute_window_secs {
+        panic!("Dispute window not elapsed");
+    }
 
     status.is_released = true;
     env.storage().instance().set(&DataKey::Status, &status);
@@ -276,6 +282,7 @@ pub fn release_milestone(env: &Env, client: Address, index: u32) {
     let mut status: MilestoneStatus = env.storage().instance().get(&DataKey::MilestoneStatus).unwrap();
 
     if client != config.client { panic!("Only client can initiate release"); }
+    config.platform_address.require_auth();
 
     if !status.is_deposited { panic!("Not deposited"); }
     if status.is_cancelled { panic!("Already cancelled"); }
@@ -298,16 +305,18 @@ pub fn release_milestone(env: &Env, client: Address, index: u32) {
     milestone.is_completed = true;
     milestone.is_withdrawn = true;
     status.milestones.set(index, milestone.clone());
+    let zero_kyc = BytesN::from_array(env, &[0; 32]);
+    if config.freelancer_kyc_id == zero_kyc {
+        panic!("Freelancer KYC not assigned");
+    }
+
     env.storage().instance().set(&DataKey::MilestoneStatus, &status);
 
     let milestone_amount = milestone.amount;
-    let platform_share = (milestone_amount * config.platform_rate as i128) / 10_000;
-    let freelancer_share = (milestone_amount * config.freelancer_rate as i128) / 10_000;
-    let total_payout = freelancer_share + platform_share;
 
     let token = TokenClient::new(env, &config.token);
-    if total_payout > 0 {
-        token.transfer(&env.current_contract_address(), &config.anchor_address, &total_payout);
+    if milestone_amount > 0 {
+        token.transfer(&env.current_contract_address(), &config.anchor_address, &milestone_amount);
     }
 
     env.events().publish(
@@ -382,6 +391,8 @@ pub fn complete_milestone(env: &Env, client: Address, index: u32) {
     let mut status: MilestoneStatus = env.storage().instance().get(&DataKey::MilestoneStatus).unwrap();
 
     if client != config.client { panic!("Only client can initiate"); }
+    config.platform_address.require_auth();
+
     if !status.is_deposited { panic!("Not deposited"); }
     if status.is_cancelled { panic!("Already cancelled"); }
 
@@ -434,19 +445,23 @@ pub fn withdraw_to_anchor(env: &Env, platform: Address, index: u32) {
 
     milestone.is_withdrawn = true;
     status.milestones.set(index, milestone.clone());
+    let zero_kyc = BytesN::from_array(env, &[0; 32]);
+    if config.freelancer_kyc_id == zero_kyc {
+        panic!("Freelancer KYC not assigned");
+    }
+
     env.storage().instance().set(&DataKey::MilestoneStatus, &status);
 
     let milestone_amount = milestone.amount;
-    let freelancer_share = (milestone_amount * config.freelancer_rate as i128) / 10_000;
 
     let token = TokenClient::new(env, &config.token);
-    if freelancer_share > 0 {
-        token.transfer(&env.current_contract_address(), &config.anchor_address, &freelancer_share);
+    if milestone_amount > 0 {
+        token.transfer(&env.current_contract_address(), &config.anchor_address, &milestone_amount);
     }
 
     env.events().publish(
         (Symbol::new(env, "uctalent"), Symbol::new(env, "funds_withdrawn"), env.current_contract_address()),
-        (config.gig_id.clone(), index, freelancer_share, config.freelancer_kyc_id.clone()),
+        (config.gig_id.clone(), index, milestone_amount, config.freelancer_kyc_id.clone()),
     );
 
     _check_and_refund_surplus(env, &config, &status);
@@ -608,9 +623,8 @@ pub fn admin_resolve_dispute(env: &Env, admin: Address, index: u32, client_pct: 
     env.storage().instance().set(&DataKey::MilestoneStatus, &status);
 
     let milestone_amount = milestone.amount;
-    let net_amount = (milestone_amount * config.freelancer_rate as i128) / 10_000;
-    let client_share = (net_amount * client_pct as i128) / 100;
-    let developer_share = net_amount - client_share;
+    let client_share = (milestone_amount * client_pct as i128) / 100;
+    let developer_share = milestone_amount - client_share;
 
     let token = TokenClient::new(env, &config.token);
     if developer_share > 0 {
@@ -634,8 +648,8 @@ pub fn admin_resolve_dispute(env: &Env, admin: Address, index: u32, client_pct: 
 
 
 /// Modifies the amount allocated to a specific milestone.
-/// Clients can reduce or increase the amount, which automatically handles token refunds
-/// or requires additional deposits.
+/// Clients can only reduce the amount. The excess tokens are kept in the contract
+/// and will be refunded when all milestones are completed.
 pub fn update_milestone_amount(env: &Env, client: Address, index: u32, new_amount: i128) {
     client.require_auth();
     if new_amount < 0 { panic!("Amount cannot be negative"); }
@@ -654,26 +668,14 @@ pub fn update_milestone_amount(env: &Env, client: Address, index: u32, new_amoun
     if milestone.is_completed { panic!("Milestone already completed"); }
 
     let old_amount = milestone.amount;
-    let diff = new_amount - old_amount;
+    if new_amount > old_amount { panic!("Amount can only be decreased"); }
+
     milestone.amount = new_amount;
     status.milestones.set(index, milestone);
     config.milestones.set(index, new_amount);
 
     env.storage().instance().set(&DataKey::MilestoneConfig, &config);
     env.storage().instance().set(&DataKey::MilestoneStatus, &status);
-
-    if diff > 0 && status.is_deposited {
-        let platform_fee = (diff * config.platform_rate as i128) / 10_000;
-        let deposit_total = diff + platform_fee;
-        let token = TokenClient::new(env, &config.token);
-        token.transfer(&client, &env.current_contract_address(), &deposit_total);
-    } else if diff < 0 && status.is_deposited {
-        let abs_diff = -diff;
-        let platform_fee = (abs_diff * config.platform_rate as i128) / 10_000;
-        let refund_total = abs_diff + platform_fee;
-        let token = TokenClient::new(env, &config.token);
-        token.transfer(&env.current_contract_address(), &client, &refund_total);
-    }
 }
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────

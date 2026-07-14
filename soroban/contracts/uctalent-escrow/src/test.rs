@@ -304,7 +304,7 @@ fn test_milestone_full_lifecycle() {
     
     // Deposit
     ec.deposit(&ctx.client);
-    // platform_fee = 8M * 10% = 800k. Total deposit = 8.8M
+    // platform_fee is paid on top. Total deposit = 8.8M
     assert_eq!(ctx.token().balance(&escrow_addr), 8_800_000);
     
     // Release milestone 0
@@ -312,16 +312,18 @@ fn test_milestone_full_lifecycle() {
     let ms_status = ec.get_milestone_status();
     assert!(ms_status.milestones.get(0).unwrap().is_completed);
     
-    // M0: amount = 5M. freelancer_share = 5M, platform_share = 500k. total = 5.5M to anchor
-    assert_eq!(ctx.token().balance(&ctx.anchor), 5_500_000);
-    assert_eq!(ctx.token().balance(&escrow_addr), 3_300_000);
+    // M0: amount = 5M. freelancer_share = 5M
+    assert_eq!(ctx.token().balance(&ctx.anchor), 5_000_000);
+    assert_eq!(ctx.token().balance(&escrow_addr), 3_800_000);
     
     // Release milestone 1
     ec.release_milestone(&ctx.client, &1);
     let ms_status = ec.get_milestone_status();
     assert!(ms_status.milestones.get(1).unwrap().is_completed);
     
-    assert_eq!(ctx.token().balance(&ctx.anchor), 8_800_000);
+    assert_eq!(ctx.token().balance(&ctx.anchor), 8_000_000);
+    // Platform fee (800000) was left in the contract, but since all milestones are complete,
+    // _check_and_refund_surplus refunded it to the client!
     assert_eq!(ctx.token().balance(&escrow_addr), 0);
 }
 
@@ -383,6 +385,17 @@ fn test_dispute_workflow() {
     let ms = ec.get_milestone_status().milestones.get(0).unwrap();
     assert!(ms.is_completed);
     assert!(!ms.is_disputed);
+
+    // After resolve, net_amount = 5000000.
+    // client_share = 2500000, developer_share = 2500000
+    // Platform fee left in contract: 500000.
+    // Since release_platform_fee was not called and milestone is now complete, 
+    // _check_and_refund_surplus refunds this 500000 surplus to client.
+    assert_eq!(ctx.token().balance(&ctx.anchor), 2_500_000);
+    // Original client had 10M, deposited 5.5M. Balance before = 4.5M. 
+    // Received: client_share (2500000) + surplus (500000) = 3000000. Total = 7500000.
+    assert_eq!(ctx.token().balance(&ctx.client), 7_500_000);
+    assert_eq!(ctx.token().balance(&escrow_addr), 0);
 }
 
 
@@ -436,12 +449,12 @@ fn test_update_milestone_amount_refunds() {
     let ec = UCTalentContractClient::new(&ctx.env, &escrow_addr);
     
     ec.deposit(&ctx.client);
-    assert_eq!(ctx.token().balance(&escrow_addr), 5_500_000); // 5M + 10% = 5.5M
+    assert_eq!(ctx.token().balance(&escrow_addr), 5_500_000); // 5.5M
     assert_eq!(ctx.token().balance(&ctx.client), 14_500_000); // 20M - 5.5M = 14.5M
 
     ec.update_milestone_amount(&ctx.client, &0, &4_000_000);
-    assert_eq!(ctx.token().balance(&escrow_addr), 4_400_000); // 4M + 10% = 4.4M
-    assert_eq!(ctx.token().balance(&ctx.client), 15_600_000); // 20M - 4.4M = 15.6M
+    assert_eq!(ctx.token().balance(&escrow_addr), 5_500_000); // Deferred refund
+    assert_eq!(ctx.token().balance(&ctx.client), 14_500_000); // 14.5M
 }
 
 #[test]
@@ -500,7 +513,7 @@ fn test_release_platform_fee() {
     let ec = UCTalentContractClient::new(&ctx.env, &escrow_addr);
 
     ec.deposit(&ctx.client);
-    // total = 8M, platform fee = 800k (10%)
+    // total = 8M, platform fee = 8M * 10% = 800000
     let platform_balance_before = ctx.token().balance(&ctx.platform);
     let contract_balance_before = ctx.token().balance(&escrow_addr);
 
@@ -509,9 +522,9 @@ fn test_release_platform_fee() {
     let ms_status = ec.get_milestone_status();
     assert!(ms_status.platform_fee_released);
 
-    // platform wallet received 800k
+    // platform wallet received 800000
     assert_eq!(ctx.token().balance(&ctx.platform), platform_balance_before + 800_000);
-    // contract balance decreased by 800k
+    // contract balance decreased by 800000
     assert_eq!(ctx.token().balance(&escrow_addr), contract_balance_before - 800_000);
 }
 
@@ -555,7 +568,7 @@ fn test_withdraw_to_anchor_after_complete() {
     assert!(m.is_completed);
     assert!(m.is_withdrawn);
 
-    // 5M out of 10% = freelancer share is 5M (100% freelancer_rate)
+    // 5M minus no fee = 5000000
     assert_eq!(ctx.token().balance(&ctx.anchor), anchor_balance_before + 5_000_000);
 }
 
@@ -649,9 +662,174 @@ fn test_complete_new_flow_with_sequential_milestones() {
     let ms_status = ec.get_milestone_status();
     assert!(ms_status.milestones.get(0).unwrap().is_withdrawn);
     assert!(ms_status.milestones.get(1).unwrap().is_withdrawn);
-    // All funds distributed: 5M + 3M = 8M to anchor (freelancer_rate = 100%)
+    // All funds distributed except platform fee: 5000000 + 3000000 = 8000000 to anchor
     assert_eq!(ctx.token().balance(&ctx.anchor), 8_000_000);
+    // The rest is 0 (since platform fee was released)
     assert_eq!(ctx.token().balance(&escrow_addr), 0);
 }
 
+// ─── Edge Case Tests — Guard Clauses / Error Paths ────────────────────────
 
+/// T22: release_platform_fee must be rejected if escrow has not been deposited.
+/// Guard: escrow.rs:335  `!status.is_deposited → panic("Not deposited")`
+#[test]
+#[should_panic(expected = "Not deposited")]
+fn test_release_platform_fee_before_deposit() {
+    let ctx = TestCtx::new(5_000_000);
+    ctx.set_ledger(10);
+    let amounts = soroban_sdk::vec![&ctx.env, 5_000_000_i128];
+    let config = ctx.default_milestone_config(amounts);
+    let escrow_addr = ctx.create_milestone_escrow(&config);
+    let ec = UCTalentContractClient::new(&ctx.env, &escrow_addr);
+
+    ec.release_platform_fee(&ctx.platform);
+}
+
+/// T23: release_platform_fee must be rejected if already released.
+/// Guard: escrow.rs:336  `status.platform_fee_released → panic("Fee already released")`
+#[test]
+#[should_panic(expected = "Fee already released")]
+fn test_release_platform_fee_twice() {
+    let ctx = TestCtx::new(5_000_000);
+    ctx.set_ledger(10);
+    let amounts = soroban_sdk::vec![&ctx.env, 5_000_000_i128];
+    let config = ctx.default_milestone_config(amounts);
+    let escrow_addr = ctx.create_milestone_escrow(&config);
+    let ec = UCTalentContractClient::new(&ctx.env, &escrow_addr);
+
+    ec.deposit(&ctx.client);
+    ec.release_platform_fee(&ctx.platform);
+    ec.release_platform_fee(&ctx.platform);
+}
+
+/// T24: complete_milestone must be rejected if escrow has not been deposited.
+/// Guard: escrow.rs:389  `!status.is_deposited → panic("Not deposited")`
+#[test]
+#[should_panic(expected = "Not deposited")]
+fn test_complete_milestone_before_deposit() {
+    let ctx = TestCtx::new(5_000_000);
+    ctx.set_ledger(10);
+    let amounts = soroban_sdk::vec![&ctx.env, 5_000_000_i128];
+    let config = ctx.default_milestone_config(amounts);
+    let escrow_addr = ctx.create_milestone_escrow(&config);
+    let ec = UCTalentContractClient::new(&ctx.env, &escrow_addr);
+
+    ec.complete_milestone(&ctx.client, &0);
+}
+
+/// T25: complete_milestone must be rejected if already completed.
+/// Guard: escrow.rs:403  `milestone.is_completed → panic("Milestone already completed")`
+#[test]
+#[should_panic(expected = "Milestone already completed")]
+fn test_complete_milestone_twice() {
+    let ctx = TestCtx::new(5_000_000);
+    ctx.set_ledger(10);
+    let amounts = soroban_sdk::vec![&ctx.env, 5_000_000_i128];
+    let config = ctx.default_milestone_config(amounts);
+    let escrow_addr = ctx.create_milestone_escrow(&config);
+    let ec = UCTalentContractClient::new(&ctx.env, &escrow_addr);
+
+    ec.deposit(&ctx.client);
+    ec.complete_milestone(&ctx.client, &0);
+    ec.complete_milestone(&ctx.client, &0);
+}
+
+/// T26: complete_milestone must enforce sequential ordering.
+/// Guard: escrow.rs:396-399  `!prev.is_completed → panic("Previous milestone must be completed first")`
+#[test]
+#[should_panic(expected = "Previous milestone must be completed first")]
+fn test_complete_milestone_out_of_order() {
+    let ctx = TestCtx::new(10_000_000);
+    ctx.set_ledger(10);
+    let amounts = soroban_sdk::vec![&ctx.env, 5_000_000_i128, 3_000_000_i128];
+    let config = ctx.default_milestone_config(amounts);
+    let escrow_addr = ctx.create_milestone_escrow(&config);
+    let ec = UCTalentContractClient::new(&ctx.env, &escrow_addr);
+
+    ec.deposit(&ctx.client);
+    ec.complete_milestone(&ctx.client, &1);
+}
+
+/// T27: withdraw_to_anchor must be rejected when called by a non-platform address.
+/// Guard: escrow.rs:427  `platform != config.platform_address → panic("Only platform can initiate withdrawal")`
+/// Note: mock_all_auths() bypasses require_auth, but the value comparison still works.
+#[test]
+#[should_panic(expected = "Only platform can initiate withdrawal")]
+fn test_withdraw_by_non_platform_rejected() {
+    let ctx = TestCtx::new(5_000_000);
+    ctx.set_ledger(10);
+    let amounts = soroban_sdk::vec![&ctx.env, 5_000_000_i128];
+    let config = ctx.default_milestone_config(amounts);
+    let escrow_addr = ctx.create_milestone_escrow(&config);
+    let ec = UCTalentContractClient::new(&ctx.env, &escrow_addr);
+
+    ec.deposit(&ctx.client);
+    ec.complete_milestone(&ctx.client, &0);
+
+    let attacker = Address::generate(&ctx.env);
+    ec.withdraw_to_anchor(&attacker, &0);
+}
+
+/// T28: record_withdrawal_metadata must be rejected if milestone not yet withdrawn.
+/// Guard: escrow.rs:480  `!milestone.is_withdrawn → panic("Milestone not yet withdrawn")`
+#[test]
+#[should_panic(expected = "Milestone not yet withdrawn")]
+fn test_record_metadata_before_withdraw() {
+    let ctx = TestCtx::new(5_000_000);
+    ctx.set_ledger(10);
+    let amounts = soroban_sdk::vec![&ctx.env, 5_000_000_i128];
+    let config = ctx.default_milestone_config(amounts);
+    let escrow_addr = ctx.create_milestone_escrow(&config);
+    let ec = UCTalentContractClient::new(&ctx.env, &escrow_addr);
+
+    ec.deposit(&ctx.client);
+    ec.release_platform_fee(&ctx.platform);
+    ec.complete_milestone(&ctx.client, &0);
+
+    let record = WithdrawalRecord {
+        freelancer_kyc_id: BytesN::from_array(&ctx.env, &[5u8; 32]),
+        amount_usdc: 5_000_000,
+        amount_vnd: 125_000_000,
+        platform_fee_usdc: 500_000,
+        exchange_rate_bps: 25_000,
+        tax_withheld_vnd: 12_500_000,
+        napas_ref: String::from_str(&ctx.env, "NAPAS-123456"),
+        stellar_tx_hash: String::from_str(&ctx.env, "abc123def456"),
+        timestamp: 1000,
+    };
+
+    ec.record_withdrawal_metadata(&ctx.platform, &0, &record);
+}
+
+/// T29: admin_resolve_dispute must reject invalid percentage splits.
+/// Guard: escrow.rs:592  `client_pct + developer_pct != 100 → panic("Percentages must sum to 100")`
+#[test]
+#[should_panic(expected = "Percentages must sum to 100")]
+fn test_dispute_resolve_invalid_percentages() {
+    let ctx = TestCtx::new(5_000_000);
+    ctx.set_ledger(10);
+    let amounts = soroban_sdk::vec![&ctx.env, 5_000_000_i128];
+    let config = ctx.default_milestone_config(amounts);
+    let escrow_addr = ctx.create_milestone_escrow(&config);
+    let ec = UCTalentContractClient::new(&ctx.env, &escrow_addr);
+
+    ec.admin_resolve_dispute(&ctx.platform, &0, &50, &30);
+}
+
+/// T30: dispute_milestone must be rejected for an already-completed milestone.
+/// Guard: escrow.rs:528  `milestone.is_completed → panic("Milestone already released")`
+#[test]
+#[should_panic(expected = "Milestone already released")]
+fn test_dispute_completed_milestone_rejected() {
+    let ctx = TestCtx::new(5_000_000);
+    ctx.set_ledger(10);
+    let amounts = soroban_sdk::vec![&ctx.env, 5_000_000_i128];
+    let config = ctx.default_milestone_config(amounts);
+    let escrow_addr = ctx.create_milestone_escrow(&config);
+    let ec = UCTalentContractClient::new(&ctx.env, &escrow_addr);
+
+    ec.deposit(&ctx.client);
+    ec.release_platform_fee(&ctx.platform);
+    ec.complete_milestone(&ctx.client, &0);
+    ec.dispute_milestone(&ctx.client, &0);
+}
