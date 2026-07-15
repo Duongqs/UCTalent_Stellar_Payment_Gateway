@@ -16,15 +16,20 @@ exports.Sep31Controller = void 0;
 const common_1 = require("@nestjs/common");
 const stellar_1 = require("@uc/stellar");
 const core_1 = require("@uc/core");
+const banking_1 = require("@uc/banking");
 const initiate_disbursement_dto_1 = require("./dtos/initiate-disbursement.dto");
 const anchor_webhook_guard_1 = require("./guards/anchor-webhook.guard");
 const crypto_1 = require("crypto");
 let Sep31Controller = class Sep31Controller {
     sep31CoreService;
     sep31Service;
-    constructor(sep31CoreService, sep31Service) {
+    firmQuoteService;
+    bankVaultService;
+    constructor(sep31CoreService, sep31Service, firmQuoteService, bankVaultService) {
         this.sep31CoreService = sep31CoreService;
         this.sep31Service = sep31Service;
+        this.firmQuoteService = firmQuoteService;
+        this.bankVaultService = bankVaultService;
     }
     async getInfo() {
         return {
@@ -43,6 +48,18 @@ let Sep31Controller = class Sep31Controller {
     }
     async initiateDisbursement(body) {
         const { amount, sender_id, receiver_id, quote_id, idempotency_key } = body;
+        if (quote_id) {
+            const quote = await this.firmQuoteService.findById(quote_id);
+            if (!quote) {
+                throw new common_1.BadRequestException({ error: 'quote_not_found', message: 'Quote not found' });
+            }
+            if (quote.expiresAt && new Date(quote.expiresAt) < new Date()) {
+                throw new common_1.BadRequestException({ error: 'quote_expired', message: 'Quote expired' });
+            }
+            if (quote.usedAt) {
+                throw new common_1.ConflictException({ error: 'quote_already_used', message: 'Quote already used' });
+            }
+        }
         const tempId = (0, crypto_1.randomUUID)();
         try {
             const tx = this.sep31CoreService.create({
@@ -83,6 +100,19 @@ let Sep31Controller = class Sep31Controller {
             throw error;
         }
         console.log(`[SEP31] Initiating disbursement for ${amount} USDC to receiver ${receiver_id}`);
+        let receiver_routing_number = 'mock';
+        let receiver_account_number = 'mock';
+        try {
+            const profile = await this.bankVaultService.getProfile(receiver_id);
+            if (profile && profile.isVerified) {
+                const fullProfile = await this.bankVaultService.hydrateBankInfo(profile.beneficiaryRefId);
+                receiver_routing_number = fullProfile.bank_code;
+                receiver_account_number = fullProfile.account_number;
+            }
+        }
+        catch (e) {
+            console.warn(`[SEP31] Could not fetch real bank profile for ${receiver_id}, using mock`);
+        }
         let transactionResponse;
         try {
             transactionResponse = await this.sep31Service.createTransaction({
@@ -90,7 +120,8 @@ let Sep31Controller = class Sep31Controller {
                 asset_code: 'USDC',
                 sender_id,
                 receiver_id,
-                quote_id,
+                receiver_routing_number,
+                receiver_account_number,
             });
         }
         catch (apError) {
@@ -157,6 +188,8 @@ __decorate([
 exports.Sep31Controller = Sep31Controller = __decorate([
     (0, common_1.Controller)('sep31'),
     __metadata("design:paramtypes", [core_1.Sep31CoreService,
-        stellar_1.Sep31TransactionService])
+        stellar_1.Sep31TransactionService,
+        core_1.FirmQuoteService,
+        banking_1.BankVaultService])
 ], Sep31Controller);
 //# sourceMappingURL=sep31.controller.js.map

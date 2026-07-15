@@ -12,5 +12,6 @@ export declare class IpnController {
     handleIpn(request: any, body: IpnDto): Promise<{
         message: string;
     }>;
+    private sendBackendWebhook;
     pollPendingExternal(): Promise<void>;
 }

@@ -20,9 +20,6 @@ export class QuoteController {
       throw new NotFoundException('Quote not found');
     }
 
-    if (quote.expiresAt && new Date(quote.expiresAt) < new Date()) {
-      throw new BadRequestException('Quote expired');
-    }
 
     if (quote.usedAt) {
       throw new ConflictException('Quote already used');

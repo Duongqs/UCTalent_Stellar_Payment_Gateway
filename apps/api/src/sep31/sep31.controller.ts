@@ -12,7 +12,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Sep31TransactionService } from '@uc/stellar';
-import { Sep31CoreService } from '@uc/core';
+import { Sep31CoreService, FirmQuoteService } from '@uc/core';
+import { BankVaultService } from '@uc/banking';
 import { InitiateDisbursementDto } from './dtos/initiate-disbursement.dto';
 import { AnchorWebhookGuard } from './guards/anchor-webhook.guard';
 import { randomUUID } from 'crypto';
@@ -22,6 +23,8 @@ export class Sep31Controller {
   constructor(
     private readonly sep31CoreService: Sep31CoreService,
     private readonly sep31Service: Sep31TransactionService,
+    private readonly firmQuoteService: FirmQuoteService,
+    private readonly bankVaultService: BankVaultService,
   ) {}
 
   @Get('info')
@@ -47,6 +50,19 @@ export class Sep31Controller {
   @HttpCode(HttpStatus.OK)
   async initiateDisbursement(@Body() body: InitiateDisbursementDto) {
     const { amount, sender_id, receiver_id, quote_id, idempotency_key } = body;
+
+    if (quote_id) {
+      const quote = await this.firmQuoteService.findById(quote_id);
+      if (!quote) {
+        throw new BadRequestException({ error: 'quote_not_found', message: 'Quote not found' });
+      }
+      if (quote.expiresAt && new Date(quote.expiresAt) < new Date()) {
+        throw new BadRequestException({ error: 'quote_expired', message: 'Quote expired' });
+      }
+      if (quote.usedAt) {
+        throw new ConflictException({ error: 'quote_already_used', message: 'Quote already used' });
+      }
+    }
 
     const tempId = randomUUID();
 
@@ -104,6 +120,19 @@ export class Sep31Controller {
       `[SEP31] Initiating disbursement for ${amount} USDC to receiver ${receiver_id}`,
     );
 
+    let receiver_routing_number = 'mock';
+    let receiver_account_number = 'mock';
+    try {
+      const profile = await this.bankVaultService.getProfile(receiver_id);
+      if (profile && profile.isVerified) {
+        const fullProfile = await this.bankVaultService.hydrateBankInfo(profile.beneficiaryRefId);
+        receiver_routing_number = fullProfile.bank_code;
+        receiver_account_number = fullProfile.account_number;
+      }
+    } catch (e) {
+      console.warn(`[SEP31] Could not fetch real bank profile for ${receiver_id}, using mock`);
+    }
+
     let transactionResponse;
     try {
       transactionResponse = await this.sep31Service.createTransaction({
@@ -111,7 +140,8 @@ export class Sep31Controller {
         asset_code: 'USDC',
         sender_id,
         receiver_id,
-        quote_id,
+        receiver_routing_number,
+        receiver_account_number,
       });
     } catch (apError: any) {
       const msg = apError.message || '';

@@ -127,9 +127,9 @@ export class RateController {
           sell_asset ||
           'stellar:USDC:GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF',
         buyAsset: buy_asset || 'iso4217:VND',
-        sellAmount: rateObj.sell_amount,
-        buyAmount: rateObj.buy_amount,
-        rate: rateObj.price,
+        sellAmount: rateObj.sell_amount.toString(),
+        buyAmount: rateObj.buy_amount.toString(),
+        rate: rateObj.price.toString(),
         context,
         expiresAt,
       });

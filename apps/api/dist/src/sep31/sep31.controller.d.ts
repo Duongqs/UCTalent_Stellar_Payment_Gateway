@@ -1,10 +1,13 @@
 import { Sep31TransactionService } from '@uc/stellar';
-import { Sep31CoreService } from '@uc/core';
+import { Sep31CoreService, FirmQuoteService } from '@uc/core';
+import { BankVaultService } from '@uc/banking';
 import { InitiateDisbursementDto } from './dtos/initiate-disbursement.dto';
 export declare class Sep31Controller {
     private readonly sep31CoreService;
     private readonly sep31Service;
-    constructor(sep31CoreService: Sep31CoreService, sep31Service: Sep31TransactionService);
+    private readonly firmQuoteService;
+    private readonly bankVaultService;
+    constructor(sep31CoreService: Sep31CoreService, sep31Service: Sep31TransactionService, firmQuoteService: FirmQuoteService, bankVaultService: BankVaultService);
     getInfo(): Promise<{
         receive: {
             USDC: {

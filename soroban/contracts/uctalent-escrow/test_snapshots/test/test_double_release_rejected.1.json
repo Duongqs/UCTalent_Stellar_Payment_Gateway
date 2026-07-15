@@ -517,6 +517,14 @@
                           "map": [
                             {
                               "key": {
+                                "symbol": "deposit_timestamp"
+                              },
+                              "val": {
+                                "u64": 50
+                              }
+                            },
+                            {
+                              "key": {
                                 "symbol": "is_deposited"
                               },
                               "val": {
@@ -1708,7 +1716,7 @@
             "data": {
               "vec": [
                 {
-                  "string": "caught panic 'Already released' from contract function 'Symbol(obj#517)'"
+                  "string": "caught panic 'Already released' from contract function 'Symbol(obj#527)'"
                 },
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM"

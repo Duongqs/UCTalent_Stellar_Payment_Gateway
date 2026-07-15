@@ -136,15 +136,15 @@ export class PendingClearingProcessorService {
       bank_code: profile.bankCode,
     };
 
-    let vndAmount = tx.vndAmount ? Number(tx.vndAmount) : 0;
-    if (!vndAmount || vndAmount === 0) {
+    let grossVnd = tx.vndAmount ? Number(tx.vndAmount) : 0;
+    if (!grossVnd || grossVnd === 0) {
       const oracle = await this.oracleService.getSafeFxRate();
-      vndAmount = Math.floor(Number(tx.amountIn) * oracle.rate);
+      grossVnd = Math.floor(Number(tx.amountIn) * oracle.rate);
     }
 
     // Apply PIT Tax calculation (10%)
-    const taxWithheld = Math.floor(vndAmount * 0.1);
-    const finalVndAmount = vndAmount - taxWithheld;
+    const taxWithheld = Math.floor(grossVnd * 0.1);
+    const netVnd = grossVnd - taxWithheld;
     const taxCode = 'PIT-AFFILIATE-10%';
     const complianceMeta = {
       tax_withholding_code: taxCode,
@@ -152,12 +152,13 @@ export class PendingClearingProcessorService {
     };
 
     console.log(
-      `[Pending Clearing Processor] Disbursing ${finalVndAmount} VND (Tax: ${taxWithheld}) for TX ${txId}`,
+      `[Pending Clearing Processor] Disbursing ${netVnd} VND (Tax: ${taxWithheld}) for TX ${txId}`,
     );
 
+    let disburseResult: any;
     try {
-      await this.ninePayGateway.disburse(
-        finalVndAmount,
+      disburseResult = await this.ninePayGateway.disburse(
+        netVnd,
         txId,
         bankInfo.bank_code,
         bankInfo.account_number,
@@ -165,6 +166,30 @@ export class PendingClearingProcessorService {
         bankInfo.legal_name,
         complianceMeta,
       );
+
+      if (taxWithheld > 0) {
+        try {
+          const pitBankCode = this.envService.get('PIT_BANK_CODE') || 'BIDV';
+          const pitAccountNumber = this.envService.get('PIT_ACCOUNT_NUMBER') || '96311300000170179';
+          const pitAccountName = this.envService.get('PIT_ACCOUNT_NAME') || 'UCTALENT PLATFORM';
+          
+          console.log(`[Pending Clearing Processor] Disbursing PIT ${taxWithheld} VND to Platform for TX ${txId}`);
+          await this.ninePayGateway.disburse(
+            taxWithheld,
+            `${txId}-PIT`,
+            pitBankCode,
+            pitAccountNumber,
+            'UCTalent PIT Withheld',
+            pitAccountName,
+            complianceMeta,
+          );
+        } catch (pitErr: any) {
+          console.error(`[Pending Clearing Processor] PIT Disbursement failed for TX ${txId}:`, pitErr.message);
+          await this.auditLog.log(txId, 'pit_disbursement_error', {
+            error: pitErr.message,
+          });
+        }
+      }
     } catch (err: any) {
       if (err.message && err.message.includes('RECONCILIATION_FAILED')) {
         await this.sep31Repo.update(txId, {
@@ -176,7 +201,7 @@ export class PendingClearingProcessorService {
       throw err;
     }
 
-    const napasRef = tx.napasRefId || `9payclr${txId.substring(5, 17).toUpperCase()}`;
+    const napasRef = disburseResult?.refId || disburseResult?.napasRef || tx.napasRefId || `9PAY-${txId}-${Date.now()}`;
 
     // Only call notifyOffchainFundsPending if NOT an off-platform transaction (ucttx)
     if (!txId.startsWith('ucttx')) {
@@ -185,7 +210,7 @@ export class PendingClearingProcessorService {
 
     await this.sep31Repo.update(txId, {
       napasRefId: napasRef,
-      vndAmount: finalVndAmount,
+      vndAmount: netVnd,
       withheldTaxAmount: taxWithheld,
       taxCode: taxCode,
       status: 'pending_external',
@@ -193,7 +218,8 @@ export class PendingClearingProcessorService {
 
     await this.auditLog.log(txId, 'napas_sent', {
       napas_ref: napasRef,
-      vnd_amount: finalVndAmount,
+      net_vnd: netVnd,
+      gross_vnd: grossVnd,
       withheld_tax_amount: taxWithheld,
       tax_code: taxCode,
     });
@@ -209,10 +235,18 @@ export class PendingClearingProcessorService {
     ) {
       await this.ninePayMock.simulateDisbursement(
         txId,
-        finalVndAmount,
+        netVnd,
         txId,
         napasRef,
       );
+      if (taxWithheld > 0) {
+        await this.ninePayMock.simulateDisbursement(
+          `${txId}-PIT`,
+          taxWithheld,
+          `${txId}-PIT`,
+          napasRef,
+        );
+      }
     }
   }
 

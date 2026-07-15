@@ -403,6 +403,14 @@
                           "map": [
                             {
                               "key": {
+                                "symbol": "deposit_timestamp"
+                              },
+                              "val": {
+                                "u64": 50
+                              }
+                            },
+                            {
+                              "key": {
                                 "symbol": "is_deposited"
                               },
                               "val": {

@@ -96,6 +96,7 @@ export class AnchorController {
         napasRefId: clearingId,
         vndAmount: party === 'platform' ? 0 : amountVnd,
         taxCode: party, // Temporarily store the party type in the taxCode column for mapping
+        distributionId: split.distributionId,
       });
 
       await this.sep31CoreService.save(tx);

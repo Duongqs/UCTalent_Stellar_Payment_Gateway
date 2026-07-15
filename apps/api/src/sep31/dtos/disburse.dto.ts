@@ -20,8 +20,7 @@ export class DisburseDto {
   oracleRate?: number;
 
   @IsObject()
-  @IsNotEmpty()
-  splits: Record<string, { amountUsdc: number; kycId?: string | null }>;
+  splits: Record<string, { amountUsdc: number; kycId?: string | null; distributionId?: string | null }>;
 
   @IsString()
   @IsOptional()

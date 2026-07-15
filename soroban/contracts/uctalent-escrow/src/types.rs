@@ -67,6 +67,8 @@ pub struct ReferralStatus {
     pub is_released: bool,
     /// True if funds were refunded to the client after expiry
     pub is_refunded: bool,
+    /// The timestamp when the deposit was made, used to track dispute window
+    pub deposit_timestamp: u64,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

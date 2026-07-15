@@ -55,10 +55,10 @@ let Sep31TransactionService = class Sep31TransactionService {
         this.envService = envService;
     }
     get anchorUrl() {
-        return this.envService.get('ANCHOR_PLATFORM_URL') || 'http://localhost:8082';
+        return (this.envService.get('ANCHOR_PLATFORM_URL') || 'http://localhost:8082');
     }
-    generateMockJwt() {
-        const secret = this.envService.get('JWT_SECRET') || 'super_secret_jwt_key_that_is_at_least_32_bytes_long!';
+    generateAuthJwt() {
+        const secret = this.envService.get('JWT_SECRET');
         const header = { alg: 'HS256', typ: 'JWT' };
         const payload = {
             iss: 'http://localhost:8080',
@@ -68,7 +68,10 @@ let Sep31TransactionService = class Sep31TransactionService {
         };
         const encodeBase64Url = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url');
         const data = `${encodeBase64Url(header)}.${encodeBase64Url(payload)}`;
-        const signature = crypto.createHmac('sha256', secret).update(data).digest('base64url');
+        const signature = crypto
+            .createHmac('sha256', secret)
+            .update(data)
+            .digest('base64url');
         return `${data}.${signature}`;
     }
     async createTransaction(payload) {
@@ -79,12 +82,17 @@ let Sep31TransactionService = class Sep31TransactionService {
                 sender_id: payload.sender_id,
                 receiver_id: payload.receiver_id,
                 quote_id: payload.quote_id,
-                funding_method: "stellar",
-                fields: { transaction: { receiver_routing_number: "mock" } }
+                funding_method: 'stellar',
+                fields: {
+                    transaction: {
+                        receiver_routing_number: payload.receiver_routing_number || 'mock',
+                        receiver_account_number: payload.receiver_account_number || 'mock'
+                    }
+                },
             }, {
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.generateMockJwt()}`
+                    Authorization: `Bearer ${this.generateAuthJwt()}`,
                 },
                 timeout: 15000,
             });

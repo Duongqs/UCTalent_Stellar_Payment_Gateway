@@ -53,9 +53,12 @@ let BankVaultController = class BankVaultController {
                 customer = this.customerService.create({});
                 customer.id = customerId;
             }
-            customer.firstName = accountName;
+            const nameParts = accountName.trim().split(/\s+/);
+            customer.firstName = nameParts[0] || accountName;
+            customer.lastName = nameParts.slice(1).join(' ') || ' ';
+            customer.emailAddress = `${customerId}@uctalent.local`.toLowerCase();
             customer.customerType = 'sep31-receiver';
-            customer.status = 'NEEDS_INFO';
+            customer.status = 'ACCEPTED';
             await this.customerService.save(customer);
             const record = await this.bankVaultService.registerProfile({
                 customer_id: customerId,

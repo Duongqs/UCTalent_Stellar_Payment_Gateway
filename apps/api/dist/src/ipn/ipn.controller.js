@@ -70,10 +70,12 @@ let IpnController = class IpnController {
         this.ninePayGatewayService = ninePayGatewayService;
     }
     async handleIpn(request, body) {
-        const clientIp = request?.headers?.['x-forwarded-for'] || request?.socket?.remoteAddress || 'unknown';
+        const clientIp = request?.headers?.['x-forwarded-for'] ||
+            request?.socket?.remoteAddress ||
+            'unknown';
         const now = Date.now();
         const requests = this.requestCounts.get(clientIp) || [];
-        const recent = requests.filter(time => now - time < 60000);
+        const recent = requests.filter((time) => now - time < 60000);
         if (recent.length > 20) {
             throw new common_1.HttpException('Too Many Requests', common_1.HttpStatus.TOO_MANY_REQUESTS);
         }
@@ -107,42 +109,9 @@ let IpnController = class IpnController {
                         await this.anchorRpc.notifyOffchainFundsAvailable(transaction_id, external_transaction_id);
                     }
                     await this.sep31CoreService.completeDisbursement(transaction_id, external_transaction_id);
-                    const backendWebhookUrl = this.envService.get('UCTALENT_BACKEND_WEBHOOK_URL');
-                    const isTest = this.envService.get('NODE_ENV') === 'test';
-                    if (backendWebhookUrl && !isTest) {
-                        const txRecord = await this.sep31CoreService.findById(transaction_id);
-                        const distributionId = txRecord?.distributionId || txRecord?.idempotencyKey || transaction_id;
-                        const callbackPayload = {
-                            distributionId: distributionId,
-                            anchorTxId: transaction_id,
-                            invoiceNo: transaction_id,
-                            status: 'success',
-                            externalTxId: external_transaction_id,
-                            vndAmount: txRecord?.vndAmount ? Number(txRecord.vndAmount) : undefined,
-                            taxWithheld: txRecord?.withheldTaxAmount ? Number(txRecord.withheldTaxAmount) : undefined,
-                            napasRefId: txRecord?.napasRefId || external_transaction_id,
-                            stellarTxHash: txRecord?.stellarTxHash,
-                            clearingId: transaction_id,
-                        };
-                        const callbackPayloadString = JSON.stringify(callbackPayload);
-                        const secret = this.envService.get('CROSS_BORDER_WEBHOOK_SECRET') || 'uctalent-dev-secret';
-                        const signature = crypto
-                            .createHmac('sha256', secret)
-                            .update(callbackPayloadString)
-                            .digest('hex');
-                        try {
-                            await axios_1.default.post(backendWebhookUrl, callbackPayload, {
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-UCTALENT-SIGNATURE': `sha256=${signature}`,
-                                },
-                                timeout: 5000,
-                            });
-                        }
-                        catch (err) {
-                            console.error(`[IPN] Failed to send settlement callback to backend: ${err.message}`);
-                        }
-                    }
+                    await this.sendBackendWebhook(transaction_id, 'success', {
+                        externalTxId: external_transaction_id,
+                    });
                     break;
                 case 'FAILED': {
                     const tx = await this.sep31CoreService.findById(transaction_id);
@@ -158,36 +127,7 @@ let IpnController = class IpnController {
                         }
                         await this.sep31CoreService.failDisbursement(transaction_id);
                         console.error(`[ALERT:disbursement_failed] TX ${transaction_id} failed after 3 retries`);
-                        const backendWebhookUrl = this.envService.get('UCTALENT_BACKEND_WEBHOOK_URL');
-                        const isTest = this.envService.get('NODE_ENV') === 'test';
-                        if (backendWebhookUrl && !isTest) {
-                            const txRecord = await this.sep31CoreService.findById(transaction_id);
-                            const distributionId = txRecord?.distributionId || txRecord?.idempotencyKey || transaction_id;
-                            const callbackPayload = {
-                                distributionId: distributionId,
-                                anchorTxId: transaction_id,
-                                invoiceNo: transaction_id,
-                                status: 'failed',
-                            };
-                            const callbackPayloadString = JSON.stringify(callbackPayload);
-                            const secret = this.envService.get('CROSS_BORDER_WEBHOOK_SECRET') || 'uctalent-dev-secret';
-                            const signature = crypto
-                                .createHmac('sha256', secret)
-                                .update(callbackPayloadString)
-                                .digest('hex');
-                            try {
-                                await axios_1.default.post(backendWebhookUrl, callbackPayload, {
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'X-UCTALENT-SIGNATURE': `sha256=${signature}`,
-                                    },
-                                    timeout: 5000,
-                                });
-                            }
-                            catch (err) {
-                                console.error(`[IPN] Failed to send failed settlement callback to backend: ${err.message}`);
-                            }
-                        }
+                        await this.sendBackendWebhook(transaction_id, 'failed');
                     }
                     break;
                 }
@@ -200,6 +140,57 @@ let IpnController = class IpnController {
         catch (error) {
             console.error('[IPN] Error handling webhook:', error);
             throw new common_1.InternalServerErrorException('Internal server error');
+        }
+    }
+    async sendBackendWebhook(transactionId, status, extraFields) {
+        const backendWebhookUrl = this.envService.get('UCTALENT_BACKEND_WEBHOOK_URL');
+        const isTest = this.envService.get('NODE_ENV') === 'test';
+        if (!backendWebhookUrl || isTest) {
+            return;
+        }
+        const txRecord = await this.sep31CoreService.findById(transactionId);
+        const distributionId = txRecord?.distributionId;
+        if (!distributionId) {
+            console.warn(`[IPN] Skipping backend ${status} webhook for ${transactionId}: distributionId is missing`);
+            return;
+        }
+        const callbackPayload = {
+            distributionId,
+            anchorTxId: transactionId,
+            invoiceNo: transactionId,
+            status,
+            ...extraFields,
+        };
+        if (status === 'success' && txRecord) {
+            callbackPayload.vndAmount = txRecord.vndAmount
+                ? Number(txRecord.vndAmount)
+                : undefined;
+            callbackPayload.taxWithheld = txRecord.withheldTaxAmount
+                ? Number(txRecord.withheldTaxAmount)
+                : undefined;
+            callbackPayload.napasRefId =
+                txRecord.napasRefId || extraFields?.externalTxId;
+            callbackPayload.stellarTxHash = txRecord.stellarTxHash;
+            callbackPayload.clearingId = transactionId;
+        }
+        const callbackPayloadString = JSON.stringify(callbackPayload);
+        const secret = this.envService.get('CROSS_BORDER_WEBHOOK_SECRET') ||
+            'uctalent-dev-secret';
+        const signature = crypto
+            .createHmac('sha256', secret)
+            .update(callbackPayloadString)
+            .digest('hex');
+        try {
+            await axios_1.default.post(backendWebhookUrl, callbackPayload, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-UCTALENT-SIGNATURE': `sha256=${signature}`,
+                },
+                timeout: 5000,
+            });
+        }
+        catch (err) {
+            console.error(`[IPN] Failed to send ${status} settlement callback to backend: ${err.message}`);
         }
     }
     async pollPendingExternal() {
@@ -217,7 +208,7 @@ let IpnController = class IpnController {
                                 invoice_no: tx.id,
                                 transaction_id: tx.id,
                                 external_transaction_id: result.transaction_id || `simulated-${Date.now()}`,
-                                status: 'SUCCESS'
+                                status: 'SUCCESS',
                             })).toString('base64'),
                             checksum: crypto
                                 .createHash('sha256')
@@ -225,10 +216,11 @@ let IpnController = class IpnController {
                                 invoice_no: tx.id,
                                 transaction_id: tx.id,
                                 external_transaction_id: result.transaction_id || `simulated-${Date.now()}`,
-                                status: 'SUCCESS'
-                            })).toString('base64') + (this.envService.get('NINEPAY_CHECKSUM_KEY') || ''))
+                                status: 'SUCCESS',
+                            })).toString('base64') +
+                                (this.envService.get('NINEPAY_CHECKSUM_KEY') || ''))
                                 .digest('hex')
-                                .toUpperCase()
+                                .toUpperCase(),
                         });
                     }
                     else if (result.status === 3 || result.status === 6) {
@@ -238,7 +230,7 @@ let IpnController = class IpnController {
                                 invoice_no: tx.id,
                                 transaction_id: tx.id,
                                 external_transaction_id: result.transaction_id || '',
-                                status: 'FAILED'
+                                status: 'FAILED',
                             })).toString('base64'),
                             checksum: crypto
                                 .createHash('sha256')
@@ -246,10 +238,11 @@ let IpnController = class IpnController {
                                 invoice_no: tx.id,
                                 transaction_id: tx.id,
                                 external_transaction_id: result.transaction_id || '',
-                                status: 'FAILED'
-                            })).toString('base64') + (this.envService.get('NINEPAY_CHECKSUM_KEY') || ''))
+                                status: 'FAILED',
+                            })).toString('base64') +
+                                (this.envService.get('NINEPAY_CHECKSUM_KEY') || ''))
                                 .digest('hex')
-                                .toUpperCase()
+                                .toUpperCase(),
                         });
                     }
                     else {
