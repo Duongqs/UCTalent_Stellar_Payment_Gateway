@@ -137,9 +137,16 @@ export class PendingClearingProcessorService {
     };
 
     let grossVnd = tx.vndAmount ? Number(tx.vndAmount) : 0;
+    let effectiveExchangeRate: number | undefined;
     if (!grossVnd || grossVnd === 0) {
       const oracle = await this.oracleService.getSafeFxRate();
-      grossVnd = Math.floor(Number(tx.amountIn) * oracle.rate);
+      effectiveExchangeRate = oracle.rate;
+      grossVnd = Math.floor(Number(tx.amountIn) * effectiveExchangeRate);
+    } else {
+      const amountIn = Number(tx.amountIn);
+      if (amountIn > 0) {
+        effectiveExchangeRate = grossVnd / amountIn;
+      }
     }
 
     // Apply PIT Tax calculation (10%)
@@ -214,6 +221,7 @@ export class PendingClearingProcessorService {
       withheldTaxAmount: taxWithheld,
       taxCode: taxCode,
       status: 'pending_external',
+      ...(effectiveExchangeRate != null && { exchangeRate: effectiveExchangeRate }),
     });
 
     await this.auditLog.log(txId, 'napas_sent', {
@@ -222,6 +230,7 @@ export class PendingClearingProcessorService {
       gross_vnd: grossVnd,
       withheld_tax_amount: taxWithheld,
       tax_code: taxCode,
+      exchange_rate: effectiveExchangeRate,
     });
 
     console.log(

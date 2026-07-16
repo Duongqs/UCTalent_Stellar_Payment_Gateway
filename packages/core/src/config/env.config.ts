@@ -15,9 +15,7 @@ export const envSchema = z.object({
 
   SOROBAN_RPC_URL: z.string().default('https://soroban-testnet.stellar.org'),
   NETWORK_PASSPHRASE: z.string().default('Test SDF Network ; September 2015'),
-  USDC_ISSUER: z
-    .string()
-    .default('GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5'),
+  USDC_ISSUER: z.string(),
   TOKEN_DECIMALS: z.coerce.number().default(7),
   POLL_INTERVAL_MS: z.coerce.number().default(5000),
   PROCESS_INTERVAL_MS: z.coerce.number().default(2000),
@@ -61,7 +59,7 @@ export const envSchema = z.object({
   ESCROW_CONTRACT_ID: z.string().optional(),
   FUNDING_SECRET: z
     .string()
-    .default('SCQMGZP23PYPUUG652FNE4M44O5CB3NV3CPEXXVF7H6EJJ3SCUJZL6HO'),
+    .default(''),
   ANCHOR_SIGNING_KEY: z.string().optional(),
   JWT_SECRET: z
     .string()

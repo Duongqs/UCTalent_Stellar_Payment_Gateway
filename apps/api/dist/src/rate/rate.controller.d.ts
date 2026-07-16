@@ -1,10 +1,11 @@
 import { OracleService } from '@uc/banking';
-import { FirmQuoteService, AuditLogService } from '@uc/core';
+import { FirmQuoteService, AuditLogService, EnvService } from '@uc/core';
 export declare class RateController {
     private readonly firmQuoteService;
     private readonly oracleService;
     private readonly auditLog;
-    constructor(firmQuoteService: FirmQuoteService, oracleService: OracleService, auditLog: AuditLogService);
+    private readonly envService;
+    constructor(firmQuoteService: FirmQuoteService, oracleService: OracleService, auditLog: AuditLogService, envService: EnvService);
     getInfo(): Promise<{
         assets: ({
             asset: string;

@@ -8,7 +8,7 @@ import {
   HttpCode,
 } from '@nestjs/common';
 import { OracleService } from '@uc/banking';
-import { FirmQuoteService, AuditLogService } from '@uc/core';
+import { FirmQuoteService, AuditLogService, EnvService } from '@uc/core';
 import { v4 as uuidv4 } from 'uuid';
 
 @Controller('rate')
@@ -17,6 +17,7 @@ export class RateController {
     private readonly firmQuoteService: FirmQuoteService,
     private readonly oracleService: OracleService,
     private readonly auditLog: AuditLogService,
+    private readonly envService: EnvService,
   ) {}
 
   @Get('info')
@@ -24,7 +25,7 @@ export class RateController {
     return {
       assets: [
         {
-          asset: 'stellar:USDC:GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF',
+          asset: `stellar:USDC:${this.envService.get('USDC_ISSUER') || 'G_DUMMY_ISSUER'}`,
           sell_delivery_methods: [
             { name: 'stellar', description: 'Stellar Network' },
           ],
@@ -85,7 +86,7 @@ export class RateController {
         total: feeAmount,
         asset:
           sell_asset ||
-          'stellar:USDC:GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF',
+          `stellar:USDC:${this.envService.get('USDC_ISSUER') || 'G_DUMMY_ISSUER'}`,
       },
     };
 
@@ -125,7 +126,7 @@ export class RateController {
         id: quoteId,
         sellAsset:
           sell_asset ||
-          'stellar:USDC:GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF',
+          `stellar:USDC:${this.envService.get('USDC_ISSUER') || 'G_DUMMY_ISSUER'}`,
         buyAsset: buy_asset || 'iso4217:VND',
         sellAmount: rateObj.sell_amount.toString(),
         buyAmount: rateObj.buy_amount.toString(),

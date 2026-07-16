@@ -172,6 +172,9 @@ let IpnController = class IpnController {
                 txRecord.napasRefId || extraFields?.externalTxId;
             callbackPayload.stellarTxHash = txRecord.stellarTxHash;
             callbackPayload.clearingId = transactionId;
+            callbackPayload.exchangeRate = txRecord.exchangeRate
+                ? Number(txRecord.exchangeRate)
+                : undefined;
         }
         const callbackPayloadString = JSON.stringify(callbackPayload);
         const secret = this.envService.get('CROSS_BORDER_WEBHOOK_SECRET') ||

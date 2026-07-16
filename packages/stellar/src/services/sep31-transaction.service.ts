@@ -28,7 +28,7 @@ export class Sep31TransactionService {
     const header = { alg: 'HS256', typ: 'JWT' };
     const payload = {
       iss: 'http://localhost:8080',
-      sub: 'GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF',
+      sub: this.envService.get('USDC_ISSUER') || 'G_DUMMY_ISSUER',
       iat: Math.floor(Date.now() / 1000),
       exp: Math.floor(Date.now() / 1000) + 3600,
     };

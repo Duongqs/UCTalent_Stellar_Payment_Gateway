@@ -61,4 +61,7 @@ export class Sep31TransactionEntity extends BaseEntity {
 
   @Column({ name: 'distribution_id', type: 'varchar', nullable: true })
   distributionId: string;
+
+  @Column({ name: 'exchange_rate', type: 'decimal', precision: 12, scale: 4, nullable: true })
+  exchangeRate: number;
 }

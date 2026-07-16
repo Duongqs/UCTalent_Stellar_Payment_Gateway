@@ -191,6 +191,9 @@ export class IpnController {
         txRecord.napasRefId || extraFields?.externalTxId;
       callbackPayload.stellarTxHash = txRecord.stellarTxHash;
       callbackPayload.clearingId = transactionId;
+      callbackPayload.exchangeRate = txRecord.exchangeRate
+        ? Number(txRecord.exchangeRate)
+        : undefined;
     }
 
     const callbackPayloadString = JSON.stringify(callbackPayload);

@@ -21,16 +21,18 @@ let RateController = class RateController {
     firmQuoteService;
     oracleService;
     auditLog;
-    constructor(firmQuoteService, oracleService, auditLog) {
+    envService;
+    constructor(firmQuoteService, oracleService, auditLog, envService) {
         this.firmQuoteService = firmQuoteService;
         this.oracleService = oracleService;
         this.auditLog = auditLog;
+        this.envService = envService;
     }
     async getInfo() {
         return {
             assets: [
                 {
-                    asset: 'stellar:USDC:GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF',
+                    asset: `stellar:USDC:${this.envService.get('USDC_ISSUER') || 'G_DUMMY_ISSUER'}`,
                     sell_delivery_methods: [
                         { name: 'stellar', description: 'Stellar Network' },
                     ],
@@ -69,7 +71,7 @@ let RateController = class RateController {
             fee: {
                 total: feeAmount,
                 asset: sell_asset ||
-                    'stellar:USDC:GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF',
+                    `stellar:USDC:${this.envService.get('USDC_ISSUER') || 'G_DUMMY_ISSUER'}`,
             },
         };
         if (sell_amount && buy_amount) {
@@ -97,7 +99,7 @@ let RateController = class RateController {
             const quote = this.firmQuoteService.create({
                 id: quoteId,
                 sellAsset: sell_asset ||
-                    'stellar:USDC:GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF',
+                    `stellar:USDC:${this.envService.get('USDC_ISSUER') || 'G_DUMMY_ISSUER'}`,
                 buyAsset: buy_asset || 'iso4217:VND',
                 sellAmount: rateObj.sell_amount.toString(),
                 buyAmount: rateObj.buy_amount.toString(),
@@ -142,6 +144,7 @@ exports.RateController = RateController = __decorate([
     (0, common_1.Controller)('rate'),
     __metadata("design:paramtypes", [core_1.FirmQuoteService,
         banking_1.OracleService,
-        core_1.AuditLogService])
+        core_1.AuditLogService,
+        core_1.EnvService])
 ], RateController);
 //# sourceMappingURL=rate.controller.js.map
