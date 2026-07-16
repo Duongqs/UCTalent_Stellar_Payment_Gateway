@@ -165,46 +165,63 @@ let DisbursementPollerService = class DisbursementPollerService {
             legal_name: this.encryption.decrypt(profile.encryptedName),
             bank_code: profile.bankCode,
         };
-        let vndAmount;
-        if (tx.quote_id) {
+        let grossVnd;
+        const actualQuoteId = tx.quote_id || txRecord?.quoteId;
+        if (actualQuoteId) {
             const quote = await this.firmQuoteRepo.findOne({
                 where: {
-                    id: tx.quote_id,
+                    id: actualQuoteId,
                     usedAt: (0, typeorm_2.IsNull)(),
                     expiresAt: (0, typeorm_2.MoreThan)(new Date()),
                 },
             });
             if (!quote) {
-                throw new Error(`Quote ${tx.quote_id} not found, expired, or already consumed`);
+                throw new Error(`Quote ${actualQuoteId} not found, expired, or already consumed`);
             }
             quote.usedAt = new Date();
             quote.transactionId = txId;
             await this.firmQuoteRepo.save(quote);
-            vndAmount = parseInt(quote.buyAmount, 10);
+            grossVnd = parseInt(quote.buyAmount, 10);
             await this.auditLog.log(txId, 'quote_consumed', {
-                quote_id: tx.quote_id,
-                vnd_amount: vndAmount,
+                quote_id: actualQuoteId,
+                gross_vnd: grossVnd,
             });
         }
         else {
             const oracle = await this.oracleService.getSafeFxRate();
-            vndAmount = Math.floor(Number(amountIn) * oracle.rate);
+            grossVnd = Math.floor(Number(amountIn) * oracle.rate);
             await this.auditLog.log(txId, 'rate_calculated', {
                 rate: oracle.rate,
                 method: oracle.method,
-                vnd_amount: vndAmount,
+                gross_vnd: grossVnd,
             });
         }
-        const taxWithheld = Math.floor(vndAmount * 0.1);
-        const finalVndAmount = vndAmount - taxWithheld;
+        const taxWithheld = Math.floor(grossVnd * 0.1);
+        const netVnd = grossVnd - taxWithheld;
         const taxCode = 'PIT-AFFILIATE-10%';
         const complianceMeta = {
             tax_withholding_code: taxCode,
             onshore_contract_ref: `B2B-UNCHAIN-${txId.substring(0, 8)}`,
         };
-        console.log(`[Disbursement Poller] Disbursing ${finalVndAmount} VND (Tax: ${taxWithheld}) for TX ${txId}`);
+        console.log(`[Disbursement Poller] Disbursing ${netVnd} VND (Tax: ${taxWithheld}) for TX ${txId}`);
+        let disburseResult;
         try {
-            await this.ninePayGateway.disburse(finalVndAmount, txId, bankInfo.bank_code, bankInfo.account_number, 'UCTalent Freelance Disbursement', bankInfo.legal_name, complianceMeta);
+            disburseResult = await this.ninePayGateway.disburse(netVnd, txId, bankInfo.bank_code, bankInfo.account_number, 'UCTalent Freelance Disbursement', bankInfo.legal_name, complianceMeta);
+            if (taxWithheld > 0) {
+                try {
+                    const pitBankCode = this.envService.get('PIT_BANK_CODE') || 'BIDV';
+                    const pitAccountNumber = this.envService.get('PIT_ACCOUNT_NUMBER') || '96311300000170179';
+                    const pitAccountName = this.envService.get('PIT_ACCOUNT_NAME') || 'UCTALENT PLATFORM';
+                    console.log(`[Disbursement Poller] Disbursing PIT ${taxWithheld} VND to Platform for TX ${txId}`);
+                    await this.ninePayGateway.disburse(taxWithheld, `${txId}-PIT`, pitBankCode, pitAccountNumber, 'UCTalent PIT Withheld', pitAccountName, complianceMeta);
+                }
+                catch (pitErr) {
+                    console.error(`[Disbursement Poller] PIT Disbursement failed for TX ${txId}:`, pitErr.message);
+                    await this.auditLog.log(txId, 'pit_disbursement_error', {
+                        error: pitErr.message,
+                    });
+                }
+            }
         }
         catch (err) {
             if (err.message && err.message.includes('RECONCILIATION_FAILED')) {
@@ -216,18 +233,19 @@ let DisbursementPollerService = class DisbursementPollerService {
             }
             throw err;
         }
-        const napasRef = `NAPAS-${Date.now()}`;
+        const napasRef = disburseResult?.refId || disburseResult?.napasRef || `9PAY-${txId}-${Date.now()}`;
         await this.anchorRpc.notifyOffchainFundsPending(txId, napasRef);
         await this.sep31Repo.update(txId, {
             napasRefId: napasRef,
-            vndAmount: finalVndAmount,
+            vndAmount: netVnd,
             withheldTaxAmount: taxWithheld,
             taxCode: taxCode,
             status: 'pending_external',
         });
         await this.auditLog.log(txId, 'napas_sent', {
             napas_ref: napasRef,
-            vnd_amount: finalVndAmount,
+            net_vnd: netVnd,
+            gross_vnd: grossVnd,
             withheld_tax_amount: taxWithheld,
             tax_code: taxCode,
         });
@@ -235,7 +253,10 @@ let DisbursementPollerService = class DisbursementPollerService {
         if (this.envService.get('NINEPAY_MODE') === 'mock' ||
             this.envService.get('USE_MOCK_NINEPAY') === 'true' ||
             this.envService.get('USE_MOCK_IPN') === 'true') {
-            await this.ninePayMock.simulateDisbursement(txId, finalVndAmount, txId, napasRef);
+            await this.ninePayMock.simulateDisbursement(txId, netVnd, txId, napasRef);
+            if (taxWithheld > 0) {
+                await this.ninePayMock.simulateDisbursement(`${txId}-PIT`, taxWithheld, `${txId}-PIT`, napasRef);
+            }
         }
     }
     async haltForMissingInfo(txId, reason) {

@@ -19,4 +19,5 @@ export declare class Sep31TransactionEntity extends BaseEntity {
     errorMessage: string;
     expiresAt: Date;
     distributionId: string;
+    exchangeRate: number;
 }

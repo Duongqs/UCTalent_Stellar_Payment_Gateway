@@ -46,7 +46,7 @@ let AnchorRpcService = class AnchorRpcService {
         }
     }
     async notifyOnchainFundsReceived(transactionId, amount_in, stellar_transaction_id) {
-        const usdcIssuer = this.envService.get('USDC_ISSUER') || 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5';
+        const usdcIssuer = this.envService.get('USDC_ISSUER') || 'G_DUMMY_ISSUER';
         return this.patchTransaction(transactionId, {
             status: 'pending_receiver',
             stellar_transaction_id,
