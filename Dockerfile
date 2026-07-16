@@ -23,17 +23,22 @@ RUN npm run build --workspaces --if-present
 FROM node:20-alpine
 WORKDIR /app
 
+RUN apk add --no-cache curl
+
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/package-lock.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/package.json ./apps/api/
+COPY --from=builder /app/packages/core/package.json ./packages/core/
 COPY --from=builder /app/packages/core/dist ./packages/core/dist
+COPY --from=builder /app/packages/stellar/package.json ./packages/stellar/
 COPY --from=builder /app/packages/stellar/dist ./packages/stellar/dist
+COPY --from=builder /app/packages/banking/package.json ./packages/banking/
 COPY --from=builder /app/packages/banking/dist ./packages/banking/dist
 
-EXPOSE 4000
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:4000/health || exit 1
+EXPOSE 8081
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD curl -fsS http://127.0.0.1:8081/api/health/live || exit 1
 
-CMD ["node", "apps/api/dist/main.js"]
+CMD ["node", "apps/api/dist/src/main.js"]

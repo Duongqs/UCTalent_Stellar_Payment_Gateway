@@ -33,8 +33,14 @@ describe('HealthController', () => {
     controller = module.get<HealthController>(HealthController);
   });
 
+  it('should return live status without checking DB', () => {
+    const res = controller.getLive();
+    expect(res.status).toBe('ok');
+    expect(mockDataSource.query).not.toHaveBeenCalled();
+  });
+
   it('should return healthy status when DB is up and circuit breaker is CLOSED', async () => {
-    const res = await controller.getHealth();
+    const res = await controller.getReady();
     expect(res.status).toBe('healthy');
     expect(res.checks.database.status).toBe('ok');
     expect(res.checks.oracle_circuit_breaker).toBe('CLOSED');
