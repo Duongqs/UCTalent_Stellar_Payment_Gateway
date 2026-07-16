@@ -47,6 +47,17 @@ export class NinePayGatewayService {
   }
 
   private async request(method: string, path: string, params: Record<string, string> = {}) {
+    if (this.envService.get('NINEPAY_MODE') === 'mock') {
+      console.log(`[NinePayGateway Mock] Skipping real request to ${path}`);
+      if (path === '/disbursement/check-account') {
+        return { status: 5, account_name: 'MOCK ACCOUNT NAME' };
+      }
+      if (path === '/disbursement/create') {
+        return { status: 5, error_code: null, message: 'Success' };
+      }
+      return { status: 5 };
+    }
+
     const time = Math.round(Date.now() / 1000).toString();
     const signature = this.createSignature(method, path, time, params);
     const authHeader = this.buildAuthHeader(signature);
@@ -71,6 +82,7 @@ export class NinePayGatewayService {
     const response = await axios(config);
     return response.data;
   }
+
 
   async lookupAccount(
     accountNumber: string,
@@ -109,6 +121,11 @@ export class NinePayGatewayService {
     kycName: string,
     complianceMeta?: Record<string, string>
   ) {
+    if (this.envService.get('NINEPAY_MODE') === 'mock') {
+      console.log(`[NinePayGateway Mock] Skipping real disburse request for ${invoiceNo}`);
+      return { status: 5, error_code: null, message: 'Success' };
+    }
+
     const accountName = await this.lookupAccount(accountNumber, bankCode);
     if (!accountName) {
       throw new Error(`RECONCILIATION_FAILED: Cannot lookup account ${accountNumber} at bank ${bankCode}`);

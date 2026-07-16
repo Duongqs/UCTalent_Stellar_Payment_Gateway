@@ -282,7 +282,6 @@ pub fn release_milestone(env: &Env, client: Address, index: u32) {
     let mut status: MilestoneStatus = env.storage().instance().get(&DataKey::MilestoneStatus).unwrap();
 
     if client != config.client { panic!("Only client can initiate release"); }
-    config.platform_address.require_auth();
 
     if !status.is_deposited { panic!("Not deposited"); }
     if status.is_cancelled { panic!("Already cancelled"); }
@@ -391,7 +390,6 @@ pub fn complete_milestone(env: &Env, client: Address, index: u32) {
     let mut status: MilestoneStatus = env.storage().instance().get(&DataKey::MilestoneStatus).unwrap();
 
     if client != config.client { panic!("Only client can initiate"); }
-    config.platform_address.require_auth();
 
     if !status.is_deposited { panic!("Not deposited"); }
     if status.is_cancelled { panic!("Already cancelled"); }
@@ -426,27 +424,56 @@ pub fn withdraw_to_anchor(env: &Env, platform: Address, index: u32) {
     platform.require_auth();
 
     if !env.storage().instance().has(&DataKey::MilestoneConfig) {
+        env.events().publish((Symbol::new(env, "error"), Symbol::new(env, "not_milestone_escrow")), ());
         panic!("Not a milestone escrow");
     }
+    
+    if !env.storage().instance().has(&DataKey::MilestoneStatus) {
+        env.events().publish((Symbol::new(env, "error"), Symbol::new(env, "no_milestone_status")), ());
+        panic!("No milestone status found");
+    }
+
     let config: MilestoneConfig = env.storage().instance().get(&DataKey::MilestoneConfig).unwrap();
     let mut status: MilestoneStatus = env.storage().instance().get(&DataKey::MilestoneStatus).unwrap();
 
-    if platform != config.platform_address { panic!("Only platform can initiate withdrawal"); }
-    if !status.is_deposited { panic!("Not deposited"); }
-    if status.is_cancelled { panic!("Already cancelled"); }
+    if platform != config.platform_address { 
+        env.events().publish((Symbol::new(env, "error"), Symbol::new(env, "platform_mismatch")), (platform.clone(), config.platform_address.clone()));
+        panic!("Only platform can initiate withdrawal"); 
+    }
+    if !status.is_deposited { 
+        env.events().publish((Symbol::new(env, "error"), Symbol::new(env, "not_deposited")), ());
+        panic!("Not deposited"); 
+    }
+    if status.is_cancelled { 
+        env.events().publish((Symbol::new(env, "error"), Symbol::new(env, "already_cancelled")), ());
+        panic!("Already cancelled"); 
+    }
 
     let idx = index as usize;
-    if idx >= config.milestones.len() as usize { panic!("Invalid milestone index"); }
+    if idx >= config.milestones.len() as usize { 
+        env.events().publish((Symbol::new(env, "error"), Symbol::new(env, "invalid_index")), index);
+        panic!("Invalid milestone index"); 
+    }
 
     let mut milestone = status.milestones.get(index).unwrap();
-    if !milestone.is_completed { panic!("Milestone not completed"); }
-    if milestone.is_disputed { panic!("Milestone is disputed"); }
-    if milestone.is_withdrawn { panic!("Already withdrawn"); }
+    if !milestone.is_completed { 
+        env.events().publish((Symbol::new(env, "error"), Symbol::new(env, "not_completed")), index);
+        panic!("Milestone not completed"); 
+    }
+    if milestone.is_disputed { 
+        env.events().publish((Symbol::new(env, "error"), Symbol::new(env, "is_disputed")), index);
+        panic!("Milestone is disputed"); 
+    }
+    if milestone.is_withdrawn { 
+        env.events().publish((Symbol::new(env, "error"), Symbol::new(env, "already_withdrawn")), index);
+        panic!("Already withdrawn"); 
+    }
 
     milestone.is_withdrawn = true;
     status.milestones.set(index, milestone.clone());
     let zero_kyc = BytesN::from_array(env, &[0; 32]);
     if config.freelancer_kyc_id == zero_kyc {
+        env.events().publish((Symbol::new(env, "error"), Symbol::new(env, "no_freelancer_kyc")), ());
         panic!("Freelancer KYC not assigned");
     }
 

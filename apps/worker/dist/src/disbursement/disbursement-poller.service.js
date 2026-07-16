@@ -115,8 +115,10 @@ let DisbursementPollerService = class DisbursementPollerService {
                 : ['pending_sender'],
         })
             .execute();
-        if (lockResult.affected === 0)
+        if (lockResult.affected === 0) {
+            console.log(`[Disbursement Poller] Lock failed for TX ${txId}`);
             return;
+        }
         console.log(`[Disbursement Poller] Processing TX ${txId}`);
         const txRecord = await this.sep31Repo.findOne({ where: { id: txId } });
         let stellarTxHash = txRecord?.stellarTxHash;
@@ -152,6 +154,7 @@ let DisbursementPollerService = class DisbursementPollerService {
         const profile = await this.bankProfileRepo.findOne({
             where: { customerId: receiverId },
         });
+        console.log(`[Disbursement Poller] Profile for ${receiverId}:`, !!profile);
         if (!profile) {
             await this.haltForMissingInfo(txId, `No bank profile for receiver ${receiverId}`);
             return;
@@ -206,6 +209,7 @@ let DisbursementPollerService = class DisbursementPollerService {
         console.log(`[Disbursement Poller] Disbursing ${netVnd} VND (Tax: ${taxWithheld}) for TX ${txId}`);
         let disburseResult;
         try {
+            console.log(`[Disbursement Poller] Calling ninePayGateway.disburse...`);
             disburseResult = await this.ninePayGateway.disburse(netVnd, txId, bankInfo.bank_code, bankInfo.account_number, 'UCTalent Freelance Disbursement', bankInfo.legal_name, complianceMeta);
             if (taxWithheld > 0) {
                 try {

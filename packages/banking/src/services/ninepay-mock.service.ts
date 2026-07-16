@@ -14,8 +14,6 @@ export class NinePayMockService {
   async simulateDisbursement(transactionId: string, amount: number, invoiceNo: string, external_transaction_id: string) {
     console.log(`[Mock 9Pay] Initiating disbursement for invoice ${invoiceNo}, amount: ${amount} VND`);
 
-    await this.anchorRpcService.notifyOffchainFundsPending(transactionId, external_transaction_id);
-
     setTimeout(async () => {
       console.log(`[Mock 9Pay] Disbursement SUCCESS for invoice ${invoiceNo}`);
 
@@ -36,7 +34,7 @@ export class NinePayMockService {
 
       const apiPort = this.envService.get('PORT') || 8081;
       try {
-        await axios.post(`http://localhost:${apiPort}/ipn`, {
+        await axios.post(`http://localhost:${apiPort}/api/ipn`, {
           result: resultB64,
           checksum: expectedChecksum
         });

@@ -58,7 +58,6 @@ let NinePayMockService = class NinePayMockService {
     }
     async simulateDisbursement(transactionId, amount, invoiceNo, external_transaction_id) {
         console.log(`[Mock 9Pay] Initiating disbursement for invoice ${invoiceNo}, amount: ${amount} VND`);
-        await this.anchorRpcService.notifyOffchainFundsPending(transactionId, external_transaction_id);
         setTimeout(async () => {
             console.log(`[Mock 9Pay] Disbursement SUCCESS for invoice ${invoiceNo}`);
             const payload = {

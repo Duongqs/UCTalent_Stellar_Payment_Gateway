@@ -118,7 +118,10 @@ export class DisbursementPollerService {
       })
       .execute();
 
-    if (lockResult.affected === 0) return;
+    if (lockResult.affected === 0) {
+      console.log(`[Disbursement Poller] Lock failed for TX ${txId}`);
+      return;
+    }
 
     console.log(`[Disbursement Poller] Processing TX ${txId}`);
 
@@ -167,6 +170,7 @@ export class DisbursementPollerService {
     const profile = await this.bankProfileRepo.findOne({
       where: { customerId: receiverId },
     });
+    console.log(`[Disbursement Poller] Profile for ${receiverId}:`, !!profile);
     if (!profile) {
       await this.haltForMissingInfo(
         txId,
@@ -237,6 +241,7 @@ export class DisbursementPollerService {
 
     let disburseResult: any;
     try {
+      console.log(`[Disbursement Poller] Calling ninePayGateway.disburse...`);
       disburseResult = await this.ninePayGateway.disburse(
         netVnd,
         txId,
