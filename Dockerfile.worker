@@ -16,8 +16,19 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build all workspace packages and apps
-RUN npm run build --workspaces --if-present
+# Clean stale committed dist/tsbuildinfo, then build in dependency order:
+#   @uc/core → @uc/stellar → @uc/banking → @uc/worker
+# banking imports @uc/stellar; building banking before stellar fails TS2307.
+RUN rm -rf \
+      packages/*/dist \
+      apps/*/dist \
+      packages/*/tsconfig.tsbuildinfo \
+      packages/*/dist/tsconfig.tsbuildinfo \
+      apps/*/dist/tsconfig*.tsbuildinfo \
+  && npm run build -w @uc/core \
+  && npm run build -w @uc/stellar \
+  && npm run build -w @uc/banking \
+  && npm run build -w @uc/worker
 
 # ── Runtime stage ────────────────────────────────────────────
 FROM node:20-alpine
@@ -28,8 +39,11 @@ COPY --from=builder /app/package-lock.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/worker/dist ./apps/worker/dist
 COPY --from=builder /app/apps/worker/package.json ./apps/worker/
+COPY --from=builder /app/packages/core/package.json ./packages/core/
 COPY --from=builder /app/packages/core/dist ./packages/core/dist
+COPY --from=builder /app/packages/stellar/package.json ./packages/stellar/
 COPY --from=builder /app/packages/stellar/dist ./packages/stellar/dist
+COPY --from=builder /app/packages/banking/package.json ./packages/banking/
 COPY --from=builder /app/packages/banking/dist ./packages/banking/dist
 
-CMD ["node", "apps/worker/dist/main.js"]
+CMD ["node", "apps/worker/dist/src/main.js"]

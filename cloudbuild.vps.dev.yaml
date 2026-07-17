@@ -1,0 +1,349 @@
+# uc-stellar API → DEV VPS (Tailscale + Blue/Green)
+#
+# Prerequisites:
+#   - vm-infra: uc-stellar-db-dev, anchor-*-dev on uct_internal_net
+#   - gateway: cb-api.dev.uctalent.io → uc-stellar-api-dev:8081
+#   - gateway: anchor.dev.uctalent.io → anchor-sep-server-dev:8080
+#   - Secret Manager: uc-stellar-dev-secrets (see REQUIRED keys in substitutions)
+#
+# Container name MUST match nginx upstream: uc-stellar-api-dev
+steps:
+  # ──────────────────────────────────────────────────────────────────────────
+  # Step 1a & 1b — Chạy SONG SONG: pull cache + render .env
+  # ──────────────────────────────────────────────────────────────────────────
+
+  - name: gcr.io/cloud-builders/docker
+    id: Pull-cache
+    waitFor: ['-']
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - >-
+        docker pull $_AR_HOSTNAME/$_AR_PROJECT_ID/$_AR_REPOSITORY/$REPO_NAME/$_SERVICE_NAME:latest || true
+
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: Render-env
+    waitFor: ['-']
+    env:
+      # ── Non-secret vars từ Cloud Build substitutions ──────────────────────
+      - _NODE_ENV=${_NODE_ENV}
+      - _PORT=${_PORT}
+      - _POSTGRES_HOST=${_POSTGRES_HOST}
+      - _POSTGRES_PORT=${_POSTGRES_PORT}
+      - _POSTGRES_DB=${_POSTGRES_DB}
+      - _SOROBAN_RPC_URL=${_SOROBAN_RPC_URL}
+      - _NETWORK_PASSPHRASE=${_NETWORK_PASSPHRASE}
+      - _NINEPAY_API_URL=${_NINEPAY_API_URL}
+      - _NINEPAY_MODE=${_NINEPAY_MODE}
+      - _ORACLE_HARD_BOUND_MIN=${_ORACLE_HARD_BOUND_MIN}
+      - _ORACLE_HARD_BOUND_MAX=${_ORACLE_HARD_BOUND_MAX}
+      - _ORACLE_SAFETY_SPREAD=${_ORACLE_SAFETY_SPREAD}
+      - _ORACLE_CACHE_TTL_MS=${_ORACLE_CACHE_TTL_MS}
+      - _ANCHOR_PLATFORM_URL=${_ANCHOR_PLATFORM_URL}
+      - _PLATFORM_SERVER_URL=${_PLATFORM_SERVER_URL}
+      - _UCTALENT_BACKEND_WEBHOOK_URL=${_UCTALENT_BACKEND_WEBHOOK_URL}
+      - _SEP31_WEBHOOK_URL=${_SEP31_WEBHOOK_URL}
+      - _ALLOWED_WEBHOOK_IPS=${_ALLOWED_WEBHOOK_IPS}
+      - _POLL_INTERVAL_MS=${_POLL_INTERVAL_MS}
+      - _PROCESS_INTERVAL_MS=${_PROCESS_INTERVAL_MS}
+      - _USE_MOCK_IPN=${_USE_MOCK_IPN}
+      - _PIT_BANK_CODE=${_PIT_BANK_CODE}
+      - _PIT_ACCOUNT_NUMBER=${_PIT_ACCOUNT_NUMBER}
+      - _PIT_ACCOUNT_NAME=${_PIT_ACCOUNT_NAME}
+      - _KYC_SALT=${_KYC_SALT}
+      - _SECRET_NAME=${_SECRET_NAME}
+    script: |
+      set -e
+      echo "> Fetching secrets from GCP Secret Manager..."
+      # Secret Manager JSON blob chứa:
+      # POSTGRES_USER, POSTGRES_PASSWORD, USDC_ISSUER, FUNDING_SECRET,
+      # ANCHOR_SIGNING_KEY, ESCROW_CONTRACT_ID, ENCRYPTION_SECRET, JWT_SECRET,
+      # NINEPAY_MERCHANT_KEY, NINEPAY_SECRET_KEY, NINEPAY_CHECKSUM_KEY,
+      # WEBHOOK_SECRET, CROSS_BORDER_WEBHOOK_SECRET, SLACK_ALERT_WEBHOOK
+      export SECRET_JSON=$(gcloud secrets versions access latest --secret="$_SECRET_NAME")
+
+      echo "> Calling scripts/render-env.py to generate .env..."
+      python3 /workspace/scripts/render-env.py \
+        "NODE_ENV=$_NODE_ENV" \
+        "PORT=$_PORT" \
+        "POSTGRES_HOST=$_POSTGRES_HOST" \
+        "POSTGRES_PORT=$_POSTGRES_PORT" \
+        "POSTGRES_DB=$_POSTGRES_DB" \
+        "SOROBAN_RPC_URL=$_SOROBAN_RPC_URL" \
+        "NETWORK_PASSPHRASE=$_NETWORK_PASSPHRASE" \
+        "NINEPAY_API_URL=$_NINEPAY_API_URL" \
+        "NINEPAY_MODE=$_NINEPAY_MODE" \
+        "ORACLE_HARD_BOUND_MIN=$_ORACLE_HARD_BOUND_MIN" \
+        "ORACLE_HARD_BOUND_MAX=$_ORACLE_HARD_BOUND_MAX" \
+        "ORACLE_SAFETY_SPREAD=$_ORACLE_SAFETY_SPREAD" \
+        "ORACLE_CACHE_TTL_MS=$_ORACLE_CACHE_TTL_MS" \
+        "ANCHOR_PLATFORM_URL=$_ANCHOR_PLATFORM_URL" \
+        "PLATFORM_SERVER_URL=$_PLATFORM_SERVER_URL" \
+        "UCTALENT_BACKEND_WEBHOOK_URL=$_UCTALENT_BACKEND_WEBHOOK_URL" \
+        "SEP31_WEBHOOK_URL=$_SEP31_WEBHOOK_URL" \
+        "ALLOWED_WEBHOOK_IPS=$_ALLOWED_WEBHOOK_IPS" \
+        "POLL_INTERVAL_MS=$_POLL_INTERVAL_MS" \
+        "PROCESS_INTERVAL_MS=$_PROCESS_INTERVAL_MS" \
+        "USE_MOCK_IPN=$_USE_MOCK_IPN" \
+        "PIT_BANK_CODE=$_PIT_BANK_CODE" \
+        "PIT_ACCOUNT_NUMBER=$_PIT_ACCOUNT_NUMBER" \
+        "PIT_ACCOUNT_NAME=$_PIT_ACCOUNT_NAME" \
+        "KYC_SALT=$_KYC_SALT"
+
+      echo "[OK] .env generated ($(wc -l < /workspace/.env) lines)"
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Step 2 — Build Docker image (API)
+  # ──────────────────────────────────────────────────────────────────────────
+  - name: gcr.io/cloud-builders/docker
+    id: Build
+    waitFor: ['Pull-cache']
+    env:
+      - DOCKER_BUILDKIT=1
+    args:
+      - build
+      - '--build-arg=BUILDKIT_INLINE_CACHE=1'
+      - '--cache-from'
+      - '$_AR_HOSTNAME/$_AR_PROJECT_ID/$_AR_REPOSITORY/$REPO_NAME/$_SERVICE_NAME:latest'
+      - '-t'
+      - >-
+        $_AR_HOSTNAME/$_AR_PROJECT_ID/$_AR_REPOSITORY/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA
+      - '-t'
+      - >-
+        $_AR_HOSTNAME/$_AR_PROJECT_ID/$_AR_REPOSITORY/$REPO_NAME/$_SERVICE_NAME:latest
+      - '-f'
+      - Dockerfile
+      - '.'
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Step 3 — Push image
+  # ──────────────────────────────────────────────────────────────────────────
+  - name: gcr.io/cloud-builders/docker
+    id: Push
+    waitFor: ['Build']
+    args:
+      - push
+      - '--all-tags'
+      - >-
+        $_AR_HOSTNAME/$_AR_PROJECT_ID/$_AR_REPOSITORY/$REPO_NAME/$_SERVICE_NAME
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Step 4 — Deploy lên DEV VPS qua Tailscale + SSH (Blue/Green API)
+  # ──────────────────────────────────────────────────────────────────────────
+  - name: 'ubuntu'
+    id: Deploy-to-VPS
+    waitFor: ['Push', 'Render-env']
+    entrypoint: 'bash'
+    secretEnv: ['SA_BK_DEV', 'TAILSCALE_AUTHKEY', 'VM_SSH_KEY', 'VM_SSH_PORT', 'VPS_KNOWN_HOST']
+    args:
+      - '-c'
+      - |
+        set -euo pipefail
+
+        # ── Cài dependencies ───────────────────────────────────────────────
+        echo "> Installing Tailscale + SSH client..."
+        apt-get update -qq && apt-get install -y -q curl openssh-client
+        curl -fsSL https://tailscale.com/install.sh | sh
+
+        # ── Khởi động Tailscale ────────────────────────────────────────────
+        tailscaled --state=mem: &
+        sleep 3
+        tailscale up \
+          --authkey="$$TAILSCALE_AUTHKEY" \
+          --accept-routes \
+          --hostname="cloudbuild-stellar-$$(date +%s)" \
+          --timeout=30s
+
+        # ── Verify Tailscale IP ────────────────────────────────────────────
+        TS_OK=0
+        for i in $$(seq 1 120); do
+          TS_IP=$$(tailscale ip -4 2>/dev/null || true)
+          if [ -n "$$TS_IP" ]; then
+            echo "[OK] Tailscale connected: $$TS_IP"
+            TS_OK=1; break
+          fi
+          sleep 1
+        done
+        [ "$$TS_OK" -eq 1 ] || { echo "[ERROR] Tailscale failed to get IP"; exit 1; }
+
+        # ── Verify VPS reachable ───────────────────────────────────────────
+        VPS_OK=0
+        for i in $$(seq 1 60); do
+          if timeout 5 bash -c "echo >/dev/tcp/$_VPS_IP/$$VM_SSH_PORT" 2>/dev/null; then
+            echo "[OK] VPS reachable at $_VPS_IP:$$VM_SSH_PORT"
+            VPS_OK=1; break
+          fi
+          sleep 2
+        done
+        [ "$$VPS_OK" -eq 1 ] || { echo "[ERROR] VPS not reachable"; exit 1; }
+
+        # ── Setup SSH ──────────────────────────────────────────────────────
+        echo "> Setting up SSH..."
+        mkdir -p /workspace/.ssh && chmod 700 /workspace/.ssh
+        printf '%s\n' "$$VM_SSH_KEY" | tr -d '\r' > /workspace/.ssh/id_rsa
+        chmod 600 /workspace/.ssh/id_rsa
+        printf '%s\n' "$$VPS_KNOWN_HOST" > /workspace/.ssh/known_hosts
+        chmod 600 /workspace/.ssh/known_hosts
+
+        CONTROL_PATH="/workspace/.ssh/ctl-%r@%h:%p"
+        SSH_OPTS="-i /workspace/.ssh/id_rsa -o Port=$$VM_SSH_PORT -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/workspace/.ssh/known_hosts -o ControlMaster=auto -o ControlPath=$$CONTROL_PATH -o ControlPersist=60"
+        SSH_CMD="ssh $$SSH_OPTS $_VPS_USER@$_VPS_IP"
+        SCP_CMD="scp -o ConnectTimeout=10 $$SSH_OPTS"
+
+        # ── Open persistent SSH master connection ──────────────────────────
+        echo "> Opening persistent SSH master connection..."
+        ssh -i /workspace/.ssh/id_rsa \
+            -o Port="$$VM_SSH_PORT" \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile=/workspace/.ssh/known_hosts \
+            -o ControlMaster=yes \
+            -o ControlPath="$$CONTROL_PATH" \
+            -o ControlPersist=60 \
+            -Nf $_VPS_USER@$_VPS_IP
+        sleep 1
+
+        # ── Prepare directories on VPS ─────────────────────────────────────
+        echo "> Preparing deployment directories on VPS..."
+        $$SSH_CMD 'set -e && \
+          sudo mkdir -p /opt/$_SERVICE_NAME && \
+          sudo chown -R $_VPS_USER:$_VPS_USER /opt/$_SERVICE_NAME && \
+          mkdir -p /tmp/$_SERVICE_NAME && chmod 700 /tmp/$_SERVICE_NAME'
+
+        # ── Copy files song song ───────────────────────────────────────────
+        echo "> Copying files to VPS (parallel)..."
+        $$SCP_CMD /workspace/.env $_VPS_USER@$_VPS_IP:/tmp/$_SERVICE_NAME/ &
+        ENV_PID=$!
+
+        printf '%s\n' "$$SA_BK_DEV" > /workspace/sa.json
+        $$SCP_CMD /workspace/sa.json $_VPS_USER@$_VPS_IP:/tmp/$_SERVICE_NAME/ &
+        SA_PID=$!
+
+        $$SCP_CMD /workspace/scripts/deploy-api.sh $_VPS_USER@$_VPS_IP:/tmp/$_SERVICE_NAME/ &
+        API_SCRIPT_PID=$!
+
+        wait $$ENV_PID        || { echo "[ERROR] Failed to copy .env"; exit 1; }
+        wait $$SA_PID         || { echo "[ERROR] Failed to copy sa.json"; exit 1; }
+        wait $$API_SCRIPT_PID || { echo "[ERROR] Failed to copy deploy-api.sh"; exit 1; }
+        echo "[OK] All files copied."
+
+        # ── Move files to /opt và set permissions ──────────────────────────
+        $$SSH_CMD 'sudo mv /tmp/$_SERVICE_NAME/.env /opt/$_SERVICE_NAME/.env && \
+          sudo mv /tmp/$_SERVICE_NAME/sa.json /opt/$_SERVICE_NAME/sa.json && \
+          sudo chmod 644 /opt/$_SERVICE_NAME/sa.json && \
+          sudo chmod 600 /opt/$_SERVICE_NAME/.env && \
+          sudo chmod 700 /opt/$_SERVICE_NAME && \
+          chmod 700 /tmp/$_SERVICE_NAME/deploy-api.sh'
+
+        # ── Blue/Green deploy API ─────────────────────────────────────────
+        echo "> Running Blue/Green API deploy (dev)..."
+        $$SSH_CMD "set -euo pipefail && \
+          IMAGE=$_AR_HOSTNAME/$_AR_PROJECT_ID/$_AR_REPOSITORY/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA \
+          IMAGE_REPO=$_AR_HOSTNAME/$_AR_PROJECT_ID/$_AR_REPOSITORY/$REPO_NAME/$_SERVICE_NAME \
+          SERVICE_NAME=$_SERVICE_NAME \
+          PORT=$_PORT \
+          AR_HOSTNAME=$_AR_HOSTNAME \
+          SA_JSON_PATH=/opt/$_SERVICE_NAME/sa.json \
+          ENV_FILE_PATH=/opt/$_SERVICE_NAME/.env \
+          DOCKER_NETWORK=uct_internal_net \
+          bash /tmp/$_SERVICE_NAME/deploy-api.sh"
+
+        # ── Cleanup ────────────────────────────────────────────────────────
+        echo "> Cleaning up..."
+        $$SSH_CMD 'rm -rf /tmp/$_SERVICE_NAME' || true
+        ssh -O exit -o ControlPath="$$CONTROL_PATH" $_VPS_USER@$_VPS_IP 2>/dev/null || true
+        tailscale logout || true
+        shred -u /workspace/sa.json /workspace/.ssh/id_rsa /workspace/.ssh/known_hosts 2>/dev/null \
+          || rm -f /workspace/sa.json /workspace/.ssh/id_rsa /workspace/.ssh/known_hosts
+
+        echo "[OK] uc-stellar API (dev) deployment finished!"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Secrets (từ GCP Secret Manager)
+# ──────────────────────────────────────────────────────────────────────────────
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/dev-vm-ssh-key/versions/latest
+      env: 'VM_SSH_KEY'
+    - versionName: projects/$PROJECT_ID/secrets/SA_BK_DEV/versions/latest
+      env: 'SA_BK_DEV'
+    - versionName: projects/$PROJECT_ID/secrets/ssh-port-dev/versions/latest
+      env: 'VM_SSH_PORT'
+    - versionName: projects/$PROJECT_ID/secrets/TAILSCALE_AUTH_KEY_DEV/versions/latest
+      env: 'TAILSCALE_AUTHKEY'
+    - versionName: projects/$PROJECT_ID/secrets/vps-dev-known-host/versions/latest
+      env: 'VPS_KNOWN_HOST'
+
+options:
+  substitutionOption: ALLOW_LOOSE
+  logging: CLOUD_LOGGING_ONLY
+  # Tailscale install + pull + health wait + 35s DNS can exceed default
+  # (override at trigger if needed)
+
+substitutions:
+  # ===== SERVICE =====
+  _SERVICE_NAME: uc-stellar-api-dev
+
+  # ===== VPS =====
+  _VPS_IP: '100.85.11.97'   # Tailscale IP của dev VM
+  _VPS_USER: 'alphaforce'
+
+  # ===== ARTIFACT REGISTRY =====
+  _AR_HOSTNAME: asia-southeast1-docker.pkg.dev
+  _AR_PROJECT_ID: uctalent-dev
+  _AR_REPOSITORY: cloud-run-source-deploy
+
+  # ===== APPLICATION =====
+  _NODE_ENV: production
+  # PORT khớp với envSchema default trong env.config.ts
+  _PORT: '8081'
+
+  # ===== DATABASE (non-secret — chỉ host/port/dbname; user/pass ở Secret Manager) =====
+  # POSTGRES_HOST phải là hostname container trong uct_internal_net (từ vm-infra)
+  _POSTGRES_HOST: 'uc-stellar-db-dev'
+  _POSTGRES_PORT: '5432'
+  _POSTGRES_DB: 'uct_cross_border_dev'
+
+  # ===== SOROBAN / STELLAR =====
+  _SOROBAN_RPC_URL: 'https://soroban-testnet.stellar.org'
+  _NETWORK_PASSPHRASE: 'Test SDF Network ; September 2015'
+
+  # ===== 9PAY =====
+  _NINEPAY_API_URL: 'https://sand-payment.9pay.vn'
+  _NINEPAY_MODE: 'live'
+
+  # ===== ORACLE =====
+  _ORACLE_HARD_BOUND_MIN: '23000'
+  _ORACLE_HARD_BOUND_MAX: '28000'
+  _ORACLE_SAFETY_SPREAD: '0.99'
+  _ORACLE_CACHE_TTL_MS: '900000'
+
+  # ===== ANCHOR PLATFORM (Stellar SEP) — containers từ vm-infra =====
+  # anchor-sep-server-dev: expose port 8080 bên trong uct_internal_net
+  _ANCHOR_PLATFORM_URL: 'http://anchor-sep-server-dev:8080'
+  # anchor-platform-server-dev: expose port 8085 bên trong uct_internal_net
+  _PLATFORM_SERVER_URL: 'http://anchor-platform-server-dev:8085'
+
+  # ===== PLATFORM TREASURY (PIT disbursement account) =====
+  _PIT_BANK_CODE: 'BIDV'
+  _PIT_ACCOUNT_NUMBER: '96311300000170179'
+  _PIT_ACCOUNT_NAME: 'UCTALENT PLATFORM'
+
+  # ===== WEBHOOK URLs =====
+  # Stellar backend container on same Docker network
+  _UCTALENT_BACKEND_WEBHOOK_URL: 'http://uc-talent-backend-dev-stellar:8080/api/v2/cross-border/settlement-callback'
+  _SEP31_WEBHOOK_URL: 'http://uc-stellar-api-dev:8081/api/anchor/disburse'
+  _ALLOWED_WEBHOOK_IPS: '127.0.0.1,::1,*'
+  _USE_MOCK_IPN: 'true'
+  _KYC_SALT: 'uctalent-salt-2026'
+
+  # ===== POLLING INTERVALS =====
+  _POLL_INTERVAL_MS: '5000'
+  _PROCESS_INTERVAL_MS: '2000'
+
+  # ===== SECRET NAME =====
+  _SECRET_NAME: 'uc-stellar-dev-secrets'
+
+tags:
+  - deploy-to-vps
+  - uc-stellar-api-dev
