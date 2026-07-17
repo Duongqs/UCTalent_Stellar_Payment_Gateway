@@ -16,10 +16,16 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build in dependency order: packages first, then apps.
-# `npm run build --workspaces` builds apps/* before packages/* and fails
-# because @uc/api/@uc/worker resolve @uc/core from dist/ before core is built.
-RUN npm run build -w @uc/core \
+# Drop committed/stale dist + incremental caches before build.
+# Tracked incomplete dist (missing e.g. packages/core/dist/config) plus
+# tsbuildinfo caused runtime MODULE_NOT_FOUND for ../config/env.service.
+RUN rm -rf \
+      packages/*/dist \
+      apps/*/dist \
+      packages/*/tsconfig.tsbuildinfo \
+      packages/*/dist/tsconfig.tsbuildinfo \
+      apps/*/dist/tsconfig*.tsbuildinfo \
+  && npm run build -w @uc/core \
   && npm run build -w @uc/banking \
   && npm run build -w @uc/stellar \
   && npm run build -w @uc/api
