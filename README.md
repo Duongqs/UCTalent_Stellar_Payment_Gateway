@@ -8,9 +8,7 @@
 
 | Contract | Network | Address |
 |---|---|---|
-| `uctalent-escrow` (Soroban milestone escrow) | Stellar Testnet | `<PASTE_YOUR_CONTRACT_ADDRESS_HERE>` |
-
-<!-- TODO: replace <PASTE_YOUR_CONTRACT_ADDRESS_HERE> with the deployed contract address, e.g. CXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX -->
+| `uctalent-escrow` (Soroban milestone escrow) | Stellar Testnet | [`CAG2H3CFGLZJZZKPU3V7SZQZ7SW2KL3BAOVKDDFV4WAOO2B7LOCKCE7M`](https://stellar.expert/explorer/testnet/contract/CAG2H3CFGLZJZZKPU3V7SZQZ7SW2KL3BAOVKDDFV4WAOO2B7LOCKCE7M) |
 
 ## 🚀 Live Demo
 
