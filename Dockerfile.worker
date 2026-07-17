@@ -16,8 +16,13 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build all workspace packages and apps
-RUN npm run build --workspaces --if-present
+# Build in dependency order: packages first, then worker.
+# `npm run build --workspaces` builds apps/* before packages/* and fails
+# because @uc/worker resolves @uc/core from dist/ before core is built.
+RUN npm run build -w @uc/core \
+  && npm run build -w @uc/banking \
+  && npm run build -w @uc/stellar \
+  && npm run build -w @uc/worker
 
 # ── Runtime stage ────────────────────────────────────────────
 FROM node:20-alpine
