@@ -96,43 +96,49 @@ let IpnController = class IpnController {
             const payloadStr = Buffer.from(resultB64, 'base64').toString('utf8');
             const payload = JSON.parse(payloadStr);
             const { invoice_no, transaction_id, external_transaction_id, status } = payload;
-            console.log(`[IPN] Received: invoice=${invoice_no}, status=${status}`);
+            console.log(`[IPN] Received: invoice=${invoice_no}, transaction_id=${transaction_id}, status=${status}`);
+            const tx = await this.sep31CoreService.findByPartialId(transaction_id);
+            if (!tx) {
+                console.warn(`[IPN] Cannot find matching transaction for partial ID ${transaction_id}`);
+                return { message: 'Not found' };
+            }
+            const realTxId = tx.id;
             const eventType = `ipn_${status.toLowerCase()}`;
-            const existing = await this.sep31CoreService.hasEventLogged(transaction_id, eventType);
+            const existing = await this.sep31CoreService.hasEventLogged(realTxId, eventType);
             if (existing) {
-                console.log(`[IPN] Duplicate ${status} for ${transaction_id}, skipping`);
+                console.log(`[IPN] Duplicate ${status} for ${realTxId}, skipping`);
                 return { message: 'Already processed' };
             }
             switch (status) {
                 case 'SUCCESS':
-                    if (!transaction_id.startsWith('ucttx')) {
-                        await this.anchorRpc.notifyOffchainFundsAvailable(transaction_id, external_transaction_id);
+                    if (!realTxId.startsWith('ucttx')) {
+                        await this.anchorRpc.notifyOffchainFundsAvailable(realTxId, external_transaction_id);
                     }
-                    await this.sep31CoreService.completeDisbursement(transaction_id, external_transaction_id);
-                    await this.sendBackendWebhook(transaction_id, 'success', {
+                    await this.sep31CoreService.completeDisbursement(realTxId, external_transaction_id);
+                    await this.sendBackendWebhook(realTxId, 'success', {
                         externalTxId: external_transaction_id,
+                        ninePayInvoiceNo: invoice_no,
                     });
                     break;
                 case 'FAILED': {
-                    const tx = await this.sep31CoreService.findById(transaction_id);
                     const retryCount = tx?.retryCount ?? 0;
                     if (retryCount < 3) {
                         const nextRetryMs = Math.pow(2, retryCount) * 30_000;
-                        await this.sep31CoreService.retryDisbursement(transaction_id, retryCount, nextRetryMs);
-                        console.warn(`[IPN] FAILED for ${transaction_id}, retry ${retryCount + 1}/3 scheduled in ${nextRetryMs}ms`);
+                        await this.sep31CoreService.retryDisbursement(realTxId, retryCount, nextRetryMs);
+                        console.warn(`[IPN] FAILED for ${realTxId}, retry ${retryCount + 1}/3 scheduled in ${nextRetryMs}ms`);
                     }
                     else {
-                        if (!transaction_id.startsWith('ucttx')) {
-                            await this.anchorRpc.notifyTransactionError(transaction_id, `Disbursement failed after 3 retries`);
+                        if (!realTxId.startsWith('ucttx')) {
+                            await this.anchorRpc.notifyTransactionError(realTxId, `Disbursement failed after 3 retries`);
                         }
-                        await this.sep31CoreService.failDisbursement(transaction_id);
-                        console.error(`[ALERT:disbursement_failed] TX ${transaction_id} failed after 3 retries`);
-                        await this.sendBackendWebhook(transaction_id, 'failed');
+                        await this.sep31CoreService.failDisbursement(realTxId);
+                        console.error(`[ALERT:disbursement_failed] TX ${realTxId} failed after 3 retries`);
+                        await this.sendBackendWebhook(realTxId, 'failed');
                     }
                     break;
                 }
                 default:
-                    console.warn(`[IPN] Unknown status '${status}' for ${transaction_id}`);
+                    console.warn(`[IPN] Unknown status '${status}' for ${realTxId}`);
                     break;
             }
             return { message: 'Acknowledged' };
@@ -169,7 +175,11 @@ let IpnController = class IpnController {
                 ? Number(txRecord.withheldTaxAmount)
                 : undefined;
             callbackPayload.napasRefId =
-                txRecord.napasRefId || extraFields?.externalTxId;
+                (txRecord.napasRefId && !txRecord.napasRefId.startsWith('9PAY-FALLBACK'))
+                    ? txRecord.napasRefId
+                    : extraFields?.ninePayInvoiceNo
+                        || extraFields?.externalTxId
+                        || txRecord.napasRefId;
             callbackPayload.stellarTxHash = txRecord.stellarTxHash;
             callbackPayload.clearingId = transactionId;
             callbackPayload.exchangeRate = txRecord.exchangeRate

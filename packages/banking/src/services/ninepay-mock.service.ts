@@ -17,9 +17,10 @@ export class NinePayMockService {
     setTimeout(async () => {
       console.log(`[Mock 9Pay] Disbursement SUCCESS for invoice ${invoiceNo}`);
 
+      const truncatedTxId = transactionId.replace(/-/g, '').substring(0, 30);
       const payload = {
         invoice_no: invoiceNo,
-        transaction_id: transactionId,
+        transaction_id: truncatedTxId,
         external_transaction_id,
         status: 'SUCCESS'
       };
@@ -32,7 +33,7 @@ export class NinePayMockService {
         .digest('hex')
         .toUpperCase();
 
-      const apiPort = this.envService.get('PORT') || 8081;
+      const apiPort = 8081;
       try {
         await axios.post(`http://localhost:${apiPort}/api/ipn`, {
           result: resultB64,

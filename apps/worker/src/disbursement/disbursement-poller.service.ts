@@ -194,32 +194,43 @@ export class DisbursementPollerService {
     };
 
     let grossVnd: number;
+    let effectiveExchangeRate: number | undefined;
     const actualQuoteId = tx.quote_id || txRecord?.quoteId;
     if (actualQuoteId) {
       const quote = await this.firmQuoteRepo.findOne({
-        where: {
-          id: actualQuoteId,
-          usedAt: IsNull(),
-          expiresAt: MoreThan(new Date()),
-        },
+        where: { id: actualQuoteId },
       });
       if (!quote) {
-        throw new Error(
-          `Quote ${actualQuoteId} not found, expired, or already consumed`,
-        );
+        throw new Error(`Quote ${actualQuoteId} not found`);
       }
-      quote.usedAt = new Date();
-      quote.transactionId = txId;
-      await this.firmQuoteRepo.save(quote);
 
-      grossVnd = parseInt(quote.buyAmount, 10);
-      await this.auditLog.log(txId, 'quote_consumed', {
-        quote_id: actualQuoteId,
-        gross_vnd: grossVnd,
-      });
+      if (quote.usedAt && quote.transactionId === txId) {
+        // Already consumed by this transaction in a previous try, allow proceeding
+        grossVnd = parseInt(quote.buyAmount, 10);
+      } else if (quote.usedAt) {
+        throw new Error(`Quote ${actualQuoteId} already consumed by another transaction`);
+      } else if (quote.expiresAt && new Date(quote.expiresAt).getTime() < Date.now()) {
+        throw new Error(`Quote ${actualQuoteId} expired`);
+      } else {
+        quote.usedAt = new Date();
+        quote.transactionId = txId;
+        await this.firmQuoteRepo.save(quote);
+
+        grossVnd = parseInt(quote.buyAmount, 10);
+        await this.auditLog.log(txId, 'quote_consumed', {
+          quote_id: actualQuoteId,
+          gross_vnd: grossVnd,
+        });
+      }
+      
+      const amountInNum = Number(amountIn);
+      if (amountInNum > 0) {
+        effectiveExchangeRate = grossVnd / amountInNum;
+      }
     } else {
       const oracle = await this.oracleService.getSafeFxRate();
       grossVnd = Math.floor(Number(amountIn) * oracle.rate);
+      effectiveExchangeRate = oracle.rate;
       await this.auditLog.log(txId, 'rate_calculated', {
         rate: oracle.rate,
         method: oracle.method,
@@ -286,7 +297,13 @@ export class DisbursementPollerService {
       throw err;
     }
 
-    const napasRef = disburseResult?.refId || disburseResult?.napasRef || `9PAY-${txId}-${Date.now()}`;
+    const napasRef = disburseResult?.paymentNo
+      || (disburseResult?.payment_no ? String(disburseResult.payment_no) : undefined)
+      || (() => {
+        const fallback = `9PAY-FALLBACK-${txId.substring(0, 8)}-${Date.now()}`;
+        console.warn(`[Disbursement Poller] WARNING: No payment_no from 9Pay for TX ${txId}. Using fallback: ${fallback}`);
+        return fallback;
+      })();
     await this.anchorRpc.notifyOffchainFundsPending(txId, napasRef);
 
     await this.sep31Repo.update(txId, {
@@ -295,6 +312,7 @@ export class DisbursementPollerService {
       withheldTaxAmount: taxWithheld,
       taxCode: taxCode,
       status: 'pending_external',
+      ...(effectiveExchangeRate != null && { exchangeRate: effectiveExchangeRate }),
     });
 
     await this.auditLog.log(txId, 'napas_sent', {

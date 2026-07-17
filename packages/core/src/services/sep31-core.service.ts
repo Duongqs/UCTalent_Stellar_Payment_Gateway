@@ -20,6 +20,14 @@ export class Sep31CoreService {
     return this.sep31Repo.findOne({ where: { idempotencyKey: key } });
   }
 
+  async findByPartialId(partialId: string): Promise<Sep31TransactionEntity | null> {
+    if (!partialId || partialId.length < 30) return null;
+    return this.sep31Repo
+      .createQueryBuilder('tx')
+      .where("REPLACE(tx.id::text, '-', '') LIKE :partial", { partial: `${partialId}%` })
+      .getOne();
+  }
+
   async findByStellarTxHash(stellarTxHash: string): Promise<Sep31TransactionEntity[]> {
     return this.sep31Repo.find({ where: { stellarTxHash } });
   }
