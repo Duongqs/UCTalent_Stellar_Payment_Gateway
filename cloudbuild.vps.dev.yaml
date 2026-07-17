@@ -46,6 +46,11 @@ steps:
       - _ALLOWED_WEBHOOK_IPS=${_ALLOWED_WEBHOOK_IPS}
       - _POLL_INTERVAL_MS=${_POLL_INTERVAL_MS}
       - _PROCESS_INTERVAL_MS=${_PROCESS_INTERVAL_MS}
+      - _USE_MOCK_IPN=${_USE_MOCK_IPN}
+      - _PIT_BANK_CODE=${_PIT_BANK_CODE}
+      - _PIT_ACCOUNT_NUMBER=${_PIT_ACCOUNT_NUMBER}
+      - _PIT_ACCOUNT_NAME=${_PIT_ACCOUNT_NAME}
+      - _KYC_SALT=${_KYC_SALT}
       - _SECRET_NAME=${_SECRET_NAME}
     script: |
       set -e
@@ -78,7 +83,12 @@ steps:
         "SEP31_WEBHOOK_URL=$_SEP31_WEBHOOK_URL" \
         "ALLOWED_WEBHOOK_IPS=$_ALLOWED_WEBHOOK_IPS" \
         "POLL_INTERVAL_MS=$_POLL_INTERVAL_MS" \
-        "PROCESS_INTERVAL_MS=$_PROCESS_INTERVAL_MS"
+        "PROCESS_INTERVAL_MS=$_PROCESS_INTERVAL_MS" \
+        "USE_MOCK_IPN=$_USE_MOCK_IPN" \
+        "PIT_BANK_CODE=$_PIT_BANK_CODE" \
+        "PIT_ACCOUNT_NUMBER=$_PIT_ACCOUNT_NUMBER" \
+        "PIT_ACCOUNT_NAME=$_PIT_ACCOUNT_NAME" \
+        "KYC_SALT=$_KYC_SALT"
 
       echo "[OK] .env generated ($(wc -l < /workspace/.env) lines)"
 
@@ -300,8 +310,7 @@ substitutions:
 
   # ===== 9PAY =====
   _NINEPAY_API_URL: 'https://sand-payment.9pay.vn'
-  # NINEPAY_MODE phải là 'mock' hoặc 'live' theo envSchema
-  _NINEPAY_MODE: 'mock'
+  _NINEPAY_MODE: 'live'
 
   # ===== ORACLE =====
   _ORACLE_HARD_BOUND_MIN: '23000'
@@ -315,12 +324,18 @@ substitutions:
   # anchor-platform-server-dev: expose port 8085 bên trong uct_internal_net
   _PLATFORM_SERVER_URL: 'http://anchor-platform-server-dev:8085'
 
+  # ===== PLATFORM TREASURY (PIT disbursement account) =====
+  _PIT_BANK_CODE: 'BIDV'
+  _PIT_ACCOUNT_NUMBER: '96311300000170179'
+  _PIT_ACCOUNT_NAME: 'UCTALENT PLATFORM'
+
   # ===== WEBHOOK URLs =====
-  # Service-to-service: internal Docker DNS (stable, no public dependency)
-  _UCTALENT_BACKEND_WEBHOOK_URL: 'http://uc-talent-backend-dev:8080/api/v2/cross-border/settlement-callback'
-  # Anchor on same network → internal URL preferred; public is https://cb-api.dev.uctalent.io
+  # Stellar backend container on same Docker network
+  _UCTALENT_BACKEND_WEBHOOK_URL: 'http://uc-talent-backend-dev-stellar:8080/api/v2/cross-border/settlement-callback'
   _SEP31_WEBHOOK_URL: 'http://uc-stellar-api-dev:8081/api/anchor/disburse'
   _ALLOWED_WEBHOOK_IPS: '127.0.0.1,::1,*'
+  _USE_MOCK_IPN: 'true'
+  _KYC_SALT: 'uctalent-salt-2026'
 
   # ===== POLLING INTERVALS =====
   _POLL_INTERVAL_MS: '5000'
