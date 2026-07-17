@@ -24,11 +24,12 @@ export class BankVaultService {
   }): Promise<BankProfileEntity> {
     const beneficiaryRefId = this.encryption.createBeneficiaryRefId(data.stellar_wallet, data.account_number);
 
-    let profile = await this.bankProfileRepo.findOne({ where: { beneficiaryRefId } });
+    let profile = await this.bankProfileRepo.findOne({ where: { customerId: data.customer_id } });
     if (!profile) {
       profile = new BankProfileEntity();
-      profile.beneficiaryRefId = beneficiaryRefId;
     }
+    
+    profile.beneficiaryRefId = beneficiaryRefId;
 
     profile.customerId = data.customer_id;
     profile.stellarWallet = data.stellar_wallet;
