@@ -16,9 +16,9 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Drop committed/stale dist + incremental caches before build.
-# Tracked incomplete dist (missing e.g. packages/core/dist/config) plus
-# tsbuildinfo caused runtime MODULE_NOT_FOUND for ../config/env.service.
+# Clean stale committed dist/tsbuildinfo, then build in dependency order:
+#   @uc/core → @uc/stellar → @uc/banking → @uc/worker
+# banking imports @uc/stellar; building banking before stellar fails TS2307.
 RUN rm -rf \
       packages/*/dist \
       apps/*/dist \
@@ -26,8 +26,8 @@ RUN rm -rf \
       packages/*/dist/tsconfig.tsbuildinfo \
       apps/*/dist/tsconfig*.tsbuildinfo \
   && npm run build -w @uc/core \
-  && npm run build -w @uc/banking \
   && npm run build -w @uc/stellar \
+  && npm run build -w @uc/banking \
   && npm run build -w @uc/worker
 
 # ── Runtime stage ────────────────────────────────────────────
