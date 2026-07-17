@@ -134,11 +134,15 @@ steps:
     id: Deploy-to-VPS
     waitFor: ['Push', 'Render-env']
     entrypoint: 'bash'
-    secretEnv: ['SA_BK_DEV', 'TAILSCALE_AUTHKEY', 'VM_SSH_KEY', 'VM_SSH_PORT', 'VPS_KNOWN_HOST']
+    secretEnv: ['SA_BK_DEV', 'TAILSCALE_AUTHKEY', 'TAILSCALE_IP_DEV', 'VM_SSH_KEY', 'VM_SSH_PORT', 'VPS_KNOWN_HOST']
     args:
       - '-c'
       - |
         set -euo pipefail
+
+        VPS_IP=$$(printf '%s' "$$TAILSCALE_IP_DEV" | tr -d '[:space:]')
+        [ -n "$$VPS_IP" ] || { echo "[ERROR] tailscale-ip-dev secret is empty"; exit 1; }
+        echo "> VPS Tailscale IP (tailscale-ip-dev/active): $$VPS_IP"
 
         # ── Cài dependencies ───────────────────────────────────────────────
         echo "> Installing Tailscale + SSH client..."
@@ -169,8 +173,8 @@ steps:
         # ── Verify VPS reachable ───────────────────────────────────────────
         VPS_OK=0
         for i in $$(seq 1 60); do
-          if timeout 5 bash -c "echo >/dev/tcp/$_VPS_IP/$$VM_SSH_PORT" 2>/dev/null; then
-            echo "[OK] VPS reachable at $_VPS_IP:$$VM_SSH_PORT"
+          if timeout 5 bash -c "echo >/dev/tcp/$$VPS_IP/$$VM_SSH_PORT" 2>/dev/null; then
+            echo "[OK] VPS reachable at $$VPS_IP:$$VM_SSH_PORT"
             VPS_OK=1; break
           fi
           sleep 2
@@ -187,7 +191,7 @@ steps:
 
         CONTROL_PATH="/workspace/.ssh/ctl-%r@%h:%p"
         SSH_OPTS="-i /workspace/.ssh/id_rsa -o Port=$$VM_SSH_PORT -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/workspace/.ssh/known_hosts -o ControlMaster=auto -o ControlPath=$$CONTROL_PATH -o ControlPersist=60"
-        SSH_CMD="ssh $$SSH_OPTS $_VPS_USER@$_VPS_IP"
+        SSH_CMD="ssh $$SSH_OPTS $_VPS_USER@$$VPS_IP"
         SCP_CMD="scp -o ConnectTimeout=10 $$SSH_OPTS"
 
         # ── Open persistent SSH master connection ──────────────────────────
@@ -200,7 +204,7 @@ steps:
             -o ControlMaster=yes \
             -o ControlPath="$$CONTROL_PATH" \
             -o ControlPersist=60 \
-            -Nf $_VPS_USER@$_VPS_IP
+            -Nf $_VPS_USER@$$VPS_IP
         sleep 1
 
         # ── Prepare directories on VPS ─────────────────────────────────────
@@ -212,14 +216,14 @@ steps:
 
         # ── Copy files song song ───────────────────────────────────────────
         echo "> Copying files to VPS (parallel)..."
-        $$SCP_CMD /workspace/.env $_VPS_USER@$_VPS_IP:/tmp/$_SERVICE_NAME/ &
+        $$SCP_CMD /workspace/.env $_VPS_USER@$$VPS_IP:/tmp/$_SERVICE_NAME/ &
         ENV_PID=$!
 
         printf '%s\n' "$$SA_BK_DEV" > /workspace/sa.json
-        $$SCP_CMD /workspace/sa.json $_VPS_USER@$_VPS_IP:/tmp/$_SERVICE_NAME/ &
+        $$SCP_CMD /workspace/sa.json $_VPS_USER@$$VPS_IP:/tmp/$_SERVICE_NAME/ &
         SA_PID=$!
 
-        $$SCP_CMD /workspace/scripts/deploy-api.sh $_VPS_USER@$_VPS_IP:/tmp/$_SERVICE_NAME/ &
+        $$SCP_CMD /workspace/scripts/deploy-api.sh $_VPS_USER@$$VPS_IP:/tmp/$_SERVICE_NAME/ &
         API_SCRIPT_PID=$!
 
         wait $$ENV_PID        || { echo "[ERROR] Failed to copy .env"; exit 1; }
@@ -251,7 +255,7 @@ steps:
         # ── Cleanup ────────────────────────────────────────────────────────
         echo "> Cleaning up..."
         $$SSH_CMD 'rm -rf /tmp/$_SERVICE_NAME' || true
-        ssh -O exit -o ControlPath="$$CONTROL_PATH" $_VPS_USER@$_VPS_IP 2>/dev/null || true
+        ssh -O exit -o ControlPath="$$CONTROL_PATH" $_VPS_USER@$$VPS_IP 2>/dev/null || true
         tailscale logout || true
         shred -u /workspace/sa.json /workspace/.ssh/id_rsa /workspace/.ssh/known_hosts 2>/dev/null \
           || rm -f /workspace/sa.json /workspace/.ssh/id_rsa /workspace/.ssh/known_hosts
@@ -269,8 +273,10 @@ availableSecrets:
       env: 'SA_BK_DEV'
     - versionName: projects/$PROJECT_ID/secrets/ssh-port-dev/versions/latest
       env: 'VM_SSH_PORT'
-    - versionName: projects/$PROJECT_ID/secrets/TAILSCALE_AUTH_KEY_DEV/versions/latest
+    - versionName: projects/$PROJECT_ID/secrets/TAILSCALE_AUTH_KEY_DEV/versions/active
       env: 'TAILSCALE_AUTHKEY'
+    - versionName: projects/$PROJECT_ID/secrets/tailscale-ip-dev/versions/active
+      env: 'TAILSCALE_IP_DEV'
     - versionName: projects/$PROJECT_ID/secrets/vps-dev-known-host/versions/latest
       env: 'VPS_KNOWN_HOST'
 
@@ -285,7 +291,6 @@ substitutions:
   _SERVICE_NAME: uc-stellar-api-dev
 
   # ===== VPS =====
-  _VPS_IP: '100.85.11.97'   # Tailscale IP của dev VM
   _VPS_USER: 'alphaforce'
 
   # ===== ARTIFACT REGISTRY =====
