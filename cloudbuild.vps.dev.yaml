@@ -186,7 +186,12 @@ steps:
         mkdir -p /workspace/.ssh && chmod 700 /workspace/.ssh
         printf '%s\n' "$$VM_SSH_KEY" | tr -d '\r' > /workspace/.ssh/id_rsa
         chmod 600 /workspace/.ssh/id_rsa
-        printf '%s\n' "$$VPS_KNOWN_HOST" > /workspace/.ssh/known_hosts
+        KNOWN_ENTRY=$$(printf '%s' "$$VPS_KNOWN_HOST" | tr -d '\r\n')
+        case "$$KNOWN_ENTRY" in
+          \[*) ;;
+          *) KNOWN_ENTRY="[$$VPS_IP]:$$VM_SSH_PORT $$KNOWN_ENTRY" ;;
+        esac
+        printf '%s\n' "$$KNOWN_ENTRY" > /workspace/.ssh/known_hosts
         chmod 600 /workspace/.ssh/known_hosts
 
         CONTROL_PATH="/workspace/.ssh/ctl-%r@%h:%p"
@@ -277,7 +282,7 @@ availableSecrets:
       env: 'TAILSCALE_AUTHKEY'
     - versionName: projects/$PROJECT_ID/secrets/tailscale-ip-dev/versions/active
       env: 'TAILSCALE_IP_DEV'
-    - versionName: projects/$PROJECT_ID/secrets/vps-dev-known-host/versions/latest
+    - versionName: projects/$PROJECT_ID/secrets/vps-dev-known-host/versions/active
       env: 'VPS_KNOWN_HOST'
 
 options:
