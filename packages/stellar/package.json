@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
-    "@stellar/stellar-sdk": "^15.1.0",
+    "@stellar/stellar-sdk": "^16.0.1",
     "@uc/core": "*"
   },
   "devDependencies": {

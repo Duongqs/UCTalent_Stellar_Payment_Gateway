@@ -25,9 +25,11 @@ export class NinePayGatewayService {
 
   private buildCanonicalQuery(params: Record<string, string>): string {
     if (!params || Object.keys(params).length === 0) return '';
-    return Object.keys(params).sort().map(key => {
-      return key + '=' + (params[key] || '');
-    }).join('&');
+    const sortedParams: Record<string, string> = {};
+    Object.keys(params).sort().forEach(key => {
+      sortedParams[key] = params[key] || '';
+    });
+    return new URLSearchParams(sortedParams).toString();
   }
 
   private createSignature(method: string, path: string, time: string, params: Record<string, string>): string {
@@ -36,10 +38,13 @@ export class NinePayGatewayService {
     if (httpQuery) {
       message += '\n' + httpQuery;
     }
-    return crypto
+    console.log(`[9Pay Signature Debug] Message to sign for ${path}:\n---\n${message}\n---`);
+    const sig = crypto
       .createHmac('sha256', this.secretKey)
       .update(message, 'utf8')
       .digest('base64');
+    console.log(`[9Pay Signature Debug] Computed Signature: ${sig}`);
+    return sig;
   }
 
   private buildAuthHeader(signature: string): string {
@@ -77,10 +82,18 @@ export class NinePayGatewayService {
       config.params = params;
     } else {
       config.data = new URLSearchParams(params).toString();
+      console.log(`[9Pay HTTP Request Debug] Body sent for ${path}:\n---\n${config.data}\n---`);
     }
 
-    const response = await axios(config);
-    return response.data;
+    try {
+      const response = await axios(config);
+      return response.data;
+    } catch (error: any) {
+      if (error.response) {
+         console.error(`[9Pay HTTP Request Error] ${error.response.status} - Data:`, JSON.stringify(error.response.data));
+      }
+      throw error;
+    }
   }
 
 
@@ -90,7 +103,7 @@ export class NinePayGatewayService {
     accountType: string = '0',
   ): Promise<string | null> {
     try {
-      const requestId = crypto.randomUUID();
+      const requestId = crypto.randomUUID().replace(/-/g, '').substring(0, 30);
       const params = {
         request_id: requestId,
         bank_code: bankCode,
@@ -122,8 +135,9 @@ export class NinePayGatewayService {
     complianceMeta?: Record<string, string>
   ) {
     if (this.envService.get('NINEPAY_MODE') === 'mock') {
-      console.log(`[NinePayGateway Mock] Skipping real disburse request for ${invoiceNo}`);
-      return { status: 5, error_code: null, message: 'Success' };
+      const mockPaymentNo = `MOCK-${Date.now()}`;
+      console.log(`[NinePayGateway Mock] Skipping real disburse request for ${invoiceNo}, mock payment_no: ${mockPaymentNo}`);
+      return { status: 5, error_code: null, message: 'Success', payment_no: mockPaymentNo, paymentNo: mockPaymentNo };
     }
 
     const accountName = await this.lookupAccount(accountNumber, bankCode);
@@ -134,8 +148,9 @@ export class NinePayGatewayService {
     this.nameMatchingService.reconcileNames(kycName, accountName, invoiceNo);
 
     try {
+      const shortInvoiceNo = invoiceNo.replace(/-/g, '').substring(0, 30);
       const params: Record<string, string> = {
-        request_id: invoiceNo,
+        request_id: shortInvoiceNo,
         amount: String(amount),
         description: description,
         bank_code: bankCode,
@@ -147,7 +162,13 @@ export class NinePayGatewayService {
       const result = await this.request('POST', '/disbursement/create', params);
 
       if (result.status === 2 || result.status === 5) {
-        return result;
+        const paymentNo = result.payment_no ? String(result.payment_no) : undefined;
+        console.log(`[9Pay Disburse] Success for ${shortInvoiceNo}, payment_no: ${paymentNo}, status: ${result.status}`);
+        return {
+          ...result,
+          paymentNo,
+          requestId: shortInvoiceNo,
+        };
       } else {
         throw new Error(`9Pay Disbursement Failed: [${result.error_code}] ${result.message}`);
       }

@@ -24,11 +24,19 @@ export class BankVaultService {
   }): Promise<BankProfileEntity> {
     const beneficiaryRefId = this.encryption.createBeneficiaryRefId(data.stellar_wallet, data.account_number);
 
-    let profile = await this.bankProfileRepo.findOne({ where: { beneficiaryRefId } });
-    if (!profile) {
+    let profile = await this.bankProfileRepo.findOne({ 
+      where: { customerId: data.customer_id },
+      order: { createdAt: 'DESC' }
+    });
+    
+    if (profile && profile.beneficiaryRefId !== beneficiaryRefId) {
+      await this.bankProfileRepo.delete({ beneficiaryRefId: profile.beneficiaryRefId });
       profile = new BankProfileEntity();
-      profile.beneficiaryRefId = beneficiaryRefId;
+    } else if (!profile) {
+      profile = new BankProfileEntity();
     }
+    
+    profile.beneficiaryRefId = beneficiaryRefId;
 
     profile.customerId = data.customer_id;
     profile.stellarWallet = data.stellar_wallet;
@@ -59,7 +67,10 @@ export class BankVaultService {
   }
 
   async getProfile(customerId: string): Promise<BankProfileEntity | null> {
-    return this.bankProfileRepo.findOne({ where: { customerId } });
+    return this.bankProfileRepo.findOne({ 
+      where: { customerId },
+      order: { createdAt: 'DESC' }
+    });
   }
 
   async hydrateBankInfo(refId: string): Promise<{

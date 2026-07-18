@@ -113,6 +113,7 @@ export class PendingClearingProcessorService {
 
     const profile = await this.bankProfileRepo.findOne({
       where: { customerId: receiverId },
+      order: { createdAt: 'DESC' },
     });
     if (!profile) {
       await this.haltForMissingInfo(
