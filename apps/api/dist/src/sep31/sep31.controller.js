@@ -124,6 +124,7 @@ let Sep31Controller = class Sep31Controller {
                 asset_code: 'USDC',
                 sender_id,
                 receiver_id,
+                quote_id,
                 receiver_routing_number,
                 receiver_account_number,
             });
