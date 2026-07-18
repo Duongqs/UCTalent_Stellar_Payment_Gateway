@@ -26,9 +26,24 @@ cat "${SA_JSON_PATH}" | sudo docker login -u _json_key --password-stdin "https:/
 echo "> [2/9] Pruning dangling images..."
 sudo docker image prune -f 2>/dev/null || true
 
-# ── Step 3: Pull new image ────────────────────────────────────────────────────
+# ── Step 3: Pull new image (retry — overlayfs extract can flake on .bin) ──────
 echo "> [3/9] Pulling new image: ${IMAGE}..."
-sudo docker pull "${IMAGE}"
+PULL_OK=0
+for attempt in 1 2 3; do
+  if sudo docker pull "${IMAGE}"; then
+    PULL_OK=1
+    break
+  fi
+  echo "[WARN] docker pull failed (attempt ${attempt}/3) — pruning and retrying..."
+  sudo docker image prune -af 2>/dev/null || true
+  sudo docker builder prune -af 2>/dev/null || true
+  sleep 5
+done
+if [ "${PULL_OK}" -ne 1 ]; then
+  echo "[ERROR] docker pull failed after 3 attempts"
+  echo "[HINT] On VPS: sudo docker system prune -af && sudo systemctl restart docker"
+  exit 1
+fi
 
 # ── Step 4: Logout immediately after pull ────────────────────────────────────
 echo "> [4/9] Logging out from Artifact Registry..."

@@ -31,21 +31,26 @@ RUN rm -rf \
   && npm run build -w @uc/api
 
 # ── Runtime stage ────────────────────────────────────────────
+# Fresh npm ci here — avoid COPY node_modules from builder.
+# Cross-stage copy of node_modules/.bin symlinks often breaks docker pull
+# on overlayfs (UtimesNanoAt: no such file or directory).
 FROM node:20-alpine
 WORKDIR /app
 
 RUN apk add --no-cache curl
 
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/package-lock.json ./
-COPY --from=builder /app/node_modules ./node_modules
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/
+COPY apps/worker/package.json apps/worker/
+COPY packages/core/package.json packages/core/
+COPY packages/banking/package.json packages/banking/
+COPY packages/stellar/package.json packages/stellar/
+
+RUN npm ci --omit=dev
+
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
-COPY --from=builder /app/apps/api/package.json ./apps/api/
-COPY --from=builder /app/packages/core/package.json ./packages/core/
 COPY --from=builder /app/packages/core/dist ./packages/core/dist
-COPY --from=builder /app/packages/stellar/package.json ./packages/stellar/
 COPY --from=builder /app/packages/stellar/dist ./packages/stellar/dist
-COPY --from=builder /app/packages/banking/package.json ./packages/banking/
 COPY --from=builder /app/packages/banking/dist ./packages/banking/dist
 
 EXPOSE 8081
