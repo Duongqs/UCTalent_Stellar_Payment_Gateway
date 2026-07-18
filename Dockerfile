@@ -52,6 +52,7 @@ COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/packages/core/dist ./packages/core/dist
 COPY --from=builder /app/packages/stellar/dist ./packages/stellar/dist
 COPY --from=builder /app/packages/banking/dist ./packages/banking/dist
+COPY --from=builder /app/scripts/migrations ./scripts/migrations
 
 EXPOSE 8081
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \

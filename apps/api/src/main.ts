@@ -1,12 +1,24 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { EnvService } from '@uc/core';
+import { AppModule } from './app.module';
+import { EnvService, SqlMigrationService } from '@uc/core';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const envService = app.get(EnvService);
+
+  if (envService.get('AUTO_RUN_MIGRATIONS')) {
+    try {
+      const migrationService = app.get(SqlMigrationService);
+      await migrationService.runPendingMigrations();
+    } catch (error) {
+      console.error('[API] Failed to run SQL migrations:', error);
+      if (envService.get('NODE_ENV') === 'production') {
+        process.exit(1);
+      }
+    }
+  }
 
   app.enableCors();
   app.setGlobalPrefix('api');

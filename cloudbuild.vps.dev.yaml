@@ -51,6 +51,7 @@ steps:
       - _PIT_ACCOUNT_NUMBER=${_PIT_ACCOUNT_NUMBER}
       - _PIT_ACCOUNT_NAME=${_PIT_ACCOUNT_NAME}
       - _KYC_SALT=${_KYC_SALT}
+      - _AUTO_RUN_MIGRATIONS=${_AUTO_RUN_MIGRATIONS}
       - _SECRET_NAME=${_SECRET_NAME}
     script: |
       set -e
@@ -88,7 +89,8 @@ steps:
         "PIT_BANK_CODE=$_PIT_BANK_CODE" \
         "PIT_ACCOUNT_NUMBER=$_PIT_ACCOUNT_NUMBER" \
         "PIT_ACCOUNT_NAME=$_PIT_ACCOUNT_NAME" \
-        "KYC_SALT=$_KYC_SALT"
+        "KYC_SALT=$_KYC_SALT" \
+        "AUTO_RUN_MIGRATIONS=$_AUTO_RUN_MIGRATIONS"
 
       echo "[OK] .env generated ($(wc -l < /workspace/.env) lines)"
 
@@ -350,6 +352,10 @@ substitutions:
   # ===== POLLING INTERVALS =====
   _POLL_INTERVAL_MS: '5000'
   _PROCESS_INTERVAL_MS: '2000'
+
+  # ===== MIGRATIONS =====
+  # Run scripts/migrations/*.sql on API boot (schema_migrations table)
+  _AUTO_RUN_MIGRATIONS: 'true'
 
   # ===== SECRET NAME =====
   _SECRET_NAME: 'uc-stellar-dev-secrets'
