@@ -52,7 +52,8 @@ export class Sep31TransactionService {
           sender_id: payload.sender_id,
           receiver_id: payload.receiver_id,
           quote_id: payload.quote_id,
-          funding_method: 'stellar',
+          funding_method: 'NAPAS',
+          destination_asset: 'iso4217:VND',
           fields: { 
             transaction: { 
               receiver_routing_number: payload.receiver_routing_number || 'mock',

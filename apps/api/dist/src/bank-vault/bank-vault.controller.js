@@ -62,7 +62,7 @@ let BankVaultController = class BankVaultController {
             await this.customerService.save(customer);
             const record = await this.bankVaultService.registerProfile({
                 customer_id: customerId,
-                stellar_wallet: '',
+                stellar_wallet: customerId,
                 account_number: accountNumber,
                 legal_name: accountName,
                 bank_code: bankCode,

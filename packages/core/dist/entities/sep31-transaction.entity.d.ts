@@ -20,4 +20,7 @@ export declare class Sep31TransactionEntity extends BaseEntity {
     expiresAt: Date;
     distributionId: string;
     exchangeRate: number;
+    refundMemo: string;
+    refundMemoType: string;
+    callbackUrl: string;
 }

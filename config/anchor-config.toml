@@ -2,7 +2,7 @@
 # .well-known/stellar.toml
 
 NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
-TRANSFER_SERVER_SEP0031="https://bridge.uctalent.dev/sep31"
+DIRECT_PAYMENT_SERVER="https://bridge.uctalent.dev/sep31"
 WEB_AUTH_ENDPOINT="https://bridge.uctalent.dev/auth"
 
 [[CURRENCIES]]

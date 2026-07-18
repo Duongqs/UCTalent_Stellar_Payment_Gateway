@@ -64,4 +64,13 @@ export class Sep31TransactionEntity extends BaseEntity {
 
   @Column({ name: 'exchange_rate', type: 'decimal', precision: 12, scale: 4, nullable: true })
   exchangeRate: number;
+
+  @Column({ name: 'refund_memo', type: 'varchar', nullable: true })
+  refundMemo: string;
+
+  @Column({ name: 'refund_memo_type', type: 'varchar', nullable: true })
+  refundMemoType: string;
+
+  @Column({ name: 'callback_url', type: 'varchar', nullable: true })
+  callbackUrl: string;
 }
