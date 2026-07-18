@@ -10,11 +10,13 @@ exports.Sep31Module = void 0;
 const common_1 = require("@nestjs/common");
 const sep31_controller_1 = require("./sep31.controller");
 const anchor_controller_1 = require("./anchor.controller");
+const auth_module_1 = require("../auth/auth.module");
 let Sep31Module = class Sep31Module {
 };
 exports.Sep31Module = Sep31Module;
 exports.Sep31Module = Sep31Module = __decorate([
     (0, common_1.Module)({
+        imports: [auth_module_1.AuthModule],
         controllers: [sep31_controller_1.Sep31Controller, anchor_controller_1.AnchorController],
     })
 ], Sep31Module);

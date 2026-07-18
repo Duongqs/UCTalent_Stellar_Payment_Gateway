@@ -17,6 +17,7 @@ const bank_vault_module_1 = require("./bank-vault/bank-vault.module");
 const sep31_module_1 = require("./sep31/sep31.module");
 const ipn_module_1 = require("./ipn/ipn.module");
 const health_module_1 = require("./health/health.module");
+const auth_module_1 = require("./auth/auth.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -32,6 +33,7 @@ exports.AppModule = AppModule = __decorate([
             sep31_module_1.Sep31Module,
             ipn_module_1.IpnModule,
             health_module_1.HealthModule,
+            auth_module_1.AuthModule,
         ],
     })
 ], AppModule);

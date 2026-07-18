@@ -68,6 +68,12 @@ export class IpnController {
 
       console.log(`[IPN] Received: invoice=${invoice_no}, transaction_id=${transaction_id}, status=${status}`);
 
+      // Ignore PIT invoices as they are internal tax disbursements and not tracked in SEP-31 DB
+      if (transaction_id.endsWith('PIT')) {
+         console.log(`[IPN] Acknowledging PIT internal disbursement: ${transaction_id}`);
+         return { message: 'Acknowledged' };
+      }
+
       // Map back truncated ID (30 chars) to full UUID
       const tx = await this.sep31CoreService.findByPartialId(transaction_id);
       if (!tx) {

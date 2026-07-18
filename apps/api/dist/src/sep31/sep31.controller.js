@@ -20,6 +20,7 @@ const banking_1 = require("@uc/banking");
 const initiate_disbursement_dto_1 = require("./dtos/initiate-disbursement.dto");
 const post_transaction_dto_1 = require("./dtos/post-transaction.dto");
 const anchor_webhook_guard_1 = require("./guards/anchor-webhook.guard");
+const sep10_guard_1 = require("../auth/guards/sep10.guard");
 const crypto_1 = require("crypto");
 let Sep31Controller = class Sep31Controller {
     sep31CoreService;
@@ -176,7 +177,7 @@ let Sep31Controller = class Sep31Controller {
             throw new common_1.BadRequestException({ error: 'asset_not_supported', message: 'Only USDC is supported' });
         }
         if (asset_issuer) {
-            const expectedIssuer = this.envService.get('USDC_ISSUER') || 'GBBD47IF6LWK7P7MDEVSCWTTCJM4JTVIYONZCEGWXFOJEOGB7O3FGEOW';
+            const expectedIssuer = this.envService.get('USDC_ISSUER') || 'GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF';
             if (asset_issuer !== expectedIssuer) {
                 throw new common_1.BadRequestException({ error: 'invalid_asset_issuer', message: 'Unsupported asset issuer' });
             }
@@ -299,7 +300,7 @@ let Sep31Controller = class Sep31Controller {
                 id: tx.id,
                 status: tx.status,
                 amount_in: tx.amountIn,
-                amount_in_asset: `stellar:${tx.assetCode}:${this.envService.get('USDC_ISSUER') || 'GBBD47IF6LWK7P7MDEVSCWTTCJM4JTVIYONZCEGWXFOJEOGB7O3FGEOW'}`,
+                amount_in_asset: `stellar:${tx.assetCode}:${this.envService.get('USDC_ISSUER') || 'GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF'}`,
                 amount_out: tx.vndAmount ? tx.vndAmount.toString() : undefined,
                 amount_out_asset: 'iso4217:VND',
                 stellar_account_id: tx.stellarAccount,
@@ -361,7 +362,7 @@ __decorate([
 ], Sep31Controller.prototype, "initiateDisbursement", null);
 __decorate([
     (0, common_1.Post)('transactions'),
-    (0, common_1.UseGuards)(anchor_webhook_guard_1.AnchorWebhookGuard),
+    (0, common_1.UseGuards)(sep10_guard_1.Sep10Guard),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -370,7 +371,7 @@ __decorate([
 ], Sep31Controller.prototype, "createTransaction", null);
 __decorate([
     (0, common_1.Get)('transactions/:id'),
-    (0, common_1.UseGuards)(anchor_webhook_guard_1.AnchorWebhookGuard),
+    (0, common_1.UseGuards)(sep10_guard_1.Sep10Guard),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
@@ -379,7 +380,7 @@ __decorate([
 ], Sep31Controller.prototype, "getTransaction", null);
 __decorate([
     (0, common_1.Patch)('transactions/:id'),
-    (0, common_1.UseGuards)(anchor_webhook_guard_1.AnchorWebhookGuard),
+    (0, common_1.UseGuards)(sep10_guard_1.Sep10Guard),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
@@ -389,7 +390,7 @@ __decorate([
 ], Sep31Controller.prototype, "patchTransaction", null);
 __decorate([
     (0, common_1.Put)('transactions/:id/callback'),
-    (0, common_1.UseGuards)(anchor_webhook_guard_1.AnchorWebhookGuard),
+    (0, common_1.UseGuards)(sep10_guard_1.Sep10Guard),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),

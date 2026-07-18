@@ -148,7 +148,11 @@ export class NinePayGatewayService {
     this.nameMatchingService.reconcileNames(kycName, accountName, invoiceNo);
 
     try {
-      const shortInvoiceNo = invoiceNo.replace(/-/g, '').substring(0, 30);
+      // Ensure PIT invoices get a unique request_id within the 30 char limit
+      let shortInvoiceNo = invoiceNo.replace(/-/g, '').substring(0, 30);
+      if (invoiceNo.endsWith('-PIT')) {
+        shortInvoiceNo = invoiceNo.replace(/-/g, '').substring(0, 27) + 'PIT';
+      }
       const params: Record<string, string> = {
         request_id: shortInvoiceNo,
         amount: String(amount),

@@ -61,6 +61,9 @@ export const envSchema = z.object({
     .string()
     .default(''),
   ANCHOR_SIGNING_KEY: z.string().optional(),
+  ANCHOR_SIGNING_SECRET: z.string().optional(),
+  PLATFORM_SECRET_KEY: z.string().optional(),
+  WEB_AUTH_ENDPOINT: z.string().default('http://localhost:4000/auth'),
   JWT_SECRET: z
     .string()
     .min(32, 'JWT_SECRET must be at least 32 chars')

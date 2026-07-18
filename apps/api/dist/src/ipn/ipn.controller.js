@@ -97,6 +97,10 @@ let IpnController = class IpnController {
             const payload = JSON.parse(payloadStr);
             const { invoice_no, transaction_id, external_transaction_id, status } = payload;
             console.log(`[IPN] Received: invoice=${invoice_no}, transaction_id=${transaction_id}, status=${status}`);
+            if (transaction_id.endsWith('PIT')) {
+                console.log(`[IPN] Acknowledging PIT internal disbursement: ${transaction_id}`);
+                return { message: 'Acknowledged' };
+            }
             const tx = await this.sep31CoreService.findByPartialId(transaction_id);
             if (!tx) {
                 console.warn(`[IPN] Cannot find matching transaction for partial ID ${transaction_id}`);

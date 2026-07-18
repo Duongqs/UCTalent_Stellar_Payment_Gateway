@@ -8,6 +8,7 @@ import { BankVaultModule } from './bank-vault/bank-vault.module';
 import { Sep31Module } from './sep31/sep31.module';
 import { IpnModule } from './ipn/ipn.module';
 import { HealthModule } from './health/health.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { HealthModule } from './health/health.module';
     Sep31Module,
     IpnModule,
     HealthModule,
+    AuthModule,
   ],
 })
 export class AppModule {}

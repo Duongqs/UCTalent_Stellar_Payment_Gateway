@@ -1,13 +1,25 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const core_1 = require("@nestjs/core");
-const app_module_1 = require("./app.module");
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
+const app_module_1 = require("./app.module");
 const core_2 = require("@uc/core");
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     const envService = app.get(core_2.EnvService);
+    if (envService.get('AUTO_RUN_MIGRATIONS')) {
+        try {
+            const migrationService = app.get(core_2.SqlMigrationService);
+            await migrationService.runPendingMigrations();
+        }
+        catch (error) {
+            console.error('[API] Failed to run SQL migrations:', error);
+            if (envService.get('NODE_ENV') === 'production') {
+                process.exit(1);
+            }
+        }
+    }
     app.enableCors();
     app.setGlobalPrefix('api');
     app.useGlobalPipes(new common_1.ValidationPipe({

@@ -17,7 +17,10 @@ export class NinePayMockService {
     setTimeout(async () => {
       console.log(`[Mock 9Pay] Disbursement SUCCESS for invoice ${invoiceNo}`);
 
-      const truncatedTxId = transactionId.replace(/-/g, '').substring(0, 30);
+      let truncatedTxId = transactionId.replace(/-/g, '').substring(0, 30);
+      if (transactionId.endsWith('-PIT')) {
+        truncatedTxId = transactionId.replace(/-/g, '').substring(0, 27) + 'PIT';
+      }
       const payload = {
         invoice_no: invoiceNo,
         transaction_id: truncatedTxId,

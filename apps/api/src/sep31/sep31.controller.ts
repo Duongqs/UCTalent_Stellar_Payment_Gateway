@@ -20,6 +20,7 @@ import { BankVaultService } from '@uc/banking';
 import { InitiateDisbursementDto } from './dtos/initiate-disbursement.dto';
 import { PostTransactionDto } from './dtos/post-transaction.dto';
 import { AnchorWebhookGuard } from './guards/anchor-webhook.guard';
+import { Sep10Guard } from '../auth/guards/sep10.guard';
 import { randomUUID } from 'crypto';
 
 @Controller('sep31')
@@ -199,7 +200,7 @@ export class Sep31Controller {
   }
 
   @Post('transactions')
-  @UseGuards(AnchorWebhookGuard)
+  @UseGuards(Sep10Guard)
   @HttpCode(HttpStatus.CREATED)
   async createTransaction(@Body() body: PostTransactionDto) {
     const { amount, asset_code, funding_method, sender_id, receiver_id, quote_id, asset_issuer, destination_asset, refund_memo, refund_memo_type } = body;
@@ -209,7 +210,7 @@ export class Sep31Controller {
     }
     
     if (asset_issuer) {
-      const expectedIssuer = this.envService.get('USDC_ISSUER') || 'GBBD47IF6LWK7P7MDEVSCWTTCJM4JTVIYONZCEGWXFOJEOGB7O3FGEOW';
+      const expectedIssuer = this.envService.get('USDC_ISSUER') || 'GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF';
       if (asset_issuer !== expectedIssuer) {
         throw new BadRequestException({ error: 'invalid_asset_issuer', message: 'Unsupported asset issuer' });
       }
@@ -332,7 +333,7 @@ export class Sep31Controller {
   }
 
   @Get('transactions/:id')
-  @UseGuards(AnchorWebhookGuard)
+  @UseGuards(Sep10Guard)
   @HttpCode(HttpStatus.OK)
   async getTransaction(@Param('id') id: string) {
     const tx = await this.sep31CoreService.findById(id);
@@ -345,7 +346,7 @@ export class Sep31Controller {
         id: tx.id,
         status: tx.status,
         amount_in: tx.amountIn,
-        amount_in_asset: `stellar:${tx.assetCode}:${this.envService.get('USDC_ISSUER') || 'GBBD47IF6LWK7P7MDEVSCWTTCJM4JTVIYONZCEGWXFOJEOGB7O3FGEOW'}`,
+        amount_in_asset: `stellar:${tx.assetCode}:${this.envService.get('USDC_ISSUER') || 'GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF'}`,
         amount_out: tx.vndAmount ? tx.vndAmount.toString() : undefined,
         amount_out_asset: 'iso4217:VND',
         stellar_account_id: tx.stellarAccount,
@@ -360,7 +361,7 @@ export class Sep31Controller {
   }
 
   @Patch('transactions/:id')
-  @UseGuards(AnchorWebhookGuard)
+  @UseGuards(Sep10Guard)
   @HttpCode(HttpStatus.OK)
   async patchTransaction(@Param('id') id: string, @Body() body: any) {
     const tx = await this.sep31CoreService.findById(id);
@@ -382,7 +383,7 @@ export class Sep31Controller {
   }
 
   @Put('transactions/:id/callback')
-  @UseGuards(AnchorWebhookGuard)
+  @UseGuards(Sep10Guard)
   @HttpCode(HttpStatus.OK)
   async putTransactionCallback(@Param('id') id: string, @Body() body: { url: string }) {
     if (!body || !body.url || typeof body.url !== 'string' || !body.url.startsWith('http')) {

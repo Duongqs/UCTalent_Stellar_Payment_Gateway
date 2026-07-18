@@ -24,6 +24,7 @@ const audit_log_service_1 = require("./services/audit-log.service");
 const customer_service_1 = require("./services/customer.service");
 const firm_quote_service_1 = require("./services/firm-quote.service");
 const sep31_core_service_1 = require("./services/sep31-core.service");
+const sql_migration_service_1 = require("./services/sql-migration.service");
 let CoreModule = class CoreModule {
 };
 exports.CoreModule = CoreModule;
@@ -50,6 +51,7 @@ exports.CoreModule = CoreModule = __decorate([
             customer_service_1.CustomerService,
             firm_quote_service_1.FirmQuoteService,
             sep31_core_service_1.Sep31CoreService,
+            sql_migration_service_1.SqlMigrationService,
         ],
         exports: [
             database_module_1.DatabaseModule,
@@ -61,6 +63,7 @@ exports.CoreModule = CoreModule = __decorate([
             customer_service_1.CustomerService,
             firm_quote_service_1.FirmQuoteService,
             sep31_core_service_1.Sep31CoreService,
+            sql_migration_service_1.SqlMigrationService,
         ],
     })
 ], CoreModule);

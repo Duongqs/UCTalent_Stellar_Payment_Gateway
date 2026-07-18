@@ -87,6 +87,8 @@ describe('E2E Flow Tests', () => {
       .useValue(mockAnchorRpc)
       .overrideProvider(Sep9ValidationService)
       .useValue(mockSep9Validation)
+      .overrideGuard(require('../src/auth/guards/sep10.guard').Sep10Guard)
+      .useValue({ canActivate: () => true })
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -162,8 +164,8 @@ describe('E2E Flow Tests', () => {
     });
   });
 
-  describe('Rate Controller', () => {
-    it('GET /rate calculates rate correctly', async () => {
+  describe('Prices Controller', () => {
+    it('GET /prices calculates rate correctly', async () => {
       mockOracleService.getSafeFxRate.mockResolvedValue({
         rate: 25400,
         rawRates: { mock: 25400 },
@@ -174,12 +176,13 @@ describe('E2E Flow Tests', () => {
       });
 
       const res = await request(app.getHttpServer()).get(
-        '/api/rate?type=indicative&sell_asset=stellar:USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5&buy_asset=iso4217:VND&sell_amount=10',
+        '/api/prices?sell_asset=stellar:USDC:GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF&buy_asset=iso4217:VND&sell_amount=10',
       );
 
       expect(res.status).toBe(200);
-      expect(res.body.rate.price).toBe('0.0000393701');
-      expect(res.body.rate.buy_amount).toBe('254000');
+      expect(res.body.buy_assets).toBeDefined();
+      expect(res.body.buy_assets[0].price).toBe('0.0000393701');
+      expect(res.body.buy_assets[0].asset).toBe('iso4217:VND');
     });
   });
 

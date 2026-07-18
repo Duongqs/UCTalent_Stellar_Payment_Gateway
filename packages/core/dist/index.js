@@ -21,6 +21,7 @@ __exportStar(require("./services/audit-log.service"), exports);
 __exportStar(require("./services/customer.service"), exports);
 __exportStar(require("./services/firm-quote.service"), exports);
 __exportStar(require("./services/sep31-core.service"), exports);
+__exportStar(require("./services/sql-migration.service"), exports);
 var base_entity_1 = require("./entities/base.entity");
 Object.defineProperty(exports, "BaseEntity", { enumerable: true, get: function () { return base_entity_1.BaseEntity; } });
 var sep31_transaction_entity_1 = require("./entities/sep31-transaction.entity");

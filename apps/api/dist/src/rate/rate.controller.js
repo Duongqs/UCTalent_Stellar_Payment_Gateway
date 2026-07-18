@@ -33,15 +33,16 @@ let RateController = class RateController {
             assets: [
                 {
                     asset: `stellar:USDC:${this.envService.get('USDC_ISSUER') || 'G_DUMMY_ISSUER'}`,
-                    sell_delivery_methods: [
-                        { name: 'stellar', description: 'Stellar Network' },
-                    ],
                     buy_delivery_methods: [
                         { name: 'NAPAS', description: 'NAPAS 247 Instant Transfer' },
                     ],
                 },
                 {
                     asset: 'iso4217:VND',
+                    country_codes: ['VN'],
+                    buy_delivery_methods: [
+                        { name: 'NAPAS', description: 'NAPAS 247 Instant Transfer' },
+                    ],
                 },
             ],
         };

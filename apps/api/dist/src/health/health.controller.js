@@ -20,25 +20,34 @@ let HealthController = class HealthController {
         this.dataSource = dataSource;
         this.oracleService = oracleService;
     }
-    async getHealth() {
+    getLive() {
+        return {
+            status: 'ok',
+            service: 'uc-stellar-api',
+        };
+    }
+    async getReady() {
         const start = Date.now();
         let dbStatus = 'error';
         try {
             await this.dataSource.query('SELECT 1');
             dbStatus = 'ok';
         }
-        catch (e) { }
+        catch {
+            dbStatus = 'error';
+        }
         const dbHealth = { status: dbStatus, latency_ms: Date.now() - start };
         const circuitBreaker = this.oracleService.getCircuitBreakerState();
-        const healthy = dbHealth.status === 'ok' && circuitBreaker !== 'OPEN';
+        const dbOk = dbHealth.status === 'ok';
+        const healthy = dbOk && circuitBreaker !== 'OPEN';
         const response = {
-            status: healthy ? 'healthy' : 'degraded',
+            status: !dbOk ? 'unhealthy' : healthy ? 'healthy' : 'degraded',
             checks: {
                 database: dbHealth,
                 oracle_circuit_breaker: circuitBreaker,
             },
         };
-        if (!healthy) {
+        if (!dbOk) {
             throw new common_1.ServiceUnavailableException(response);
         }
         return response;
@@ -46,11 +55,17 @@ let HealthController = class HealthController {
 };
 exports.HealthController = HealthController;
 __decorate([
-    (0, common_1.Get)(),
+    (0, common_1.Get)('live'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], HealthController.prototype, "getLive", null);
+__decorate([
+    (0, common_1.Get)(['', 'ready']),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
-], HealthController.prototype, "getHealth", null);
+], HealthController.prototype, "getReady", null);
 exports.HealthController = HealthController = __decorate([
     (0, common_1.Controller)('health'),
     __metadata("design:paramtypes", [typeorm_1.DataSource,

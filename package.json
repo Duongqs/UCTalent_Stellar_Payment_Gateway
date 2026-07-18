@@ -19,5 +19,8 @@
   },
   "devDependencies": {
     "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "urijs": "^1.19.11"
   }
 }

@@ -10,12 +10,15 @@ exports.RateModule = void 0;
 const common_1 = require("@nestjs/common");
 const rate_controller_1 = require("./rate.controller");
 const quote_controller_1 = require("./quote.controller");
+const prices_controller_1 = require("./prices.controller");
+const auth_module_1 = require("../auth/auth.module");
 let RateModule = class RateModule {
 };
 exports.RateModule = RateModule;
 exports.RateModule = RateModule = __decorate([
     (0, common_1.Module)({
-        controllers: [rate_controller_1.RateController, quote_controller_1.QuoteController],
+        imports: [auth_module_1.AuthModule],
+        controllers: [rate_controller_1.RateController, quote_controller_1.QuoteController, prices_controller_1.PricesController],
     })
 ], RateModule);
 //# sourceMappingURL=rate.module.js.map

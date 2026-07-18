@@ -4,6 +4,7 @@ export * from './services/audit-log.service';
 export * from './services/customer.service';
 export * from './services/firm-quote.service';
 export * from './services/sep31-core.service';
+export * from './services/sql-migration.service';
 export { BaseEntity } from './entities/base.entity';
 export { Sep31TransactionEntity } from './entities/sep31-transaction.entity';
 export { FirmQuoteEntity } from './entities/firm-quote.entity';
