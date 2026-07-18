@@ -15,6 +15,7 @@ import { AuditLogService } from './services/audit-log.service';
 import { CustomerService } from './services/customer.service';
 import { FirmQuoteService } from './services/firm-quote.service';
 import { Sep31CoreService } from './services/sep31-core.service';
+import { SqlMigrationService } from './services/sql-migration.service';
 
 @Global()
 @Module({
@@ -38,6 +39,7 @@ import { Sep31CoreService } from './services/sep31-core.service';
     CustomerService,
     FirmQuoteService,
     Sep31CoreService,
+    SqlMigrationService,
   ],
   exports: [
     DatabaseModule,
@@ -49,6 +51,7 @@ import { Sep31CoreService } from './services/sep31-core.service';
     CustomerService,
     FirmQuoteService,
     Sep31CoreService,
+    SqlMigrationService,
   ],
 })
 export class CoreModule {}

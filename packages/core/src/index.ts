@@ -4,6 +4,7 @@ export * from './services/audit-log.service';
 export * from './services/customer.service';
 export * from './services/firm-quote.service';
 export * from './services/sep31-core.service';
+export * from './services/sql-migration.service';
 
 // entities (explicit to avoid KYCStatus conflict — removed when models migrate)
 export { BaseEntity } from './entities/base.entity';

@@ -93,8 +93,9 @@ npm install
 # Build all workspaces
 npm run build
 
-# Seed the demo database
+# Apply pending SQL migrations (scripts/migrations/*.sql)
 npm run db:migrate
+# Seed the demo database
 npm run db:seed
 
 # Start the API (SEP-31 anchor gateway)

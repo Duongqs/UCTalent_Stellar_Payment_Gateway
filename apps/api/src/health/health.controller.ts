@@ -7,30 +7,41 @@ export class HealthController {
   constructor(
     private readonly dataSource: DataSource,
     private readonly oracleService: OracleService,
-  ) {}
+  ) { }
 
-  @Get()
-  async getHealth() {
+  @Get('live')
+  getLive() {
+    return {
+      status: 'ok',
+      service: 'uc-stellar-api',
+    };
+  }
+
+  @Get(['', 'ready'])
+  async getReady() {
     const start = Date.now();
     let dbStatus = 'error';
     try {
       await this.dataSource.query('SELECT 1');
       dbStatus = 'ok';
-    } catch (e) {}
+    } catch {
+      dbStatus = 'error';
+    }
 
     const dbHealth = { status: dbStatus, latency_ms: Date.now() - start };
     const circuitBreaker = this.oracleService.getCircuitBreakerState();
-    const healthy = dbHealth.status === 'ok' && circuitBreaker !== 'OPEN';
+    const dbOk = dbHealth.status === 'ok';
+    const healthy = dbOk && circuitBreaker !== 'OPEN';
 
     const response = {
-      status: healthy ? 'healthy' : 'degraded',
+      status: !dbOk ? 'unhealthy' : healthy ? 'healthy' : 'degraded',
       checks: {
         database: dbHealth,
         oracle_circuit_breaker: circuitBreaker,
       },
     };
 
-    if (!healthy) {
+    if (!dbOk) {
       throw new ServiceUnavailableException(response);
     }
 

@@ -65,6 +65,13 @@ export const envSchema = z.object({
     .string()
     .min(32, 'JWT_SECRET must be at least 32 chars')
     .default('super_secret_jwt_key_that_is_at_least_32_bytes_long!'),
+
+  // Run scripts/migrations/*.sql on API boot (tracked in uc_stellar_schema_migrations)
+  // NOTE: do NOT use Rails table name "schema_migrations" on shared DBs
+  AUTO_RUN_MIGRATIONS: z
+    .string()
+    .default('true')
+    .transform((val) => val === 'true'),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;
