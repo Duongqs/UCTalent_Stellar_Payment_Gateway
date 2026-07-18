@@ -15,7 +15,7 @@
     "start:worker": "npm run start:dev -w @uc/worker",
     "db:seed": "node packages/core/dist/demo/demo-seed.js",
     "db:reset": "node packages/core/dist/demo/demo-reset.js",
-    "db:migrate": "node packages/core/dist/demo/migrate-sqlite.js"
+    "db:migrate": "node packages/core/dist/demo/migrate-sql.js"
   },
   "devDependencies": {
     "typescript": "^6.0.3"
