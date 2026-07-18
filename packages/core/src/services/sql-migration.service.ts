@@ -29,7 +29,7 @@ export class SqlMigrationService {
     }
 
     await this.dataSource.query(`
-      CREATE TABLE IF NOT EXISTS schema_migrations (
+      CREATE TABLE IF NOT EXISTS uc_stellar_schema_migrations (
         id text PRIMARY KEY,
         applied_at timestamptz NOT NULL DEFAULT now()
       )
@@ -40,7 +40,7 @@ export class SqlMigrationService {
 
     try {
       const appliedRows: Array<{ id: string }> = await this.dataSource.query(
-        `SELECT id FROM schema_migrations ORDER BY id ASC`,
+        `SELECT id FROM uc_stellar_schema_migrations ORDER BY id ASC`,
       );
       const applied = new Set(appliedRows.map((r) => r.id));
 
@@ -64,7 +64,7 @@ export class SqlMigrationService {
         this.logger.log(`  → ${file}`);
         await this.dataSource.query(sql);
         await this.dataSource.query(
-          `INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT (id) DO NOTHING`,
+          `INSERT INTO uc_stellar_schema_migrations (id) VALUES ($1) ON CONFLICT (id) DO NOTHING`,
           [file],
         );
       }
