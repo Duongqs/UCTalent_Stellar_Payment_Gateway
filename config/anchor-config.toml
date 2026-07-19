@@ -7,7 +7,7 @@ WEB_AUTH_ENDPOINT="https://bridge.uctalent.dev/auth"
 
 [[CURRENCIES]]
 code="USDC"
-issuer="GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF"
+issuer="GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
 status="live"
 is_asset_anchored=true
 desc="USD Coin on Stellar Testnet"

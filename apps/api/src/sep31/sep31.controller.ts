@@ -211,7 +211,7 @@ export class Sep31Controller {
     }
     
     if (asset_issuer) {
-      const expectedIssuer = this.envService.get('USDC_ISSUER') || 'GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF';
+      const expectedIssuer = this.envService.get('USDC_ISSUER') || 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5';
       if (asset_issuer !== expectedIssuer) {
         throw new BadRequestException({ error: 'invalid_asset_issuer', message: 'Unsupported asset issuer' });
       }
@@ -347,7 +347,7 @@ export class Sep31Controller {
         id: tx.id,
         status: tx.status,
         amount_in: tx.amountIn,
-        amount_in_asset: `stellar:${tx.assetCode}:${this.envService.get('USDC_ISSUER') || 'GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF'}`,
+        amount_in_asset: `stellar:${tx.assetCode}:${this.envService.get('USDC_ISSUER') || 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5'}`,
         amount_out: tx.vndAmount ? tx.vndAmount.toString() : undefined,
         amount_out_asset: 'iso4217:VND',
         stellar_account_id: tx.stellarAccount,

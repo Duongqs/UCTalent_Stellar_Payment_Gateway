@@ -6,7 +6,7 @@ const generateAuthJwt = () => {
     const header = { alg: 'HS256', typ: 'JWT' };
     const payload = {
       iss: 'http://localhost:8080',
-      sub: 'GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF',
+      sub: 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5',
       iat: Math.floor(Date.now() / 1000),
       exp: Math.floor(Date.now() / 1000) + 3600,
     };

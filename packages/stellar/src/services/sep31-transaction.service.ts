@@ -49,7 +49,7 @@ export class Sep31TransactionService {
         {
           amount: payload.amount,
           asset_code: payload.asset_code || 'USDC',
-          asset_issuer: this.envService.get('USDC_ISSUER') || 'GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF',
+          asset_issuer: this.envService.get('USDC_ISSUER') || 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5',
           sender_id: payload.sender_id,
           receiver_id: payload.receiver_id,
           funding_method: 'stellar',

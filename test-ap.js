@@ -5,7 +5,7 @@ async function run() {
   const header = { alg: 'HS256', typ: 'JWT' };
   const payload = {
     iss: 'http://localhost:8080',
-    sub: 'GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF',
+    sub: 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5',
     iat: Math.floor(Date.now() / 1000),
     exp: Math.floor(Date.now() / 1000) + 3600,
   };
@@ -15,7 +15,7 @@ async function run() {
   const jwt = `${data}.${signature}`;
   try {
     const res = await axios.post('http://127.0.0.1:8082/sep38/quote', {
-      sell_asset: 'stellar:USDC:GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF',
+      sell_asset: 'stellar:USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5',
       buy_asset: 'iso4217:VND',
       sell_amount: '2',
       context: 'sep31'

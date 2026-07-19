@@ -176,7 +176,7 @@ describe('E2E Flow Tests', () => {
       });
 
       const res = await request(app.getHttpServer()).get(
-        '/api/prices?sell_asset=stellar:USDC:GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF&buy_asset=iso4217:VND&sell_amount=10',
+        '/api/prices?sell_asset=stellar:USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5&buy_asset=iso4217:VND&sell_amount=10',
       );
 
       expect(res.status).toBe(200);
