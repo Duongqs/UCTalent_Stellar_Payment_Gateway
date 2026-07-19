@@ -11,7 +11,7 @@ export class PutCustomerDto {
 
   @IsString()
   @IsNotEmpty()
-  type: string;
+  type!: string;
 
   @IsString()
   @IsOptional()

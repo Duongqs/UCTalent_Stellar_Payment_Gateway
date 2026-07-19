@@ -9,18 +9,18 @@ import {
 export class DisburseDto {
   @IsString()
   @IsNotEmpty()
-  stellarTxHash: string;
+  stellarTxHash!: string;
 
   @IsString()
   @IsNotEmpty()
-  stellarMemo: string;
+  stellarMemo!: string;
 
   @IsNumber()
   @IsOptional()
   oracleRate?: number;
 
   @IsObject()
-  splits: Record<string, { amountUsdc: number; kycId?: string | null; distributionId?: string | null }>;
+  splits!: Record<string, { amountUsdc: number; kycId?: string | null; distributionId?: string | null }>;
 
   @IsString()
   @IsOptional()

@@ -3,15 +3,15 @@ import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 export class InitiateDisbursementDto {
   @IsString()
   @IsNotEmpty()
-  amount: string;
+  amount!: string;
 
   @IsString()
   @IsNotEmpty()
-  sender_id: string;
+  sender_id!: string;
 
   @IsString()
   @IsNotEmpty()
-  receiver_id: string;
+  receiver_id!: string;
 
   @IsString()
   @IsOptional()
@@ -20,4 +20,8 @@ export class InitiateDisbursementDto {
   @IsString()
   @IsOptional()
   idempotency_key?: string;
+
+  @IsString()
+  @IsOptional()
+  distribution_id?: string;
 }

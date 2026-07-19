@@ -9,7 +9,9 @@ export declare class IpnController {
     private readonly ninePayGatewayService;
     private readonly requestCounts;
     constructor(sep31CoreService: Sep31CoreService, anchorRpc: AnchorRpcService, envService: EnvService, ninePayGatewayService: NinePayGatewayService);
-    handleIpn(request: any, body: IpnDto): unknown;
+    handleIpn(request: any, body: IpnDto): Promise<{
+        message: string;
+    }>;
     private sendBackendWebhook;
-    pollPendingExternal(): any;
+    pollPendingExternal(): Promise<void>;
 }

@@ -114,7 +114,8 @@ export class RateController {
     }
 
     if (type === 'firm') {
-      if (!context || !['sep6', 'sep24', 'sep31'].includes(context)) {
+      const activeContext = context ? context.toLowerCase() : 'sep31';
+      if (!['sep6', 'sep24', 'sep31'].includes(activeContext)) {
         throw new BadRequestException(
           'context must be one of sep6, sep24, or sep31 for firm quotes',
         );
@@ -132,7 +133,7 @@ export class RateController {
         sellAmount: rateObj.sell_amount.toString(),
         buyAmount: rateObj.buy_amount.toString(),
         rate: rateObj.price.toString(),
-        context,
+        context: activeContext,
         expiresAt,
       });
       await this.firmQuoteService.save(quote);
@@ -141,7 +142,7 @@ export class RateController {
         rate: rateObj.price,
         sell_amount: rateObj.sell_amount,
         buy_amount: rateObj.buy_amount,
-        context,
+        context: activeContext,
       });
 
       rateObj.id = quoteId;

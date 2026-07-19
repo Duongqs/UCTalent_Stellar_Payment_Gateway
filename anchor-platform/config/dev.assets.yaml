@@ -24,7 +24,7 @@ items:
   - id: iso4217:VND
     significant_decimals: 0
     quotes_supported: true
-    quotes_required: true
+    quotes_required: false
     buy_delivery_methods:
       - name: NAPAS
         description: "Transfer VND to Vietnamese bank account"

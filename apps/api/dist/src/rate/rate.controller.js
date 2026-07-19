@@ -92,7 +92,8 @@ let RateController = class RateController {
             throw new common_1.BadRequestException('Either sell_amount or buy_amount must be provided');
         }
         if (type === 'firm') {
-            if (!context || !['sep6', 'sep24', 'sep31'].includes(context)) {
+            const activeContext = context ? context.toLowerCase() : 'sep31';
+            if (!['sep6', 'sep24', 'sep31'].includes(activeContext)) {
                 throw new common_1.BadRequestException('context must be one of sep6, sep24, or sep31 for firm quotes');
             }
             const quoteId = (0, uuid_1.v4)();
@@ -105,7 +106,7 @@ let RateController = class RateController {
                 sellAmount: rateObj.sell_amount.toString(),
                 buyAmount: rateObj.buy_amount.toString(),
                 rate: rateObj.price.toString(),
-                context,
+                context: activeContext,
                 expiresAt,
             });
             await this.firmQuoteService.save(quote);
@@ -113,7 +114,7 @@ let RateController = class RateController {
                 rate: rateObj.price,
                 sell_amount: rateObj.sell_amount,
                 buy_amount: rateObj.buy_amount,
-                context,
+                context: activeContext,
             });
             rateObj.id = quoteId;
             rateObj.expires_at = expiresAt.toISOString();

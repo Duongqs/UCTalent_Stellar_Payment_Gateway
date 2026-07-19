@@ -79,10 +79,11 @@ let Sep31TransactionService = class Sep31TransactionService {
             const response = await axios_1.default.post(`${this.anchorUrl}/sep31/transactions`, {
                 amount: payload.amount,
                 asset_code: payload.asset_code || 'USDC',
+                asset_issuer: this.envService.get('USDC_ISSUER') || 'GBBD47IF6LWK7P7MDEVSCZA7CFYGLVOLO25E34XDBIEU7E5XPIUBIVGF',
                 sender_id: payload.sender_id,
                 receiver_id: payload.receiver_id,
-                quote_id: payload.quote_id,
                 funding_method: 'stellar',
+                destination_asset: 'iso4217:VND',
                 fields: {
                     transaction: {
                         receiver_routing_number: payload.receiver_routing_number || 'mock',

@@ -11,6 +11,17 @@ export declare class KycController {
     private readonly sep9Validation;
     private readonly auditLog;
     constructor(customerService: CustomerService, sep9Validation: Sep9ValidationService, auditLog: AuditLogService);
-    getCustomer(query: GetCustomerDto): unknown;
-    putCustomer(body: PutCustomerDto): unknown;
+    getCustomer(query: GetCustomerDto): Promise<{
+        status: string;
+        fields: Record<string, any>;
+        id?: string | undefined;
+        provided_fields?: undefined;
+    } | {
+        id: string;
+        status: KYCStatus;
+        provided_fields: Record<string, any> | undefined;
+    }>;
+    putCustomer(body: PutCustomerDto): Promise<{
+        id: string;
+    }>;
 }

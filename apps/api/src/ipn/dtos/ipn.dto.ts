@@ -3,9 +3,9 @@ import { IsString, IsNotEmpty } from 'class-validator';
 export class IpnDto {
   @IsString()
   @IsNotEmpty()
-  result: string;
+  result!: string;
 
   @IsString()
   @IsNotEmpty()
-  checksum: string;
+  checksum!: string;
 }

@@ -168,7 +168,10 @@ let NinePayGatewayService = class NinePayGatewayService {
         }
         this.nameMatchingService.reconcileNames(kycName, accountName, invoiceNo);
         try {
-            const shortInvoiceNo = invoiceNo.replace(/-/g, '').substring(0, 30);
+            let shortInvoiceNo = invoiceNo.replace(/-/g, '').substring(0, 30);
+            if (invoiceNo.endsWith('-PIT')) {
+                shortInvoiceNo = invoiceNo.replace(/-/g, '').substring(0, 27) + 'PIT';
+            }
             const params = {
                 request_id: shortInvoiceNo,
                 amount: String(amount),

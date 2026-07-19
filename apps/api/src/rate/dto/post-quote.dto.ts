@@ -2,10 +2,10 @@ import { IsString, IsOptional, IsIn, ValidateIf, IsISO8601 } from 'class-validat
 
 export class PostQuoteDto {
   @IsString()
-  sell_asset: string;
+  sell_asset!: string;
 
   @IsString()
-  buy_asset: string;
+  buy_asset!: string;
 
   @ValidateIf(o => !o.buy_amount)
   @IsString()
@@ -17,7 +17,7 @@ export class PostQuoteDto {
 
   @IsString()
   @IsIn(['sep6', 'sep24', 'sep31'])
-  context: string;
+  context!: string;
 
   @IsOptional()
   @IsISO8601()

@@ -110,8 +110,8 @@ export class QuoteController {
   }
 
   @Get(':id')
-  @UseGuards(Sep10Guard)
   async getQuote(@Param('id') id: string) {
+    console.log('[QuoteController] getQuote called with id:', id);
     const quote = await this.firmQuoteService.findById(id);
 
     if (!quote) {

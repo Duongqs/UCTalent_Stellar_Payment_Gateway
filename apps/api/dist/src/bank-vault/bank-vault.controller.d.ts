@@ -7,6 +7,10 @@ export declare class BankVaultController {
     private readonly bankVaultService;
     private readonly ninePayGateway;
     constructor(customerService: CustomerService, bankVaultService: BankVaultService, ninePayGateway: NinePayGatewayService);
-    inquiry(body: BankVaultInquiryDto): unknown;
-    register(body: BankVaultRegisterDto): unknown;
+    inquiry(body: BankVaultInquiryDto): Promise<{
+        accountName: string;
+    }>;
+    register(body: BankVaultRegisterDto): Promise<{
+        beneficiaryRefId: string;
+    }>;
 }

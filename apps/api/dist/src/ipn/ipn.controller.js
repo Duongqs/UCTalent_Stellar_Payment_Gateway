@@ -178,12 +178,11 @@ let IpnController = class IpnController {
             callbackPayload.taxWithheld = txRecord.withheldTaxAmount
                 ? Number(txRecord.withheldTaxAmount)
                 : undefined;
-            callbackPayload.napasRefId =
-                (txRecord.napasRefId && !txRecord.napasRefId.startsWith('9PAY-FALLBACK'))
-                    ? txRecord.napasRefId
-                    : extraFields?.ninePayInvoiceNo
-                        || extraFields?.externalTxId
-                        || txRecord.napasRefId;
+            let realNapasRefId = txRecord.napasRefId;
+            if (!realNapasRefId || realNapasRefId.startsWith('9PAY-FALLBACK')) {
+                realNapasRefId = extraFields?.externalTxId || extraFields?.ninePayInvoiceNo || txRecord.napasRefId;
+            }
+            callbackPayload.napasRefId = realNapasRefId;
             callbackPayload.stellarTxHash = txRecord.stellarTxHash;
             callbackPayload.clearingId = transactionId;
             callbackPayload.exchangeRate = txRecord.exchangeRate

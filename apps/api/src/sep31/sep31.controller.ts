@@ -55,7 +55,7 @@ export class Sep31Controller {
   @UseGuards(AnchorWebhookGuard)
   @HttpCode(HttpStatus.OK)
   async initiateDisbursement(@Body() body: InitiateDisbursementDto) {
-    const { amount, sender_id, receiver_id, quote_id, idempotency_key } = body;
+    const { amount, sender_id, receiver_id, quote_id, idempotency_key, distribution_id } = body;
 
     if (quote_id) {
       const quote = await this.firmQuoteService.findById(quote_id);
@@ -81,7 +81,7 @@ export class Sep31Controller {
         receiverId: receiver_id,
         status: 'processing_lock',
         idempotencyKey: idempotency_key || undefined,
-        distributionId: idempotency_key || undefined,
+        distributionId: distribution_id || (idempotency_key ? idempotency_key.substring(0, idempotency_key.lastIndexOf('-')) : undefined) || undefined,
         quoteId: quote_id || undefined,
       });
       await this.sep31CoreService.insert(tx);

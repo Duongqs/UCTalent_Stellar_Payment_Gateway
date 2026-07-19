@@ -3,11 +3,11 @@ import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 export class BankVaultInquiryDto {
   @IsString()
   @IsNotEmpty()
-  bankCode: string;
+  bankCode!: string;
 
   @IsString()
   @IsNotEmpty()
-  accountNumber: string;
+  accountNumber!: string;
 
   @IsString()
   @IsOptional()

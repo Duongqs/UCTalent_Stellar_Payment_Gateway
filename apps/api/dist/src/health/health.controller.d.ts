@@ -8,5 +8,14 @@ export declare class HealthController {
         status: string;
         service: string;
     };
-    getReady(): unknown;
+    getReady(): Promise<{
+        status: string;
+        checks: {
+            database: {
+                status: string;
+                latency_ms: number;
+            };
+            oracle_circuit_breaker: string;
+        };
+    }>;
 }

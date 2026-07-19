@@ -200,12 +200,11 @@ export class IpnController {
       callbackPayload.taxWithheld = txRecord.withheldTaxAmount
         ? Number(txRecord.withheldTaxAmount)
         : undefined;
-      callbackPayload.napasRefId =
-        (txRecord.napasRefId && !txRecord.napasRefId.startsWith('9PAY-FALLBACK'))
-          ? txRecord.napasRefId
-          : (extraFields?.ninePayInvoiceNo as string)
-            || (extraFields?.externalTxId as string)
-            || txRecord.napasRefId;
+      let realNapasRefId = txRecord.napasRefId;
+      if (!realNapasRefId || realNapasRefId.startsWith('9PAY-FALLBACK')) {
+        realNapasRefId = (extraFields?.externalTxId as string) || (extraFields?.ninePayInvoiceNo as string) || txRecord.napasRefId;
+      }
+      callbackPayload.napasRefId = realNapasRefId;
       callbackPayload.stellarTxHash = txRecord.stellarTxHash;
       callbackPayload.clearingId = transactionId;
       callbackPayload.exchangeRate = txRecord.exchangeRate

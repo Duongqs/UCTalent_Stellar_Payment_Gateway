@@ -5,15 +5,15 @@ export class PostTransactionDto {
   @IsNotEmpty()
   @IsNumber()
   @Type(() => Number)
-  amount: number;
+  amount!: number;
 
   @IsString()
   @IsNotEmpty()
-  asset_code: string;
+  asset_code!: string;
 
   @IsString()
   @IsNotEmpty()
-  funding_method: string;
+  funding_method!: string;
 
   @IsString()
   @IsOptional()

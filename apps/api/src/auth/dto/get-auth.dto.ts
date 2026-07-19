@@ -5,7 +5,7 @@ export class GetAuthDto {
   @ApiProperty({ description: 'The public key of the client account' })
   @IsString()
   @IsNotEmpty()
-  account: string;
+  account!: string;
 
   @ApiPropertyOptional({ description: 'The memo to attach to the challenge transaction' })
   @IsOptional()

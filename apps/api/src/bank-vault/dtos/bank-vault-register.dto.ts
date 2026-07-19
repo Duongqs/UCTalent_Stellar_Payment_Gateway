@@ -3,21 +3,21 @@ import { IsString, IsNotEmpty } from 'class-validator';
 export class BankVaultRegisterDto {
   @IsString()
   @IsNotEmpty()
-  userId: string;
+  userId!: string;
 
   @IsString()
   @IsNotEmpty()
-  kycId: string;
+  kycId!: string;
 
   @IsString()
   @IsNotEmpty()
-  bankCode: string;
+  bankCode!: string;
 
   @IsString()
   @IsNotEmpty()
-  accountNumber: string;
+  accountNumber!: string;
 
   @IsString()
   @IsNotEmpty()
-  accountName: string;
+  accountName!: string;
 }
