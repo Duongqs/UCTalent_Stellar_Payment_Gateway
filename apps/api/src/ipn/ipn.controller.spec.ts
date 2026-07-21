@@ -36,6 +36,7 @@ describe('IpnController', () => {
     };
 
     mockSep31CoreService = {
+      findByPartialId: jest.fn(),
       hasEventLogged: jest.fn().mockResolvedValue(false),
       completeDisbursement: jest.fn().mockResolvedValue(undefined),
       failDisbursement: jest.fn().mockResolvedValue(undefined),
@@ -90,6 +91,7 @@ describe('IpnController', () => {
       tx.napasRefId = 'napas-789';
       tx.stellarTxHash = 'hash-111';
 
+      mockSep31CoreService.findByPartialId.mockResolvedValue(tx);
       mockSep31CoreService.findById.mockResolvedValue(tx);
       mockedAxios.post.mockResolvedValue({ data: {} });
 
@@ -133,6 +135,7 @@ describe('IpnController', () => {
       tx.id = 'tx-123';
       tx.distributionId = undefined as any;
 
+      mockSep31CoreService.findByPartialId.mockResolvedValue(tx);
       mockSep31CoreService.findById.mockResolvedValue(tx);
 
       const ipn = buildIpnPayload({
@@ -167,6 +170,7 @@ describe('IpnController', () => {
       tx.retryCount = 3;
       tx.distributionId = undefined as any;
 
+      mockSep31CoreService.findByPartialId.mockResolvedValue(tx);
       mockSep31CoreService.findById.mockResolvedValue(tx);
 
       const ipn = buildIpnPayload({
@@ -202,6 +206,9 @@ describe('IpnController', () => {
 
   describe('duplicate handling', () => {
     it('returns already processed for duplicate events', async () => {
+      const tx = new Sep31TransactionEntity();
+      tx.id = 'tx-123';
+      mockSep31CoreService.findByPartialId.mockResolvedValue(tx);
       mockSep31CoreService.hasEventLogged.mockResolvedValue(true);
 
       const ipn = buildIpnPayload({

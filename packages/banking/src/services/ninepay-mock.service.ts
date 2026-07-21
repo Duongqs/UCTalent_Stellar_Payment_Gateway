@@ -22,8 +22,8 @@ export class NinePayMockService {
         truncatedTxId = transactionId.replace(/-/g, '').substring(0, 27) + 'PIT';
       }
       const payload = {
-        invoice_no: invoiceNo,
-        transaction_id: truncatedTxId,
+        invoice_no: truncatedTxId,
+        transaction_id: external_transaction_id,
         external_transaction_id,
         status: 'SUCCESS'
       };
@@ -38,10 +38,11 @@ export class NinePayMockService {
 
       const base = (this.envService.get('STELLAR_API_BASE_URL') || 'http://localhost:8081').replace(/\/+$/, '');
       try {
-        await axios.post(`${base}/api/ipn`, {
+        const res = await axios.post(`${base}/api/ipn`, {
           result: resultB64,
           checksum: expectedChecksum
         });
+        console.log(`[Mock 9Pay] IPN callback sent for ${invoiceNo}: ${res.status} ${JSON.stringify(res.data)}`);
       } catch (err: any) {
         console.error('[Mock 9Pay] Failed to trigger IPN mock callback:', err.message);
       }

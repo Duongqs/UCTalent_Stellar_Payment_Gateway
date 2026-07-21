@@ -21,10 +21,14 @@ export class Sep31CoreService {
   }
 
   async findByPartialId(partialId: string): Promise<Sep31TransactionEntity | null> {
-    if (!partialId || partialId.length < 30) return null;
+    if (!partialId) return null;
+    const normalized = partialId.replace(/-/g, '');
+    if (normalized.length < 30) return null;
     return this.sep31Repo
       .createQueryBuilder('tx')
-      .where("REPLACE(tx.id::text, '-', '') LIKE :partial", { partial: `${partialId}%` })
+      .where("REPLACE(tx.id::text, '-', '') LIKE :partial", {
+        partial: `${normalized.substring(0, 30)}%`,
+      })
       .getOne();
   }
 
