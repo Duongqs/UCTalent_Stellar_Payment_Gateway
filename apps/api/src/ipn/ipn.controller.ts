@@ -262,7 +262,7 @@ export class IpnController {
                   invoice_no: tx.id,
                   transaction_id: tx.id,
                   external_transaction_id:
-                    result.transaction_id || `simulated-${Date.now()}`,
+                    result.payment_no || result.transaction_id || `simulated-${Date.now()}`,
                   status: 'SUCCESS',
                 }),
               ).toString('base64'),
@@ -274,7 +274,7 @@ export class IpnController {
                       invoice_no: tx.id,
                       transaction_id: tx.id,
                       external_transaction_id:
-                        result.transaction_id || `simulated-${Date.now()}`,
+                        result.payment_no || result.transaction_id || `simulated-${Date.now()}`,
                       status: 'SUCCESS',
                     }),
                   ).toString('base64') +
@@ -293,7 +293,7 @@ export class IpnController {
                 JSON.stringify({
                   invoice_no: tx.id,
                   transaction_id: tx.id,
-                  external_transaction_id: result.transaction_id || '',
+                  external_transaction_id: result.payment_no || result.transaction_id || '',
                   status: 'FAILED',
                 }),
               ).toString('base64'),
@@ -304,7 +304,7 @@ export class IpnController {
                     JSON.stringify({
                       invoice_no: tx.id,
                       transaction_id: tx.id,
-                      external_transaction_id: result.transaction_id || '',
+                      external_transaction_id: result.payment_no || result.transaction_id || '',
                       status: 'FAILED',
                     }),
                   ).toString('base64') +

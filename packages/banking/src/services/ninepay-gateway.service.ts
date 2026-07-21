@@ -185,8 +185,8 @@ export class NinePayGatewayService {
       if (result.status === 2 || result.status === 5 || result.status === 1 || result.status === 3 || result.status === 6) {
         let paymentNo = result.payment_no ? String(result.payment_no) : undefined;
         
-        if (!paymentNo && result.status === 6) {
-           console.log(`[9Pay Disburse] Status 6 received for ${shortInvoiceNo}, fetching real payment_no via checkStatus in 2s...`);
+        if (!paymentNo && (result.status === 6 || result.status === 5)) {
+           console.log(`[9Pay Disburse] Status ${result.status} received for ${shortInvoiceNo}, fetching real payment_no via checkStatus in 2s...`);
            await new Promise(resolve => setTimeout(resolve, 2000));
            const checkRes = await this.checkStatus(shortInvoiceNo);
            if (checkRes && checkRes.payment_no) {
