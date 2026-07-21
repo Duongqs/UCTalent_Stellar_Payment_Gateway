@@ -48,6 +48,9 @@ export const envSchema = z.object({
   SEP31_WEBHOOK_URL: z
     .string()
     .default('http://localhost:4000/api/anchor/disburse'),
+  STELLAR_API_BASE_URL: z
+    .string()
+    .default('http://localhost:8081'),
 
   ANCHOR_PLATFORM_URL: z.string().default('http://localhost:8082'),
   PLATFORM_SERVER_URL: z.string().default('http://localhost:8085'),

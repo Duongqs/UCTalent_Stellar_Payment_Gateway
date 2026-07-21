@@ -36,9 +36,9 @@ export class NinePayMockService {
         .digest('hex')
         .toUpperCase();
 
-      const apiPort = 8081;
+      const base = (this.envService.get('STELLAR_API_BASE_URL') || 'http://localhost:8081').replace(/\/+$/, '');
       try {
-        await axios.post(`http://localhost:${apiPort}/api/ipn`, {
+        await axios.post(`${base}/api/ipn`, {
           result: resultB64,
           checksum: expectedChecksum
         });
