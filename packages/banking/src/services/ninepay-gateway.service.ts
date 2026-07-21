@@ -166,6 +166,22 @@ export class NinePayGatewayService {
 
       const result = await this.request('POST', '/disbursement/create', params);
 
+      // Handle 702 Duplicate Request ID error (transaction already created previously but we missed the response)
+      if (result.status === 4 && String(result.error_code) === '702') {
+        console.log(`[9Pay Disburse] 702 Duplicate for ${shortInvoiceNo}, recovering status via checkStatus...`);
+        const checkRes = await this.checkStatus(shortInvoiceNo);
+        if (checkRes && (checkRes.status === 2 || checkRes.status === 5 || checkRes.status === 1 || checkRes.status === 3 || checkRes.status === 6)) {
+          console.log(`[9Pay Disburse] Recovered 702 transaction! payment_no: ${checkRes.payment_no}, status: ${checkRes.status}`);
+          return {
+            ...checkRes,
+            paymentNo: checkRes.payment_no ? String(checkRes.payment_no) : undefined,
+            requestId: shortInvoiceNo,
+          };
+        } else {
+          throw new Error(`9Pay Disbursement Failed (702 Recovery): [${checkRes?.error_code}] ${checkRes?.message || 'Unknown Status'}`);
+        }
+      }
+
       if (result.status === 2 || result.status === 5 || result.status === 1 || result.status === 3 || result.status === 6) {
         let paymentNo = result.payment_no ? String(result.payment_no) : undefined;
         
