@@ -166,9 +166,9 @@ export class NinePayGatewayService {
 
       const result = await this.request('POST', '/disbursement/create', params);
 
-      // Handle 702 Duplicate Request ID error (transaction already created previously but we missed the response)
-      if (result.status === 4 && String(result.error_code) === '702') {
-        console.log(`[9Pay Disburse] 702 Duplicate for ${shortInvoiceNo}, recovering status via checkStatus...`);
+      // Handle 702 Duplicate Request ID or creation error
+      if ((result.status === 4 || result.status === 6) && String(result.error_code) === '702') {
+        console.log(`[9Pay Disburse] 702 Duplicate/Error for ${shortInvoiceNo}, recovering status via checkStatus...`);
         const checkRes = await this.checkStatus(shortInvoiceNo);
         if (checkRes && (checkRes.status === 2 || checkRes.status === 5 || checkRes.status === 1 || checkRes.status === 3 || checkRes.status === 6)) {
           console.log(`[9Pay Disburse] Recovered 702 transaction! payment_no: ${checkRes.payment_no}, status: ${checkRes.status}`);
@@ -178,7 +178,7 @@ export class NinePayGatewayService {
             requestId: shortInvoiceNo,
           };
         } else {
-          throw new Error(`9Pay Disbursement Failed (702 Recovery): [${checkRes?.error_code}] ${checkRes?.message || 'Unknown Status'}`);
+          throw new Error(`9Pay Disbursement Failed (702 Recovery): [${checkRes?.error_code || '404'}] ${checkRes?.message || 'Transaction not found in 9Pay'}`);
         }
       }
 
@@ -193,6 +193,10 @@ export class NinePayGatewayService {
              paymentNo = String(checkRes.payment_no);
              console.log(`[9Pay Disburse] Recovered real payment_no: ${paymentNo} via checkStatus`);
            }
+        }
+
+        if (!paymentNo && result.status === 6) {
+          throw new Error(`9Pay Disbursement Failed: Transaction failed (status 6) and no payment_no could be recovered.`);
         }
 
         console.log(`[9Pay Disburse] Success/Pending for ${shortInvoiceNo}, payment_no: ${paymentNo}, status: ${result.status}`);

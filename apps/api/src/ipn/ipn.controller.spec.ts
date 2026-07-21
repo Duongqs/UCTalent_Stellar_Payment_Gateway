@@ -42,6 +42,9 @@ describe('IpnController', () => {
       failDisbursement: jest.fn().mockResolvedValue(undefined),
       retryDisbursement: jest.fn().mockResolvedValue(undefined),
       findById: jest.fn(),
+      findByPartialId: jest.fn().mockImplementation(function (this: any, id: string) {
+        return this.findById(id.replace('inv-', 'tx-'));
+      }),
     };
 
     mockAnchorRpc = {
@@ -210,6 +213,7 @@ describe('IpnController', () => {
       tx.id = 'tx-123';
       mockSep31CoreService.findByPartialId.mockResolvedValue(tx);
       mockSep31CoreService.hasEventLogged.mockResolvedValue(true);
+      mockSep31CoreService.findById.mockResolvedValue({ id: 'tx-123' });
 
       const ipn = buildIpnPayload({
         invoice_no: 'inv-123',

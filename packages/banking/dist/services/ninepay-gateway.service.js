@@ -124,6 +124,7 @@ let NinePayGatewayService = class NinePayGatewayService {
         }
         try {
             const response = await (0, axios_1.default)(config);
+            console.log(`[9Pay HTTP Response Debug] ${path}:`, JSON.stringify(response.data));
             return response.data;
         }
         catch (error) {
@@ -182,9 +183,36 @@ let NinePayGatewayService = class NinePayGatewayService {
                 account_type: '0',
             };
             const result = await this.request('POST', '/disbursement/create', params);
-            if (result.status === 2 || result.status === 5) {
-                const paymentNo = result.payment_no ? String(result.payment_no) : undefined;
-                console.log(`[9Pay Disburse] Success for ${shortInvoiceNo}, payment_no: ${paymentNo}, status: ${result.status}`);
+            if ((result.status === 4 || result.status === 6) && String(result.error_code) === '702') {
+                console.log(`[9Pay Disburse] 702 Duplicate/Error for ${shortInvoiceNo}, recovering status via checkStatus...`);
+                const checkRes = await this.checkStatus(shortInvoiceNo);
+                if (checkRes && (checkRes.status === 2 || checkRes.status === 5 || checkRes.status === 1 || checkRes.status === 3 || checkRes.status === 6)) {
+                    console.log(`[9Pay Disburse] Recovered 702 transaction! payment_no: ${checkRes.payment_no}, status: ${checkRes.status}`);
+                    return {
+                        ...checkRes,
+                        paymentNo: checkRes.payment_no ? String(checkRes.payment_no) : undefined,
+                        requestId: shortInvoiceNo,
+                    };
+                }
+                else {
+                    throw new Error(`9Pay Disbursement Failed (702 Recovery): [${checkRes?.error_code || '404'}] ${checkRes?.message || 'Transaction not found in 9Pay'}`);
+                }
+            }
+            if (result.status === 2 || result.status === 5 || result.status === 1 || result.status === 3 || result.status === 6) {
+                let paymentNo = result.payment_no ? String(result.payment_no) : undefined;
+                if (!paymentNo && (result.status === 6 || result.status === 5)) {
+                    console.log(`[9Pay Disburse] Status ${result.status} received for ${shortInvoiceNo}, fetching real payment_no via checkStatus in 2s...`);
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    const checkRes = await this.checkStatus(shortInvoiceNo);
+                    if (checkRes && checkRes.payment_no) {
+                        paymentNo = String(checkRes.payment_no);
+                        console.log(`[9Pay Disburse] Recovered real payment_no: ${paymentNo} via checkStatus`);
+                    }
+                }
+                if (!paymentNo && result.status === 6) {
+                    throw new Error(`9Pay Disbursement Failed: Transaction failed (status 6) and no payment_no could be recovered.`);
+                }
+                console.log(`[9Pay Disburse] Success/Pending for ${shortInvoiceNo}, payment_no: ${paymentNo}, status: ${result.status}`);
                 return {
                     ...result,
                     paymentNo,
@@ -192,7 +220,7 @@ let NinePayGatewayService = class NinePayGatewayService {
                 };
             }
             else {
-                throw new Error(`9Pay Disbursement Failed: [${result.error_code}] ${result.message}`);
+                throw new Error(`9Pay Disbursement Failed: [${result.error_code}] ${result.message || result.failure_reason || 'Unknown Error'}`);
             }
         }
         catch (error) {

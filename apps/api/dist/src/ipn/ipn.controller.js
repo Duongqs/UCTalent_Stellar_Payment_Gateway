@@ -96,14 +96,16 @@ let IpnController = class IpnController {
             const payloadStr = Buffer.from(resultB64, 'base64').toString('utf8');
             const payload = JSON.parse(payloadStr);
             const { invoice_no, transaction_id, external_transaction_id, status } = payload;
-            console.log(`[IPN] Received: invoice=${invoice_no}, transaction_id=${transaction_id}, status=${status}`);
-            if (transaction_id.endsWith('PIT')) {
-                console.log(`[IPN] Acknowledging PIT internal disbursement: ${transaction_id}`);
+            const realPaymentNo = external_transaction_id || transaction_id;
+            const merchantInvoiceNo = invoice_no || transaction_id;
+            console.log(`[IPN] Received: invoice=${merchantInvoiceNo}, payment_no=${realPaymentNo}, status=${status}`);
+            if (String(merchantInvoiceNo).endsWith('PIT')) {
+                console.log(`[IPN] Acknowledging PIT internal disbursement: ${merchantInvoiceNo}`);
                 return { message: 'Acknowledged' };
             }
-            const tx = await this.sep31CoreService.findByPartialId(transaction_id);
+            const tx = await this.sep31CoreService.findByPartialId(merchantInvoiceNo);
             if (!tx) {
-                console.warn(`[IPN] Cannot find matching transaction for partial ID ${transaction_id}`);
+                console.warn(`[IPN] Cannot find matching transaction for partial ID ${merchantInvoiceNo}`);
                 return { message: 'Not found' };
             }
             const realTxId = tx.id;
@@ -116,12 +118,12 @@ let IpnController = class IpnController {
             switch (status) {
                 case 'SUCCESS':
                     if (!realTxId.startsWith('ucttx')) {
-                        await this.anchorRpc.notifyOffchainFundsAvailable(realTxId, external_transaction_id);
+                        await this.anchorRpc.notifyOffchainFundsAvailable(realTxId, realPaymentNo);
                     }
-                    await this.sep31CoreService.completeDisbursement(realTxId, external_transaction_id);
+                    await this.sep31CoreService.completeDisbursement(realTxId, realPaymentNo);
                     await this.sendBackendWebhook(realTxId, 'success', {
-                        externalTxId: external_transaction_id,
-                        ninePayInvoiceNo: invoice_no,
+                        externalTxId: realPaymentNo,
+                        ninePayInvoiceNo: merchantInvoiceNo,
                     });
                     break;
                 case 'FAILED': {

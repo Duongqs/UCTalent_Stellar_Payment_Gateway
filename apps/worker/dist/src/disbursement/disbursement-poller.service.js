@@ -116,7 +116,6 @@ let DisbursementPollerService = class DisbursementPollerService {
         })
             .execute();
         if (lockResult.affected === 0) {
-            console.log(`[Disbursement Poller] Lock failed for TX ${txId}`);
             return;
         }
         console.log(`[Disbursement Poller] Processing TX ${txId}`);

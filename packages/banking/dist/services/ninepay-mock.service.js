@@ -64,10 +64,13 @@ let NinePayMockService = class NinePayMockService {
             if (transactionId.endsWith('-PIT')) {
                 truncatedTxId = transactionId.replace(/-/g, '').substring(0, 27) + 'PIT';
             }
+            const finalExternalTxId = external_transaction_id.startsWith('9PAY-FALLBACK')
+                ? `9PAY-MOCK-${Date.now().toString().slice(-8)}`
+                : external_transaction_id;
             const payload = {
                 invoice_no: invoiceNo,
                 transaction_id: truncatedTxId,
-                external_transaction_id,
+                external_transaction_id: finalExternalTxId,
                 status: 'SUCCESS'
             };
             const payloadStr = JSON.stringify(payload);

@@ -1,54 +1,62 @@
-const crypto = require('crypto');
 const axios = require('axios');
+const crypto = require('crypto');
+const dotenv = require('dotenv');
+dotenv.config();
 
-const merchantKey = 'wuuFRU';
-const secretKey = 'wsbk79FW4VOrZnnLOSo7BbwkLqJF9xwBnUa';
-const apiUrl = 'https://sand-payment.9pay.vn';
+const merchantKey = process.env.NINEPAY_MERCHANT_KEY;
+const checksumKey = process.env.NINEPAY_CHECKSUM_KEY;
 
-function testSignature(includeHost) {
-  const method = 'POST';
-  const path = '/disbursement/check-account';
-  const time = Math.round(Date.now() / 1000).toString();
-  const requestId = crypto.randomUUID();
-  const params = {
-    request_id: requestId,
-    bank_code: 'BIDV',
-    account_no: '0888523111',
-    account_type: '1'
-  };
-
-  const httpQuery = Object.keys(params).sort().map(key => key + '=' + (params[key] || '')).join('&');
+async function request(path, data) {
+  const time = Math.floor(Date.now() / 1000);
   
-  let message = '';
-  if (includeHost) {
-    message = method.toUpperCase() + '\n' + apiUrl + path + '\n' + time;
-  } else {
-    message = method.toUpperCase() + '\n' + path + '\n' + time;
-  }
-  if (httpQuery) {
-    message += '\n' + httpQuery;
-  }
-
-  const signature = crypto.createHmac('sha256', secretKey).update(message, 'utf8').digest('base64');
-  const authHeader = `Signature Algorithm=HS256,Credential=${merchantKey},SignedHeaders=,Signature=${signature}`;
-
-  return axios({
-    method,
-    url: `${apiUrl}${path}`,
+  const sortedKeys = Object.keys(data).sort();
+  const formParts = sortedKeys.map(k => `${k}=${encodeURIComponent(data[k])}`);
+  const message = 'POST\nhttps://sand-payment.9pay.vn' + path + '\n' + time + '\n' + formParts.join('&');
+  
+  const signature = crypto.createHmac('sha256', checksumKey).update(message).digest('base64');
+  
+  const config = {
+    method: 'POST',
+    url: 'https://sand-payment.9pay.vn' + path,
     headers: {
-      'Authorization': authHeader,
-      'Date': time,
+      'Date': time.toString(),
+      'Authorization': 'Signature ' + signature,
       'Content-Type': 'application/json'
     },
-    data: params
-  }).then(res => {
-    console.log(`Success with includeHost=${includeHost}:`, res.data);
-  }).catch(err => {
-    console.error(`Error with includeHost=${includeHost}:`, err.response ? err.response.status : err.message);
-  });
+    data: data
+  };
+  
+  try {
+    const res = await axios(config);
+    console.log(`SUCCESS [${data.amount}]:`, res.data);
+  } catch (err) {
+    if (err.response) {
+      console.log(`ERROR [${data.amount}]: ${err.response.status}`, err.response.data);
+    } else {
+      console.log(`ERROR [${data.amount}]:`, err.message);
+    }
+  }
 }
 
-(async () => {
-  await testSignature(true);
-  await testSignature(false);
-})();
+async function run() {
+  await request('/disbursement/create', {
+    request_id: 'test' + Date.now(),
+    amount: 46867, // The successful amount
+    description: 'UCTalent Freelance Disbursement',
+    bank_code: 'BIDV',
+    account_name: 'NGUYEN VAN A',
+    account_no: '1023020330000',
+    account_type: '0'
+  });
+  
+  await request('/disbursement/create', {
+    request_id: 'test' + (Date.now() + 1),
+    amount: 23439, // The failing amount
+    description: 'UCTalent Freelance Disbursement',
+    bank_code: 'BIDV',
+    account_name: 'NGUYEN VAN A',
+    account_no: '1023020330000',
+    account_type: '0'
+  });
+}
+run();

@@ -23,7 +23,7 @@ let AnchorRpcService = class AnchorRpcService {
     get platformUrl() {
         return this.envService.get('PLATFORM_SERVER_URL') || this.envService.get('ANCHOR_PLATFORM_URL') || 'http://localhost:8085';
     }
-    async patchTransaction(id, updates) {
+    async patchTransaction(id, updates, retryCount = 0) {
         try {
             const response = await axios_1.default.patch(`${this.platformUrl}/transactions`, {
                 records: [
@@ -41,6 +41,14 @@ let AnchorRpcService = class AnchorRpcService {
             return response.data;
         }
         catch (error) {
+            const errorMsg = error.response?.data?.error || error.message;
+            if (retryCount < 3 &&
+                errorMsg &&
+                errorMsg.includes('modified by another request')) {
+                console.warn(`[AnchorRpcService] Concurrency error on PATCH /transactions for ${id}. Retrying (${retryCount + 1}/3) in 500ms...`);
+                await new Promise(resolve => setTimeout(resolve, 500));
+                return this.patchTransaction(id, updates, retryCount + 1);
+            }
             console.error(`Error in Anchor Platform API [PATCH /transactions]:`, error.response?.data || error.message);
             throw error;
         }
