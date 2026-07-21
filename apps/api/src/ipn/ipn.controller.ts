@@ -64,20 +64,24 @@ export class IpnController {
     try {
       const payloadStr = Buffer.from(resultB64, 'base64').toString('utf8');
       const payload = JSON.parse(payloadStr);
+      // In 9Pay real IPN: invoice_no is our request_id, transaction_id is 9Pay's payment_no
       const { invoice_no, transaction_id, external_transaction_id, status } = payload;
 
-      console.log(`[IPN] Received: invoice=${invoice_no}, transaction_id=${transaction_id}, status=${status}`);
+      const realPaymentNo = external_transaction_id || transaction_id;
+      const merchantInvoiceNo = invoice_no || transaction_id; // fallback for mock which might send invoice in transaction_id
+
+      console.log(`[IPN] Received: invoice=${merchantInvoiceNo}, payment_no=${realPaymentNo}, status=${status}`);
 
       // Ignore PIT invoices as they are internal tax disbursements and not tracked in SEP-31 DB
-      if (transaction_id.endsWith('PIT')) {
-         console.log(`[IPN] Acknowledging PIT internal disbursement: ${transaction_id}`);
+      if (String(merchantInvoiceNo).endsWith('PIT')) {
+         console.log(`[IPN] Acknowledging PIT internal disbursement: ${merchantInvoiceNo}`);
          return { message: 'Acknowledged' };
       }
 
       // Map back truncated ID (30 chars) to full UUID
-      const tx = await this.sep31CoreService.findByPartialId(transaction_id);
+      const tx = await this.sep31CoreService.findByPartialId(merchantInvoiceNo);
       if (!tx) {
-         console.warn(`[IPN] Cannot find matching transaction for partial ID ${transaction_id}`);
+         console.warn(`[IPN] Cannot find matching transaction for partial ID ${merchantInvoiceNo}`);
          return { message: 'Not found' };
       }
       const realTxId = tx.id;
@@ -101,19 +105,19 @@ export class IpnController {
           if (!realTxId.startsWith('ucttx')) {
             await this.anchorRpc.notifyOffchainFundsAvailable(
               realTxId,
-              external_transaction_id,
+              realPaymentNo,
             );
           }
 
           // Atomic DB transaction
           await this.sep31CoreService.completeDisbursement(
             realTxId,
-            external_transaction_id,
+            realPaymentNo,
           );
 
           await this.sendBackendWebhook(realTxId, 'success', {
-            externalTxId: external_transaction_id,
-            ninePayInvoiceNo: invoice_no,
+            externalTxId: realPaymentNo,
+            ninePayInvoiceNo: merchantInvoiceNo,
           });
           break;
 
@@ -262,7 +266,7 @@ export class IpnController {
                   invoice_no: tx.id,
                   transaction_id: tx.id,
                   external_transaction_id:
-                    result.payment_no || result.transaction_id || `simulated-${Date.now()}`,
+                    result.transaction_id || `simulated-${Date.now()}`,
                   status: 'SUCCESS',
                 }),
               ).toString('base64'),
@@ -274,7 +278,7 @@ export class IpnController {
                       invoice_no: tx.id,
                       transaction_id: tx.id,
                       external_transaction_id:
-                        result.payment_no || result.transaction_id || `simulated-${Date.now()}`,
+                        result.transaction_id || `simulated-${Date.now()}`,
                       status: 'SUCCESS',
                     }),
                   ).toString('base64') +
@@ -293,7 +297,7 @@ export class IpnController {
                 JSON.stringify({
                   invoice_no: tx.id,
                   transaction_id: tx.id,
-                  external_transaction_id: result.payment_no || result.transaction_id || '',
+                  external_transaction_id: result.transaction_id || '',
                   status: 'FAILED',
                 }),
               ).toString('base64'),
@@ -304,7 +308,7 @@ export class IpnController {
                     JSON.stringify({
                       invoice_no: tx.id,
                       transaction_id: tx.id,
-                      external_transaction_id: result.payment_no || result.transaction_id || '',
+                      external_transaction_id: result.transaction_id || '',
                       status: 'FAILED',
                     }),
                   ).toString('base64') +
