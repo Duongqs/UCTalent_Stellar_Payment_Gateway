@@ -309,9 +309,9 @@ substitutions:
   _PLATFORM_SERVER_URL: 'http://anchor-platform-server-dev:8085'
 
   # ===== PLATFORM TREASURY (PIT disbursement account) =====
-  _PIT_BANK_CODE: 'BIDV'
-  _PIT_ACCOUNT_NUMBER: '96311300000170179'
-  _PIT_ACCOUNT_NAME: 'UCTALENT PLATFORM'
+  _PIT_BANK_CODE: 'VCB'
+  _PIT_ACCOUNT_NUMBER: '66668888'
+  _PIT_ACCOUNT_NAME: 'GOOGLE COMPANY'
 
   # ===== WEBHOOK URLs =====
   _UCTALENT_BACKEND_WEBHOOK_URL: 'http://uc-talent-backend-dev-stellar:8080/api/v2/cross-border/settlement-callback'
