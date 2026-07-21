@@ -87,6 +87,7 @@ export class NinePayGatewayService {
 
     try {
       const response = await axios(config);
+      console.log(`[9Pay HTTP Response Debug] ${path}:`, JSON.stringify(response.data));
       return response.data;
     } catch (error: any) {
       if (error.response) {
@@ -165,16 +166,27 @@ export class NinePayGatewayService {
 
       const result = await this.request('POST', '/disbursement/create', params);
 
-      if (result.status === 2 || result.status === 5) {
-        const paymentNo = result.payment_no ? String(result.payment_no) : undefined;
-        console.log(`[9Pay Disburse] Success for ${shortInvoiceNo}, payment_no: ${paymentNo}, status: ${result.status}`);
+      if (result.status === 2 || result.status === 5 || result.status === 1 || result.status === 3 || result.status === 6) {
+        let paymentNo = result.payment_no ? String(result.payment_no) : undefined;
+        
+        if (!paymentNo && result.status === 6) {
+           console.log(`[9Pay Disburse] Status 6 received for ${shortInvoiceNo}, fetching real payment_no via checkStatus in 2s...`);
+           await new Promise(resolve => setTimeout(resolve, 2000));
+           const checkRes = await this.checkStatus(shortInvoiceNo);
+           if (checkRes && checkRes.payment_no) {
+             paymentNo = String(checkRes.payment_no);
+             console.log(`[9Pay Disburse] Recovered real payment_no: ${paymentNo} via checkStatus`);
+           }
+        }
+
+        console.log(`[9Pay Disburse] Success/Pending for ${shortInvoiceNo}, payment_no: ${paymentNo}, status: ${result.status}`);
         return {
           ...result,
           paymentNo,
           requestId: shortInvoiceNo,
         };
       } else {
-        throw new Error(`9Pay Disbursement Failed: [${result.error_code}] ${result.message}`);
+        throw new Error(`9Pay Disbursement Failed: [${result.error_code}] ${result.message || result.failure_reason || 'Unknown Error'}`);
       }
     } catch (error: any) {
       console.error('9Pay Disbursement Error:', error.message);

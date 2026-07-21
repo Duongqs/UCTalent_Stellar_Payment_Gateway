@@ -119,7 +119,7 @@ export class DisbursementPollerService {
       .execute();
 
     if (lockResult.affected === 0) {
-      console.log(`[Disbursement Poller] Lock failed for TX ${txId}`);
+      // console.debug(`[Disbursement Poller] Skipping TX ${txId} (already locked or processed)`);
       return;
     }
 
