@@ -278,7 +278,7 @@ let SorobanListenerService = class SorobanListenerService {
 };
 exports.SorobanListenerService = SorobanListenerService;
 __decorate([
-    (0, schedule_1.Interval)(5000),
+    (0, schedule_1.Interval)(30000),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)

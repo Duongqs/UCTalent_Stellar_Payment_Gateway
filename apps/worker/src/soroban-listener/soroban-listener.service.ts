@@ -108,7 +108,7 @@ export class SorobanListenerService implements OnModuleInit {
     await this.syncStateRepo.save(row);
   }
 
-  @Interval(5000)
+  @Interval(30000)
   async pollEvents() {
     if (this.isPolling || !this.rpcServer) return;
     this.isPolling = true;

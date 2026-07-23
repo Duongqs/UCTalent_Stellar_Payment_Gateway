@@ -1,6 +1,6 @@
 
-import { EncryptionService } from "./packages/core/src/services/encryption.service";
-import { EnvService } from "./packages/core/src/config/env.service";
+import { EncryptionService } from "./packages/core/src/services/encryption.service.ts";
+import { EnvService } from "./packages/core/src/config/env.service.ts";
 import { DataSource } from "typeorm";
 
 async function run() {
@@ -31,7 +31,7 @@ async function run() {
        const name = encryption.decrypt(p.encrypted_name);
        console.log(`- customerId: ${p.customer_id}, acc: ${acc}, name: ${name}`);
      } catch (e) {
-       console.log(`Failed decrypting ${p.customer_id}: ${e.message}`);
+       console.log(`Failed decrypting ${p.customer_id}: ${(e as any).message}`);
      }
   }
   await ds.destroy();
