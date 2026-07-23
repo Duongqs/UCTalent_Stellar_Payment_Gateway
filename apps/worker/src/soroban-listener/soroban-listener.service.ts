@@ -22,6 +22,7 @@ function toNative(scValOrBase64: any): any {
 @Injectable()
 export class SorobanListenerService implements OnModuleInit {
   private rpcServer!: rpc.Server;
+  private rpcUrl = '';
   private contractId!: string;
   private watchedContracts: string[] = [];
   private lastProcessedLedger = 0;
@@ -40,8 +41,33 @@ export class SorobanListenerService implements OnModuleInit {
     return Number(BigInt(stroops || 0)) / Math.pow(10, decimals);
   }
 
+  private formatRpcError(err: any): string {
+    const status = err?.response?.status;
+    const statusText = err?.response?.statusText;
+    const body = err?.response?.data;
+    let bodyStr = '';
+    if (body !== undefined && body !== null) {
+      try {
+        bodyStr =
+          typeof body === 'string' ? body : JSON.stringify(body);
+        if (bodyStr.length > 500) bodyStr = `${bodyStr.slice(0, 500)}...`;
+      } catch {
+        bodyStr = String(body);
+      }
+    }
+    return [
+      `rpcUrl=${this.rpcUrl}`,
+      status != null ? `httpStatus=${status}` : null,
+      statusText ? `httpStatusText=${statusText}` : null,
+      bodyStr ? `responseBody=${bodyStr}` : null,
+      `message=${err?.message ?? String(err)}`,
+    ]
+      .filter(Boolean)
+      .join(' | ');
+  }
+
   async onModuleInit() {
-    const rpcUrl =
+    this.rpcUrl =
       this.envService.get('SOROBAN_RPC_URL') ||
       'https://rpc-testnet.stellar.org';
     this.contractId = this.envService.get('ESCROW_CONTRACT_ID') || '';
@@ -53,7 +79,7 @@ export class SorobanListenerService implements OnModuleInit {
       return;
     }
 
-    this.rpcServer = new rpc.Server(rpcUrl);
+    this.rpcServer = new rpc.Server(this.rpcUrl);
     this.watchedContracts = [this.contractId];
 
     // Load persisted state from PostgreSQL/SQLite
@@ -80,7 +106,10 @@ export class SorobanListenerService implements OnModuleInit {
         `[Soroban Listener] Initialized. Last ledger: ${this.lastProcessedLedger}. Watched contracts: ${this.watchedContracts.length}`,
       );
     } catch (err: any) {
-      console.error('[Soroban Listener] Initialization error:', err.message);
+      console.error(
+        '[Soroban Listener] Initialization error:',
+        this.formatRpcError(err),
+      );
     }
   }
 
@@ -153,7 +182,10 @@ export class SorobanListenerService implements OnModuleInit {
       this.lastProcessedLedger = currentLedger;
       await this.setLastProcessedLedger(currentLedger);
     } catch (err: any) {
-      console.error('[Soroban Listener] Poll error:', err.message);
+      console.error(
+        '[Soroban Listener] Poll error:',
+        this.formatRpcError(err),
+      );
     } finally {
       this.isPolling = false;
     }
@@ -303,7 +335,7 @@ export class SorobanListenerService implements OnModuleInit {
     } catch (err: any) {
       console.error(
         `[Soroban Listener] Post-discovery scan failed for ${childAddr}:`,
-        err.message,
+        this.formatRpcError(err),
       );
     }
   }
