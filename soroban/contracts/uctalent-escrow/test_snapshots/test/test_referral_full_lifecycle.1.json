@@ -495,6 +495,14 @@
                             },
                             {
                               "key": {
+                                "symbol": "platform_wallet"
+                              },
+                              "val": {
+                                "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
+                              }
+                            },
+                            {
+                              "key": {
                                 "symbol": "scout_rate"
                               },
                               "val": {
@@ -560,6 +568,14 @@
                               },
                               "val": {
                                 "bool": true
+                              }
+                            },
+                            {
+                              "key": {
+                                "symbol": "platform_fee_released"
+                              },
+                              "val": {
+                                "bool": false
                               }
                             }
                           ]
@@ -1288,6 +1304,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "platform_wallet"
+                  },
+                  "val": {
+                    "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "scout_rate"
                   },
                   "val": {
@@ -1406,6 +1430,14 @@
                 {
                   "key": {
                     "symbol": "is_released"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "platform_fee_released"
                   },
                   "val": {
                     "bool": false
@@ -1741,6 +1773,14 @@
                   "val": {
                     "bool": false
                   }
+                },
+                {
+                  "key": {
+                    "symbol": "platform_fee_released"
+                  },
+                  "val": {
+                    "bool": false
+                  }
                 }
               ]
             }
@@ -1825,6 +1865,14 @@
                 {
                   "key": {
                     "symbol": "is_released"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "platform_fee_released"
                   },
                   "val": {
                     "bool": false
@@ -2119,6 +2167,14 @@
                   },
                   "val": {
                     "bool": true
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "platform_fee_released"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 }
               ]

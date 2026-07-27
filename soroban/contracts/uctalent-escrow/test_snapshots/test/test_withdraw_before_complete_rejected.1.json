@@ -1676,7 +1676,7 @@
             "data": {
               "vec": [
                 {
-                  "string": "caught panic 'Milestone not completed' from contract function 'Symbol(obj#613)'"
+                  "string": "caught panic 'Milestone not completed' from contract function 'Symbol(obj#615)'"
                 },
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"

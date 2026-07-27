@@ -8,7 +8,7 @@
 
 | Contract | Network | Address |
 |---|---|---|
-| `uctalent-escrow` (Soroban milestone escrow) | Stellar Testnet | [`CAG2H3CFGLZJZZKPU3V7SZQZ7SW2KL3BAOVKDDFV4WAOO2B7LOCKCE7M`](https://stellar.expert/explorer/testnet/contract/CAG2H3CFGLZJZZKPU3V7SZQZ7SW2KL3BAOVKDDFV4WAOO2B7LOCKCE7M) |
+| `uctalent-escrow` (Soroban milestone escrow) | Stellar Testnet | [`CBGJF7VDW7ZVTKWSQVIY2SJW5ZQHMH2OZQVPC7SQNJVIQURG66HZNY5K`](https://stellar.expert/explorer/testnet/contract/CBGJF7VDW7ZVTKWSQVIY2SJW5ZQHMH2OZQVPC7SQNJVIQURG66HZNY5K) |
 
 ## 🚀 Live Demo
 

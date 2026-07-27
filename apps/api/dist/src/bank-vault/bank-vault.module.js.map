@@ -1,1 +1,0 @@
-{"version":3,"file":"bank-vault.module.js","sourceRoot":"","sources":["../../../src/bank-vault/bank-vault.module.ts"],"names":[],"mappings":";;;;;;;;;AAAA,2CAAwC;AACxC,mEAA8D;AAKvD,IAAM,eAAe,GAArB,MAAM,eAAe;CAAG,CAAA;AAAlB,0CAAe;0BAAf,eAAe;IAH3B,IAAA,eAAM,EAAC;QACN,WAAW,EAAE,CAAC,2CAAmB,CAAC;KACnC,CAAC;GACW,eAAe,CAAG"}

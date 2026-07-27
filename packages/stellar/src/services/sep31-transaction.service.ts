@@ -52,6 +52,7 @@ export class Sep31TransactionService {
           asset_issuer: this.envService.get('USDC_ISSUER') || 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5',
           sender_id: payload.sender_id,
           receiver_id: payload.receiver_id,
+          // no quote_id — AP does not support SEP-38 quotes (quotes_supported: false)
           funding_method: 'stellar',
           destination_asset: 'iso4217:VND',
           fields: { 
@@ -67,14 +68,18 @@ export class Sep31TransactionService {
             Authorization: `Bearer ${this.generateAuthJwt()}`,
           },
           timeout: 15000,
-        },
+        }
       );
-
       return response.data;
     } catch (error: any) {
-      console.error('Error initiating SEP-31 transaction:', error.message);
+      console.error(
+        `Error initiating SEP-31 transaction: code=${error.code}, status=${error.response?.status}`
+      );
+      if (error.response) {
+        console.error(`Response status: ${error.response.status}, error: ${error.response.data?.error || 'N/A'}`);
+      }
 
-      if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+      if (error.code === 'ECONNABORTED' || (error.message && error.message.includes('timeout'))) {
         throw new Error('SEP-31 Anchor Platform timeout');
       } else if (error.response?.status === 400) {
         throw new Error(
@@ -82,6 +87,10 @@ export class Sep31TransactionService {
         );
       } else if (error.response?.status === 404) {
         throw new Error(`SEP-31 Quote not found or expired`);
+      }
+
+      if (!error.response) {
+        throw new Error(`Anchor Platform error: ${error.message || 'Service unreachable'}`);
       }
       throw error;
     }

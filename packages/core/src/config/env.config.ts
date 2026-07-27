@@ -30,6 +30,15 @@ export const envSchema = z.object({
   PIT_ACCOUNT_NUMBER: z.string().optional(),
   PIT_ACCOUNT_NAME: z.string().optional(),
 
+  EXCHANGERATE_HOST_API_KEY: z.string().optional(),
+  ORACLE_SOURCES: z
+    .string()
+    .default(
+      'vietcombank,coingecko_usdc,coingecko_usdt,exchangerate_api_usd,currency_api_usd,exchangerate_host',
+    ),
+  ORACLE_OUTLIER_METHOD: z.enum(['iqr', 'threshold']).default('iqr'),
+  ORACLE_OUTLIER_THRESHOLD_PCT: z.coerce.number().default(3),
+  ORACLE_MIN_VALID_SOURCES: z.coerce.number().default(3),
   ORACLE_HARD_BOUND_MIN: z.coerce.number().default(23000),
   ORACLE_HARD_BOUND_MAX: z.coerce.number().default(28000),
   ORACLE_SAFETY_SPREAD: z.coerce.number().default(0.99),

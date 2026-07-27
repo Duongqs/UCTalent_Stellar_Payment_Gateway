@@ -41,8 +41,8 @@ echo ""
 
 # 3. Build & Deploy Factory
 echo "🚀 Uploading WASM and Deploying Factory Contract to Live Testnet..."
-WASM_HASH=$(stellar contract install --wasm target/wasm32-unknown-unknown/release/uctalent_escrow.wasm --source alice --network testnet)
-FACTORY_ID=$(stellar contract deploy --wasm target/wasm32-unknown-unknown/release/uctalent_escrow.wasm --source alice --network testnet)
+WASM_HASH=$(stellar contract install --wasm target/wasm32v1-none/release/uctalent_escrow.wasm --source alice --network testnet)
+FACTORY_ID=$(stellar contract deploy --wasm target/wasm32v1-none/release/uctalent_escrow.wasm --source alice --network testnet)
 echo "✅ Factory Deployed Successfully!"
 echo "📜 Factory ID: $FACTORY_ID"
 echo "📦 WASM Hash: $WASM_HASH"
@@ -56,19 +56,15 @@ echo "⚙️  Spawning child Escrow from Factory..."
 DEV_KYC_ID="0101010101010101010101010101010101010101010101010101010101010101"
 SCOUT_KYC_ID="0202020202020202020202020202020202020202020202020202020202020202"
 
-# Parse the child address returned by create_escrow
-ESCROW_ID=$(stellar contract invoke --id $FACTORY_ID --source alice --network testnet -- create_escrow \
-  --config "{\"client\": \"$ALICE_ADDR\", \"developer\": \"$BOB_ADDR\", \"scout\": \"$SCOUT_ADDR\", \"platform_address\": \"$PLATFORM_ADDR\", \"anchor_address\": \"$PLATFORM_ADDR\", \"token\": \"$TOKEN_ADDR\", \"bounty_amount\": \"10000000\", \"scout_rate\": 800, \"platform_rate\": 200, \"expiry_ledger\": 9999999, \"developer_kyc_id\": \"$DEV_KYC_ID\", \"scout_kyc_id\": \"$SCOUT_KYC_ID\", \"oracle_address\": \"$ORACLE_ADDR\"}" | tr -d '"')
+# Parse the child address returned by create_and_fund_referral_escrow
+ESCROW_ID=$(stellar contract invoke --id $FACTORY_ID --source alice --network testnet -- create_and_fund_referral_escrow \
+  --config "{\"client\": \"$ALICE_ADDR\", \"candidate\": \"$BOB_ADDR\", \"platform_address\": \"$PLATFORM_ADDR\", \"platform_wallet\": \"$PLATFORM_ADDR\", \"anchor_address\": \"$PLATFORM_ADDR\", \"token\": \"$TOKEN_ADDR\", \"bounty_amount\": \"10000000\", \"scout_rate\": 8000, \"platform_rate\": 2000, \"dispute_window_secs\": 1209600, \"expiry_ledger\": 9999999, \"job_id\": \"legacy\"}" | tr -d '"')
 
 echo "✅ Child Escrow spawned successfully: $ESCROW_ID"
 
-# 6. Execute Deposit on Child Escrow
-echo "💰 Employer (Alice) depositing 1 USDC (10_000_000 stroops) into Escrow Vault..."
-stellar contract invoke --id $ESCROW_ID --source alice --network testnet -- deposit --client "$ALICE_ADDR"
-
-# 7. Execute release_bounty by Client
+# 6. Execute release_bounty by Client
 echo "✍️  Employer (Alice) signing milestone completion & TRIGGERING SPLIT..."
-stellar contract invoke --id $ESCROW_ID --source alice --network testnet -- release_bounty --sig_party "$ALICE_ADDR"
+stellar contract invoke --id $ESCROW_ID --source alice --network testnet -- release_bounty --client "$ALICE_ADDR" --has_scout true --scout_kyc_id "$SCOUT_KYC_ID"
 
 echo "🎉 WEB3 LIFECYCLE COMPLETE: Funds have been atomically split (2% Platform Treasury / 98% Anchor Vault) on the Testnet!"
 echo "=========================================================="

@@ -130,7 +130,7 @@ let Sep31Controller = class Sep31Controller {
             });
         }
         catch (apError) {
-            const msg = apError.message || '';
+            const msg = apError.message || apError.code || '';
             const code = apError.code || '';
             const isAmbiguous = msg.includes('timeout') ||
                 msg.includes('socket hang up') ||
@@ -154,7 +154,7 @@ let Sep31Controller = class Sep31Controller {
                 if (msg.includes('QUOTE_EXPIRED')) {
                     throw new common_1.BadRequestException({ error: 'quote_expired' });
                 }
-                throw new common_1.BadRequestException({ error: 'ap_error', message: msg });
+                throw new common_1.BadRequestException({ error: 'ap_error', message: msg || 'Anchor Platform error' });
             }
         }
         const transactionId = transactionResponse.id;
@@ -247,12 +247,13 @@ let Sep31Controller = class Sep31Controller {
                 asset_code,
                 sender_id: sender_id || '',
                 receiver_id: receiver_id || '',
+                quote_id,
                 receiver_routing_number,
                 receiver_account_number,
             });
         }
         catch (apError) {
-            const msg = apError.message || '';
+            const msg = apError.message || apError.code || '';
             const code = apError.code || '';
             const isAmbiguous = msg.includes('timeout') ||
                 msg.includes('socket hang up') ||
@@ -273,7 +274,7 @@ let Sep31Controller = class Sep31Controller {
                 if (msg.includes('CUSTOMER_NEEDS_INFO')) {
                     throw new common_1.BadRequestException({ error: 'customer_info_needed' });
                 }
-                throw new common_1.BadRequestException({ error: 'ap_error', message: msg });
+                throw new common_1.BadRequestException({ error: 'ap_error', message: msg || 'Anchor Platform error' });
             }
         }
         const transactionId = transactionResponse.id;

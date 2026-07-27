@@ -597,7 +597,7 @@
                                           "symbol": "is_withdrawn"
                                         },
                                         "val": {
-                                          "bool": false
+                                          "bool": true
                                         }
                                       },
                                       {
@@ -1729,7 +1729,7 @@
                 "bytes": "0000000000000000000000000000000000000000000000000000000000000009"
               },
               {
-                "symbol": "release_milestone"
+                "symbol": "complete_milestone"
               }
             ],
             "data": {
@@ -1825,7 +1825,7 @@
                   "string": "contract try_call failed"
                 },
                 {
-                  "symbol": "release_milestone"
+                  "symbol": "complete_milestone"
                 },
                 {
                   "vec": [
@@ -2409,7 +2409,7 @@
                               "symbol": "is_withdrawn"
                             },
                             "val": {
-                              "bool": false
+                              "bool": true
                             }
                           },
                           {

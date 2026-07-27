@@ -80,12 +80,13 @@ let NinePayMockService = class NinePayMockService {
                 .update(resultB64 + (this.envService.get('NINEPAY_CHECKSUM_KEY') || ''))
                 .digest('hex')
                 .toUpperCase();
-            const apiPort = 8081;
+            const base = (this.envService.get('STELLAR_API_BASE_URL') || 'http://localhost:8081').replace(/\/+$/, '');
             try {
-                await axios_1.default.post(`http://localhost:${apiPort}/api/ipn`, {
+                const res = await axios_1.default.post(`${base}/api/ipn`, {
                     result: resultB64,
                     checksum: expectedChecksum
                 });
+                console.log(`[Mock 9Pay] IPN callback sent for ${invoiceNo}: ${res.status} ${JSON.stringify(res.data)}`);
             }
             catch (err) {
                 console.error('[Mock 9Pay] Failed to trigger IPN mock callback:', err.message);

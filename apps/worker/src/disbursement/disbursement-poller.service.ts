@@ -17,6 +17,7 @@ import {
   EnvService,
 } from '@uc/core';
 import axios from 'axios';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class DisbursementPollerService {
@@ -44,6 +45,47 @@ export class DisbursementPollerService {
       this.envService.get('ANCHOR_PLATFORM_URL') ||
       'http://localhost:8085'
     );
+  }
+
+  private getBackendRevertUrl(): string {
+    let backendUrl = this.envService.get('UCTALENT_BACKEND_WEBHOOK_URL');
+    if (backendUrl) {
+      if (backendUrl.includes('settlement-callback')) {
+        backendUrl = backendUrl.replace('settlement-callback', 'revert-disbursement');
+      } else if (backendUrl.includes('/cross-border/')) {
+        backendUrl = backendUrl.replace(/\/cross-border\/.*$/, '/cross-border/revert-disbursement');
+      } else {
+        backendUrl = backendUrl.replace(/\/api\/.*$/, '/api/cross-border/revert-disbursement');
+      }
+    }
+    return backendUrl || 'http://localhost:3000/api/cross-border/revert-disbursement';
+  }
+
+  private async revertPaymentDistribution(distributionId: string): Promise<void> {
+    if (!distributionId) return;
+
+    const url = this.getBackendRevertUrl();
+    const payload = { distributionId };
+    const payloadString = JSON.stringify(payload);
+    const secret = this.envService.get('CROSS_BORDER_WEBHOOK_SECRET') || 'uctalent-dev-secret';
+    const signature = 'sha256=' + crypto.createHmac('sha256', secret).update(payloadString).digest('hex');
+
+    try {
+      const res = await axios.post(url, payload, {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-UCTALENT-SIGNATURE': signature,
+        },
+        timeout: 5000,
+      });
+      console.log(
+        `[Disbursement Poller] Reverted payment distribution ${distributionId} to claimable: ${res.status}`
+      );
+    } catch (err: any) {
+      console.warn(
+        `[Disbursement Poller] Failed to revert payment distribution ${distributionId}: ${err.message}`
+      );
+    }
   }
 
   @Interval(10000)
@@ -89,6 +131,19 @@ export class DisbursementPollerService {
               })
               .execute();
           } catch (e) {}
+
+          try {
+            const txRecord = await this.sep31Repo.findOne({
+              where: { id: tx.id },
+            });
+            if (txRecord?.distributionId) {
+              await this.revertPaymentDistribution(txRecord.distributionId);
+            }
+          } catch (revertErr: any) {
+            console.warn(
+              `[Disbursement Poller] Could not lookup/revert distribution for TX ${tx.id}: ${revertErr.message}`
+            );
+          }
         }
       }
     } catch (error: any) {

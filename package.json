@@ -11,7 +11,7 @@
     "build": "npm run build -w @uc/core && npm run build -w @uc/stellar && npm run build -w @uc/banking && npm run build -w @uc/api && npm run build -w @uc/worker",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "start:api": "npm run start:dev -w @uc/api",
+    "start:api": "npx -y kill-port 8081 && npm run start:dev -w @uc/api",
     "start:worker": "npm run start:dev -w @uc/worker",
     "db:seed": "node packages/core/dist/demo/demo-seed.js",
     "db:reset": "node packages/core/dist/demo/demo-reset.js",

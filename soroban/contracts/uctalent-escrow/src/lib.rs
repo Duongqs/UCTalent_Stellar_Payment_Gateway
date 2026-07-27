@@ -1,11 +1,12 @@
 #![no_std]
 
 mod types;
+mod constants;
 mod factory;
 mod escrow;
 
 pub use crate::types::{
-    EscrowConfig, ReferralConfig, ReferralStatus,
+    ReferralConfig, ReferralStatus,
     MilestoneConfig, MilestoneStatus, Milestone, WithdrawalRecord, DataKey,
 };
 
@@ -26,23 +27,6 @@ impl UCTalentContract {
         factory::factory_init(&env, wasm_hash);
     }
 
-    /// Legacy: maps to create_referral_escrow for backward-compat
-    pub fn create_escrow(env: Env, config: EscrowConfig) -> Address {
-        let ref_config = ReferralConfig {
-            client: config.client,
-            candidate: config.developer,
-            platform_address: config.platform_address,
-            anchor_address: config.anchor_address,
-            token: config.token,
-            bounty_amount: config.bounty_amount,
-            scout_rate: config.scout_rate,
-            platform_rate: config.platform_rate,
-            dispute_window_secs: 14 * 24 * 3600,
-            expiry_ledger: config.expiry_ledger,
-            job_id: soroban_sdk::String::from_str(&env, "legacy"),
-        };
-        factory::create_referral_escrow(&env, ref_config)
-    }
 
     pub fn create_referral_escrow(env: Env, config: ReferralConfig) -> Address {
         factory::create_referral_escrow(&env, config)
@@ -62,23 +46,6 @@ impl UCTalentContract {
 
     // ── Child Escrow Init ─────────────────────────────────────────────────────
 
-    /// Called by factory cross-contract invoke after deploy
-    pub fn escrow_init(env: Env, config: EscrowConfig) {
-        let ref_config = ReferralConfig {
-            client: config.client,
-            candidate: config.developer,
-            platform_address: config.platform_address,
-            anchor_address: config.anchor_address,
-            token: config.token,
-            bounty_amount: config.bounty_amount,
-            scout_rate: config.scout_rate,
-            platform_rate: config.platform_rate,
-            dispute_window_secs: 14 * 24 * 3600,
-            expiry_ledger: config.expiry_ledger,
-            job_id: soroban_sdk::String::from_str(&env, "legacy"),
-        };
-        escrow::referral_init(&env, ref_config);
-    }
 
     pub fn referral_init(env: Env, config: ReferralConfig) {
         escrow::referral_init(&env, config);
@@ -99,10 +66,6 @@ impl UCTalentContract {
         escrow::release_bounty(&env, client, has_scout, scout_kyc_id);
     }
 
-    /// Milestone release (legacy — kept for backward compat; prefer complete_milestone + withdraw_to_anchor)
-    pub fn release_milestone(env: Env, client: Address, index: u32) {
-        escrow::release_milestone(&env, client, index);
-    }
 
     /// Mark milestone as completed (state change only, no funds moved)
     pub fn complete_milestone(env: Env, client: Address, index: u32) {

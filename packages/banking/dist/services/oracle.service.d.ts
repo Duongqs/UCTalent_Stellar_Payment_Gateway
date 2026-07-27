@@ -1,4 +1,5 @@
 import { EnvService } from '@uc/core';
+import { OracleSourceRegistry } from '../oracle-sources/oracle-source.registry';
 export interface OracleResult {
     rate: number;
     rawRates: Record<string, number | null>;
@@ -9,12 +10,13 @@ export interface OracleResult {
 }
 export declare class OracleService {
     private readonly envService;
+    private readonly registry;
     private cache;
     private circuitBreaker;
-    constructor(envService: EnvService);
-    private sources;
+    constructor(envService: EnvService, registry: OracleSourceRegistry);
     private calculateMedian;
-    private detectOutliers;
+    private detectOutliersThreshold;
+    private detectOutliersIQR;
     getSafeFxRate(): Promise<OracleResult>;
     invalidateCache(): void;
     getCircuitBreakerState(): string;

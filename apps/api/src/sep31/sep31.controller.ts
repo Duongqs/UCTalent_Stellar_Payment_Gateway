@@ -151,7 +151,7 @@ export class Sep31Controller {
         receiver_account_number,
       });
     } catch (apError: any) {
-      const msg = apError.message || '';
+      const msg = apError.message || apError.code || '';
       const code = apError.code || '';
       const isAmbiguous =
         msg.includes('timeout') ||
@@ -178,7 +178,7 @@ export class Sep31Controller {
         if (msg.includes('QUOTE_EXPIRED')) {
           throw new BadRequestException({ error: 'quote_expired' });
         }
-        throw new BadRequestException({ error: 'ap_error', message: msg });
+        throw new BadRequestException({ error: 'ap_error', message: msg || 'Anchor Platform error' });
       }
     }
 
@@ -286,11 +286,12 @@ export class Sep31Controller {
         asset_code,
         sender_id: sender_id || '',
         receiver_id: receiver_id || '',
+        quote_id,
         receiver_routing_number,
         receiver_account_number,
       });
     } catch (apError: any) {
-      const msg = apError.message || '';
+      const msg = apError.message || apError.code || '';
       const code = apError.code || '';
       const isAmbiguous =
         msg.includes('timeout') ||
@@ -312,7 +313,7 @@ export class Sep31Controller {
         if (msg.includes('CUSTOMER_NEEDS_INFO')) {
           throw new BadRequestException({ error: 'customer_info_needed' });
         }
-        throw new BadRequestException({ error: 'ap_error', message: msg });
+        throw new BadRequestException({ error: 'ap_error', message: msg || 'Anchor Platform error' });
       }
     }
 

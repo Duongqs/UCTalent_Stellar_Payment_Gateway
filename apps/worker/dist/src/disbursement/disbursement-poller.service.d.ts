@@ -16,6 +16,8 @@ export declare class DisbursementPollerService {
     private isPolling;
     constructor(sep31Repo: Repository<Sep31TransactionEntity>, bankProfileRepo: Repository<BankProfileEntity>, firmQuoteRepo: Repository<FirmQuoteEntity>, anchorRpc: AnchorRpcService, ninePayGateway: NinePayGatewayService, ninePayMock: NinePayMockService, oracleService: OracleService, encryption: EncryptionService, auditLog: AuditLogService, envService: EnvService);
     private get platformUrl();
+    private getBackendRevertUrl;
+    private revertPaymentDistribution;
     pollPendingTransactions(): Promise<void>;
     private processTransaction;
     private haltForMissingInfo;

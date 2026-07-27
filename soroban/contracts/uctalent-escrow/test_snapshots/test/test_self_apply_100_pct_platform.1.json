@@ -488,6 +488,14 @@
                             },
                             {
                               "key": {
+                                "symbol": "platform_wallet"
+                              },
+                              "val": {
+                                "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
+                              }
+                            },
+                            {
+                              "key": {
                                 "symbol": "scout_rate"
                               },
                               "val": {
@@ -553,6 +561,14 @@
                               },
                               "val": {
                                 "bool": true
+                              }
+                            },
+                            {
+                              "key": {
+                                "symbol": "platform_fee_released"
+                              },
+                              "val": {
+                                "bool": false
                               }
                             }
                           ]
@@ -1277,6 +1293,14 @@
                   },
                   "val": {
                     "u32": 2000
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "platform_wallet"
+                  },
+                  "val": {
+                    "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
                   }
                 },
                 {

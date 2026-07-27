@@ -1,25 +1,5 @@
 use soroban_sdk::{contracttype, Address, BytesN, String, Vec};
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Legacy EscrowConfig (kept for backward-compat with existing tests)
-// ─────────────────────────────────────────────────────────────────────────────
-/// Legacy EscrowConfig (kept for backward-compat with existing tests)
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct EscrowConfig {
-    pub client: Address,
-    pub developer: Address,
-    pub scout: Address,
-    pub platform_address: Address,
-    pub anchor_address: Address,
-    pub token: Address,
-    pub bounty_amount: i128,
-    pub scout_rate: u32,
-    pub platform_rate: u32,
-    pub expiry_ledger: u32,
-    pub developer_kyc_id: BytesN<32>,
-    pub scout_kyc_id: BytesN<32>,
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Referral Escrow (Normal Jobs — 80% Scout / 20% Platform)
@@ -53,6 +33,8 @@ pub struct ReferralConfig {
     pub expiry_ledger: u32,
     /// Backend tracking ID — used in events so SDP can map to DB record
     pub job_id: String,
+    /// Wallet address that receives platform fee when hired
+    pub platform_wallet: Address,
 }
 
 /// Tracks the lifecycle state of a referral escrow.
@@ -69,6 +51,8 @@ pub struct ReferralStatus {
     pub is_refunded: bool,
     /// The timestamp when the deposit was made, used to track dispute window
     pub deposit_timestamp: u64,
+    /// True if the platform fee has been released to platform_wallet
+    pub platform_fee_released: bool,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

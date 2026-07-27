@@ -73,6 +73,7 @@ impl TestCtx {
             client: self.client.clone(),
             candidate: self.developer.clone(),
             platform_address: self.platform.clone(),
+            platform_wallet: self.platform.clone(),
             anchor_address: self.anchor.clone(),
             token: self.token_id.clone(),
             bounty_amount: self.token().balance(&self.client) / 2,
@@ -102,25 +103,6 @@ impl TestCtx {
         }
     }
 
-    /// Legacy EscrowConfig for backward-compat tests
-    fn default_config(&self, expiry_ledger: u32) -> EscrowConfig {
-        let token = self.token();
-        EscrowConfig {
-            client: self.client.clone(),
-            developer: self.developer.clone(),
-            scout: self.scout.clone(),
-            platform_address: self.platform.clone(),
-            anchor_address: self.anchor.clone(),
-            token: self.token_id.clone(),
-            bounty_amount: token.balance(&self.client),
-            scout_rate: 8000,
-            platform_rate: 2000,
-            expiry_ledger,
-            developer_kyc_id: BytesN::from_array(&self.env, &[1u8; 32]),
-            scout_kyc_id: BytesN::from_array(&self.env, &[2u8; 32]),
-        }
-    }
-
     fn create_referral_escrow(&self, config: &ReferralConfig) -> Address {
         let addr = self.env.register_contract(None, UCTalentContract);
         let c = UCTalentContractClient::new(&self.env, &addr);
@@ -128,19 +110,9 @@ impl TestCtx {
         addr
     }
 
-    fn create_milestone_escrow_from(&self, config: &MilestoneConfig) -> Address {
-        let addr = self.env.register_contract(None, UCTalentContract);
-        let c = UCTalentContractClient::new(&self.env, &addr);
-        c.milestone_init(config);
-        addr
-    }
 
-    fn create_escrow(&self, config: &EscrowConfig) -> Address {
-        let addr = self.env.register_contract(None, UCTalentContract);
-        let c = UCTalentContractClient::new(&self.env, &addr);
-        c.escrow_init(config);
-        addr
-    }
+
+
 
     fn create_milestone_escrow(&self, config: &MilestoneConfig) -> Address {
         let addr = self.env.register_contract(None, UCTalentContract);
@@ -289,43 +261,7 @@ fn test_refund_before_expiry_rejected() {
     ec.refund(); // panic
 }
 
-// ─── Test 8: Milestone full lifecycle ────────────────────────────────────────
 
-#[test]
-fn test_milestone_full_lifecycle() {
-    let ctx = TestCtx::new(10_000_000);
-    ctx.set_ledger(10);
-    let mut amounts = soroban_sdk::Vec::new(&ctx.env);
-    amounts.push_back(5_000_000);
-    amounts.push_back(3_000_000);
-    let config = ctx.default_milestone_config(amounts);
-    let escrow_addr = ctx.create_milestone_escrow(&config);
-    let ec = UCTalentContractClient::new(&ctx.env, &escrow_addr);
-    
-    // Deposit
-    ec.deposit(&ctx.client);
-    // platform_fee is paid on top. Total deposit = 8.8M
-    assert_eq!(ctx.token().balance(&escrow_addr), 8_800_000);
-    
-    // Release milestone 0
-    ec.release_milestone(&ctx.client, &0);
-    let ms_status = ec.get_milestone_status();
-    assert!(ms_status.milestones.get(0).unwrap().is_completed);
-    
-    // M0: amount = 5M. freelancer_share = 5M
-    assert_eq!(ctx.token().balance(&ctx.anchor), 5_000_000);
-    assert_eq!(ctx.token().balance(&escrow_addr), 3_800_000);
-    
-    // Release milestone 1
-    ec.release_milestone(&ctx.client, &1);
-    let ms_status = ec.get_milestone_status();
-    assert!(ms_status.milestones.get(1).unwrap().is_completed);
-    
-    assert_eq!(ctx.token().balance(&ctx.anchor), 8_000_000);
-    // Platform fee (800000) was left in the contract, but since all milestones are complete,
-    // _check_and_refund_surplus refunded it to the client!
-    assert_eq!(ctx.token().balance(&escrow_addr), 0);
-}
 
 // ─── Test 9: Cancel remaining milestones ─────────────────────────────────────
 #[test]
@@ -376,7 +312,7 @@ fn test_dispute_workflow() {
     assert!(ec.get_milestone_status().milestones.get(0).unwrap().is_disputed);
 
     // sign_milestone should be blocked
-    let res = ec.try_release_milestone(&ctx.client, &0);
+    let res = ec.try_complete_milestone(&ctx.client, &0);
     assert!(res.is_err());
 
     // Admin resolves: 50% client, 50% developer
@@ -457,23 +393,7 @@ fn test_update_milestone_amount_refunds() {
     assert_eq!(ctx.token().balance(&ctx.client), 14_500_000); // 14.5M
 }
 
-#[test]
-#[should_panic(expected = "Previous milestone must be completed first")]
-fn test_out_of_order_release_rejected() {
-    let ctx = TestCtx::new(10_000_000);
-    ctx.set_ledger(10);
-    let mut amounts = soroban_sdk::Vec::new(&ctx.env);
-    amounts.push_back(5_000_000);
-    amounts.push_back(3_000_000);
-    let config = ctx.default_milestone_config(amounts);
-    let escrow_addr = ctx.create_milestone_escrow(&config);
-    let ec = UCTalentContractClient::new(&ctx.env, &escrow_addr);
-    
-    ec.deposit(&ctx.client);
-    
-    // Release milestone 1 directly without releasing milestone 0 (should panic)
-    ec.release_milestone(&ctx.client, &1);
-}
+
 
 // ─── New Flow Tests: complete_milestone + withdraw_to_anchor ───────────────
 
@@ -534,7 +454,8 @@ fn test_assign_freelancer() {
     ctx.set_ledger(10);
     let mut amounts = soroban_sdk::Vec::new(&ctx.env);
     amounts.push_back(5_000_000);
-    let config = ctx.default_milestone_config(amounts);
+    let mut config = ctx.default_milestone_config(amounts);
+    config.freelancer_kyc_id = BytesN::from_array(&ctx.env, &[0u8; 32]);
     let escrow_addr = ctx.create_milestone_escrow(&config);
     let ec = UCTalentContractClient::new(&ctx.env, &escrow_addr);
 
@@ -832,4 +753,152 @@ fn test_dispute_completed_milestone_rejected() {
     ec.release_platform_fee(&ctx.platform);
     ec.complete_milestone(&ctx.client, &0);
     ec.dispute_milestone(&ctx.client, &0);
+}
+
+// ─── New Flow Tests: Referral Platform Fee ───────────────────────────────────
+
+#[test]
+fn test_referral_release_platform_fee() {
+    let ctx = TestCtx::new(10_000_000); // 10M units
+    ctx.set_ledger(10);
+    let config = ctx.default_referral_config(100);
+    let escrow_addr = ctx.create_referral_escrow(&config);
+    let ec = UCTalentContractClient::new(&ctx.env, &escrow_addr);
+    
+    ec.deposit(&ctx.client);
+    let bounty = config.bounty_amount; // 5M units
+    
+    let platform_balance_before = ctx.token().balance(&ctx.platform);
+    let contract_balance_before = ctx.token().balance(&escrow_addr);
+    
+    ec.release_platform_fee(&ctx.platform);
+    
+    let status = ec.get_status();
+    assert!(status.platform_fee_released);
+    
+    let platform_fee = (bounty * 2000) / 10000;
+    assert_eq!(ctx.token().balance(&ctx.platform), platform_balance_before + platform_fee);
+    assert_eq!(ctx.token().balance(&escrow_addr), contract_balance_before - platform_fee);
+    
+    // Test release_bounty afterwards
+    ctx.env.ledger().with_mut(|l| { l.timestamp += 14 * 24 * 3600 + 1; });
+    ec.release_bounty(&ctx.client, &true, &BytesN::from_array(&ctx.env, &[0u8; 32]));
+    
+    // anchor should receive the remaining 80%
+    let anchor_balance = ctx.token().balance(&ctx.anchor);
+    assert_eq!(anchor_balance, bounty - platform_fee);
+    assert_eq!(ctx.token().balance(&escrow_addr), 0);
+}
+
+#[test]
+#[should_panic(expected = "Fee already released")]
+fn test_referral_release_platform_fee_twice() {
+    let ctx = TestCtx::new(10_000_000);
+    ctx.set_ledger(10);
+    let config = ctx.default_referral_config(100);
+    let escrow_addr = ctx.create_referral_escrow(&config);
+    let ec = UCTalentContractClient::new(&ctx.env, &escrow_addr);
+    
+    ec.deposit(&ctx.client);
+    ec.release_platform_fee(&ctx.platform);
+    ec.release_platform_fee(&ctx.platform);
+}
+
+#[test]
+#[should_panic(expected = "Not deposited")]
+fn test_referral_release_platform_fee_before_deposit() {
+    let ctx = TestCtx::new(10_000_000);
+    ctx.set_ledger(10);
+    let config = ctx.default_referral_config(100);
+    let escrow_addr = ctx.create_referral_escrow(&config);
+    let ec = UCTalentContractClient::new(&ctx.env, &escrow_addr);
+    
+    ec.release_platform_fee(&ctx.platform);
+}
+
+#[test]
+#[should_panic(expected = "Only platform can release fee")]
+fn test_referral_release_platform_fee_wrong_signer() {
+    let ctx = TestCtx::new(10_000_000);
+    ctx.set_ledger(10);
+    let config = ctx.default_referral_config(100);
+    let escrow_addr = ctx.create_referral_escrow(&config);
+    let ec = UCTalentContractClient::new(&ctx.env, &escrow_addr);
+    
+    ec.deposit(&ctx.client);
+    
+    // Attacker tries to release platform fee
+    let attacker = Address::generate(&ctx.env);
+    ec.release_platform_fee(&attacker);
+}
+
+// ─── New Flow Tests: Referral withdraw_to_anchor ────────────────────────────
+
+#[test]
+fn test_referral_withdraw_to_anchor() {
+    let ctx = TestCtx::new(10_000_000);
+    ctx.set_ledger(10);
+    let config = ctx.default_referral_config(100);
+    let escrow_addr = ctx.create_referral_escrow(&config);
+    let ec = UCTalentContractClient::new(&ctx.env, &escrow_addr);
+
+    ec.deposit(&ctx.client);
+    let bounty = config.bounty_amount;
+    let platform_fee = (bounty * 2000) / 10000;
+    let remaining = bounty - platform_fee;
+
+    ec.release_platform_fee(&ctx.platform);
+
+    let anchor_before = ctx.token().balance(&ctx.anchor);
+    ec.withdraw_to_anchor(&ctx.platform, &0);
+
+    assert_eq!(ctx.token().balance(&ctx.anchor), anchor_before + remaining);
+    assert_eq!(ctx.token().balance(&escrow_addr), 0);
+
+    let status = ec.get_status();
+    assert!(status.is_released);
+}
+
+#[test]
+#[should_panic(expected = "Already released")]
+fn test_referral_withdraw_to_anchor_twice() {
+    let ctx = TestCtx::new(10_000_000);
+    ctx.set_ledger(10);
+    let config = ctx.default_referral_config(100);
+    let escrow_addr = ctx.create_referral_escrow(&config);
+    let ec = UCTalentContractClient::new(&ctx.env, &escrow_addr);
+
+    ec.deposit(&ctx.client);
+    ec.release_platform_fee(&ctx.platform);
+    ec.withdraw_to_anchor(&ctx.platform, &0);
+    ec.withdraw_to_anchor(&ctx.platform, &0);
+}
+
+#[test]
+#[should_panic(expected = "Platform fee not released yet")]
+fn test_referral_withdraw_before_platform_fee() {
+    let ctx = TestCtx::new(10_000_000);
+    ctx.set_ledger(10);
+    let config = ctx.default_referral_config(100);
+    let escrow_addr = ctx.create_referral_escrow(&config);
+    let ec = UCTalentContractClient::new(&ctx.env, &escrow_addr);
+
+    ec.deposit(&ctx.client);
+    ec.withdraw_to_anchor(&ctx.platform, &0);
+}
+
+#[test]
+#[should_panic(expected = "Only platform can initiate withdrawal")]
+fn test_referral_withdraw_wrong_signer() {
+    let ctx = TestCtx::new(10_000_000);
+    ctx.set_ledger(10);
+    let config = ctx.default_referral_config(100);
+    let escrow_addr = ctx.create_referral_escrow(&config);
+    let ec = UCTalentContractClient::new(&ctx.env, &escrow_addr);
+
+    ec.deposit(&ctx.client);
+    ec.release_platform_fee(&ctx.platform);
+    
+    let attacker = Address::generate(&ctx.env);
+    ec.withdraw_to_anchor(&attacker, &0);
 }

@@ -1,0 +1,11 @@
+pub const BPS_BASE: u32 = 10_000;
+
+pub const REFERRAL_PLATFORM_RATE_BPS: u32 = 2_000;
+pub const REFERRAL_SCOUT_RATE_BPS: u32 = 8_000;
+
+pub const MILESTONE_PLATFORM_RATE_BPS: u32 = 1_000;
+pub const MILESTONE_FREELANCER_RATE_BPS: u32 = 10_000;
+
+pub const DISPUTE_WINDOW_SECS: u64 = 14 * 24 * 3600;
+
+pub const PROBATION_SECS: u64 = 7 * 24 * 3600;

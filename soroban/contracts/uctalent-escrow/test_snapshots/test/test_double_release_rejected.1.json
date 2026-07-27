@@ -488,6 +488,14 @@
                             },
                             {
                               "key": {
+                                "symbol": "platform_wallet"
+                              },
+                              "val": {
+                                "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
+                              }
+                            },
+                            {
+                              "key": {
                                 "symbol": "scout_rate"
                               },
                               "val": {
@@ -553,6 +561,14 @@
                               },
                               "val": {
                                 "bool": true
+                              }
+                            },
+                            {
+                              "key": {
+                                "symbol": "platform_fee_released"
+                              },
+                              "val": {
+                                "bool": false
                               }
                             }
                           ]
@@ -1281,6 +1297,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "platform_wallet"
+                  },
+                  "val": {
+                    "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "scout_rate"
                   },
                   "val": {
@@ -1716,7 +1740,7 @@
             "data": {
               "vec": [
                 {
-                  "string": "caught panic 'Already released' from contract function 'Symbol(obj#527)'"
+                  "string": "caught panic 'Already released' from contract function 'Symbol(obj#549)'"
                 },
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM"

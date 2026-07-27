@@ -100,8 +100,11 @@ let Sep31TransactionService = class Sep31TransactionService {
             return response.data;
         }
         catch (error) {
-            console.error('Error initiating SEP-31 transaction:', error.message);
-            if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+            console.error(`Error initiating SEP-31 transaction: code=${error.code}, status=${error.response?.status}`);
+            if (error.response) {
+                console.error(`Response status: ${error.response.status}, error: ${error.response.data?.error || 'N/A'}`);
+            }
+            if (error.code === 'ECONNABORTED' || (error.message && error.message.includes('timeout'))) {
                 throw new Error('SEP-31 Anchor Platform timeout');
             }
             else if (error.response?.status === 400) {
@@ -109,6 +112,9 @@ let Sep31TransactionService = class Sep31TransactionService {
             }
             else if (error.response?.status === 404) {
                 throw new Error(`SEP-31 Quote not found or expired`);
+            }
+            if (!error.response) {
+                throw new Error(`Anchor Platform error: ${error.message || 'Service unreachable'}`);
             }
             throw error;
         }

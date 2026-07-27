@@ -16,8 +16,7 @@ exports.OracleService = void 0;
 const common_1 = require("@nestjs/common");
 const axios_1 = __importDefault(require("axios"));
 const core_1 = require("@uc/core");
-const OUTLIER_THRESHOLD_PCT = 3;
-const SOURCE_TIMEOUT_MS = 5_000;
+const oracle_source_registry_1 = require("../oracle-sources/oracle-source.registry");
 var CircuitState;
 (function (CircuitState) {
     CircuitState[CircuitState["CLOSED"] = 0] = "CLOSED";
@@ -75,62 +74,10 @@ class OracleCircuitBreaker {
     }
 }
 let OracleService = class OracleService {
-    constructor(envService) {
+    constructor(envService, registry) {
         this.envService = envService;
+        this.registry = registry;
         this.cache = null;
-        this.sources = [
-            {
-                name: 'CoinGecko_USDC',
-                fetch: async () => {
-                    const res = await axios_1.default.get('https://api.coingecko.com/api/v3/simple/price', { params: { ids: 'usd-coin', vs_currencies: 'vnd' }, timeout: SOURCE_TIMEOUT_MS });
-                    const rate = res.data?.['usd-coin']?.vnd;
-                    if (!rate || typeof rate !== 'number')
-                        throw new Error('Invalid response');
-                    return rate;
-                },
-            },
-            {
-                name: 'CoinGecko_USDT_Proxy',
-                fetch: async () => {
-                    const res = await axios_1.default.get('https://api.coingecko.com/api/v3/simple/price', { params: { ids: 'tether', vs_currencies: 'vnd' }, timeout: SOURCE_TIMEOUT_MS });
-                    const rate = res.data?.['tether']?.vnd;
-                    if (!rate || typeof rate !== 'number')
-                        throw new Error('Invalid response');
-                    return rate;
-                },
-            },
-            {
-                name: 'ExchangeRateAPI_USD',
-                fetch: async () => {
-                    const res = await axios_1.default.get('https://open.er-api.com/v6/latest/USD', { timeout: SOURCE_TIMEOUT_MS });
-                    const rate = res.data?.rates?.VND;
-                    if (!rate || typeof rate !== 'number')
-                        throw new Error('Invalid response');
-                    return rate * 1.015;
-                },
-            },
-            {
-                name: 'CurrencyAPI_USD',
-                fetch: async () => {
-                    const res = await axios_1.default.get('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json', { timeout: SOURCE_TIMEOUT_MS });
-                    const rate = res.data?.usd?.vnd;
-                    if (!rate || typeof rate !== 'number')
-                        throw new Error('Invalid response');
-                    return rate * 1.015;
-                },
-            },
-            {
-                name: 'NinePay_Merchant_Rate',
-                fetch: async () => {
-                    const apiUrl = this.envService.get('NINEPAY_API_URL') || 'https://sandbox.9pay.vn';
-                    const res = await axios_1.default.get(`${apiUrl}/v1/exchange-rate?currency=USD`, { timeout: 2000 });
-                    const rate = res.data?.data?.exchangeRate;
-                    if (!rate || typeof rate !== 'number')
-                        throw new Error('Invalid 9Pay response');
-                    return rate;
-                },
-            }
-        ];
         this.circuitBreaker = new OracleCircuitBreaker(this.envService);
     }
     calculateMedian(values) {
@@ -142,7 +89,7 @@ let OracleService = class OracleService {
             ? (sorted[mid - 1] + sorted[mid]) / 2
             : sorted[mid];
     }
-    detectOutliers(rates) {
+    detectOutliersThreshold(rates, thresholdPct) {
         if (rates.length < 2)
             return { valid: rates, outliers: [] };
         const tempMedian = this.calculateMedian(rates.map(r => r.value));
@@ -150,8 +97,29 @@ let OracleService = class OracleService {
         const valid = [];
         for (const r of rates) {
             const diffPct = Math.abs(r.value - tempMedian) / tempMedian * 100;
-            if (diffPct > OUTLIER_THRESHOLD_PCT) {
+            if (diffPct > thresholdPct) {
                 outliers.push(`${r.name} (${r.value.toFixed(0)}, diff ${diffPct.toFixed(1)}%)`);
+            }
+            else {
+                valid.push(r);
+            }
+        }
+        return valid.length === 0 ? { valid: rates, outliers: [] } : { valid, outliers };
+    }
+    detectOutliersIQR(rates) {
+        if (rates.length < 3)
+            return { valid: rates, outliers: [] };
+        const sorted = [...rates].map(r => r.value).sort((a, b) => a - b);
+        const q1 = sorted[Math.floor(sorted.length * 0.25)];
+        const q3 = sorted[Math.floor(sorted.length * 0.75)];
+        const iqr = q3 - q1;
+        const lower = q1 - 1.5 * iqr;
+        const upper = q3 + 1.5 * iqr;
+        const valid = [];
+        const outliers = [];
+        for (const r of rates) {
+            if (r.value < lower || r.value > upper) {
+                outliers.push(`${r.name} (${r.value.toFixed(0)}, IQR bounds: ${lower.toFixed(0)}-${upper.toFixed(0)})`);
             }
             else {
                 valid.push(r);
@@ -168,7 +136,14 @@ let OracleService = class OracleService {
             return this.cache;
         }
         console.log('[FX Oracle] Fetching from all sources...');
-        const results = await Promise.allSettled(this.sources.map(async (s) => ({
+        const configuredSourcesEnv = this.envService.get('ORACLE_SOURCES') ?? 'vietcombank,coingecko_usdc,coingecko_usdt,exchangerate_api_usd,currency_api_usd,exchangerate_host';
+        const activeSourceNames = configuredSourcesEnv.split(',').map(s => s.trim().toLowerCase());
+        const allSources = this.registry.getSources();
+        const activeSources = allSources.filter(s => activeSourceNames.includes(s.name.toLowerCase()));
+        if (activeSources.length === 0) {
+            throw new Error('No active oracle sources configured.');
+        }
+        const results = await Promise.allSettled(activeSources.map(async (s) => ({
             name: s.name,
             value: await s.fetch(),
         })));
@@ -177,12 +152,13 @@ let OracleService = class OracleService {
             MAX: this.envService.get('ORACLE_HARD_BOUND_MAX') ?? 28000,
         };
         const safetySpread = this.envService.get('ORACLE_SAFETY_SPREAD') ?? 0.99;
+        const minValidSources = this.envService.get('ORACLE_MIN_VALID_SOURCES') ?? 3;
         const rawRates = {};
         const successRates = [];
         const droppedSources = [];
         for (let i = 0; i < results.length; i++) {
             const result = results[i];
-            const sourceName = this.sources[i].name;
+            const sourceName = activeSources[i].name;
             if (result.status === 'fulfilled') {
                 const rate = result.value.value;
                 rawRates[sourceName] = rate;
@@ -203,10 +179,31 @@ let OracleService = class OracleService {
             throw new Error('ALL_SOURCES_FAILED: No valid oracle data. Disbursement halted.');
         }
         this.circuitBreaker.recordSuccess();
-        const { valid, outliers } = this.detectOutliers(successRates);
+        let valid = successRates;
+        let outliers = [];
+        const outlierMethod = this.envService.get('ORACLE_OUTLIER_METHOD') ?? 'iqr';
+        if (successRates.length >= minValidSources) {
+            if (outlierMethod === 'iqr') {
+                const iqrResult = this.detectOutliersIQR(successRates);
+                valid = iqrResult.valid;
+                outliers = iqrResult.outliers;
+            }
+            else {
+                const thresholdPct = this.envService.get('ORACLE_OUTLIER_THRESHOLD_PCT') ?? 3;
+                const thresholdResult = this.detectOutliersThreshold(successRates, thresholdPct);
+                valid = thresholdResult.valid;
+                outliers = thresholdResult.outliers;
+            }
+        }
+        else {
+            console.warn(`[FX Oracle] Only ${successRates.length} valid sources available (min: ${minValidSources}). Bypassing outlier detection.`);
+        }
         if (outliers.length > 0) {
             console.warn('[FX Oracle] Outliers dropped:', outliers);
             droppedSources.push(...outliers.map(o => `OUTLIER: ${o}`));
+        }
+        if (valid.length === 0) {
+            valid = successRates;
         }
         const validRates = valid.map(r => r.value);
         const usedSources = valid.map(r => r.name);
@@ -259,6 +256,7 @@ let OracleService = class OracleService {
 exports.OracleService = OracleService;
 exports.OracleService = OracleService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [core_1.EnvService])
+    __metadata("design:paramtypes", [core_1.EnvService,
+        oracle_source_registry_1.OracleSourceRegistry])
 ], OracleService);
 //# sourceMappingURL=oracle.service.js.map
