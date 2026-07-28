@@ -650,8 +650,16 @@ pub fn get_status(env: &Env) -> ReferralStatus {
     env.storage().instance().get(&DataKey::Status).unwrap()
 }
 
+pub fn get_config(env: &Env) -> ReferralConfig {
+    env.storage().instance().get(&DataKey::Config).unwrap()
+}
+
 pub fn get_milestone_status(env: &Env) -> MilestoneStatus {
     env.storage().instance().get(&DataKey::MilestoneStatus).unwrap()
+}
+
+pub fn get_milestone_config(env: &Env) -> MilestoneConfig {
+    env.storage().instance().get(&DataKey::MilestoneConfig).unwrap()
 }
 
 // ─── Shared / Admin ───────────────────────────────────────────────────────────

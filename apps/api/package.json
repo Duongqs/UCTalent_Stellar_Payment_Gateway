@@ -76,6 +76,9 @@
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
+    "transformIgnorePatterns": [
+      "/node_modules/(?!(@stellar|@noble|uint8array-extras)/)"
+    ],
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],

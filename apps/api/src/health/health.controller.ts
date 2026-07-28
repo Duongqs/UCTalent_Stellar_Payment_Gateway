@@ -1,11 +1,11 @@
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
-import { DataSource } from 'typeorm';
 import { OracleService } from '@uc/banking';
+import { Sep31CoreService } from '@uc/core';
 
 @Controller('health')
 export class HealthController {
   constructor(
-    private readonly dataSource: DataSource,
+    private readonly sep31CoreService: Sep31CoreService,
     private readonly oracleService: OracleService,
   ) { }
 
@@ -22,7 +22,7 @@ export class HealthController {
     const start = Date.now();
     let dbStatus = 'error';
     try {
-      await this.dataSource.query('SELECT 1');
+      await (this.sep31CoreService as any).dataSource.query('SELECT 1');
       dbStatus = 'ok';
     } catch {
       dbStatus = 'error';

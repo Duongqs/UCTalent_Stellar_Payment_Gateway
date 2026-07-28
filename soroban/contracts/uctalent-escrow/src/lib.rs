@@ -117,8 +117,16 @@ impl UCTalentContract {
         escrow::get_status(&env)
     }
 
+    pub fn get_config(env: Env) -> ReferralConfig {
+        escrow::get_config(&env)
+    }
+
     pub fn get_milestone_status(env: Env) -> MilestoneStatus {
         escrow::get_milestone_status(&env)
+    }
+
+    pub fn get_milestone_config(env: Env) -> MilestoneConfig {
+        escrow::get_milestone_config(&env)
     }
 
     // ── Admin ─────────────────────────────────────────────────────────────────

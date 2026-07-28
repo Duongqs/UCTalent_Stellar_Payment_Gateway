@@ -6,12 +6,14 @@ export declare class SorobanListenerService implements OnModuleInit {
     private readonly eventQueueRepo;
     private readonly envService;
     private rpcServer;
+    private rpcUrl;
     private contractId;
     private watchedContracts;
     private lastProcessedLedger;
     private isPolling;
     constructor(syncStateRepo: Repository<SyncStateEntity>, eventQueueRepo: Repository<BridgeEventQueueEntity>, envService: EnvService);
     private stroopsToUsdc;
+    private formatRpcError;
     onModuleInit(): Promise<void>;
     private setLastProcessedLedger;
     private saveWatchedContracts;

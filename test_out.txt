@@ -1,0 +1,237 @@
+
+> @uc/api@0.0.1 test
+> jest
+
+PASS src/sep31/guards/anchor-webhook.guard.spec.ts
+PASS src/auth/guards/sep10.guard.spec.ts
+PASS src/health/health.controller.spec.ts
+PASS src/ipn/ipn.controller.spec.ts
+  ● Console
+
+    console.log
+      [IPN] Received: invoice=inv-123, payment_no=napas-789, status=SUCCESS
+
+      at IpnController.handleIpn (ipn/ipn.controller.ts:73:15)
+
+    console.log
+      [IPN] Received: invoice=inv-123, payment_no=napas-789, status=SUCCESS
+
+      at IpnController.handleIpn (ipn/ipn.controller.ts:73:15)
+
+    console.log
+      [IPN] Received: invoice=inv-456, payment_no=napas-000, status=FAILED
+
+      at IpnController.handleIpn (ipn/ipn.controller.ts:73:15)
+
+    console.error
+      [ALERT:disbursement_failed] TX tx-456 failed after 3 retries
+
+      151 |             }
+      152 |             await this.sep31CoreService.failDisbursement(realTxId);
+    > 153 |             console.error(
+          |                     ^
+      154 |               `[ALERT:disbursement_failed] TX ${realTxId} failed after 3 retries`,
+      155 |             );
+      156 |
+
+      at IpnController.handleIpn (ipn/ipn.controller.ts:153:21)
+      at Object.<anonymous> (ipn/ipn.controller.spec.ts:188:19)
+
+    console.log
+      [IPN] Received: invoice=inv-123, payment_no=napas-789, status=SUCCESS
+
+      at IpnController.handleIpn (ipn/ipn.controller.ts:73:15)
+
+    console.log
+      [IPN] Duplicate SUCCESS for tx-123, skipping
+
+      at IpnController.handleIpn (ipn/ipn.controller.ts:96:17)
+
+PASS src/auth/auth.service.spec.ts
+FAIL src/auth/auth.controller.spec.ts
+  ● AuthController › should be defined
+
+    Nest can't resolve dependencies of the AuthController (?). Please make sure that the argument AuthService at index [0] is available in the RootTestModule module.
+
+    Potential solutions:
+    - Is RootTestModule a valid NestJS module?
+    - If AuthService is a provider, is it part of the current RootTestModule?
+    - If AuthService is exported from a separate @Module, is that module imported within RootTestModule?
+      @Module({
+        imports: [ /* the Module containing AuthService */ ]
+      })
+
+    For more common dependency resolution issues, see: https://docs.nestjs.com/faq/common-errors
+
+       6 |
+       7 |   beforeEach(async () => {
+    >  8 |     const module: TestingModule = await Test.createTestingModule({
+         |                                   ^
+       9 |       controllers: [AuthController],
+      10 |     }).compile();
+      11 |
+
+      at TestingInjector.lookupComponentInParentModules (../../../node_modules/@nestjs/core/injector/injector.js:300:19)
+      at TestingInjector.resolveComponentWrapper (../../../node_modules/@nestjs/testing/testing-injector.js:19:45)
+      at resolveParam (../../../node_modules/@nestjs/core/injector/injector.js:150:38)
+          at async Promise.all (index 0)
+      at TestingInjector.resolveConstructorParams (../../../node_modules/@nestjs/core/injector/injector.js:179:27)
+      at TestingInjector.loadInstance (../../../node_modules/@nestjs/core/injector/injector.js:77:13)
+      at TestingInjector.loadController (../../../node_modules/@nestjs/core/injector/injector.js:99:9)
+      at ../../../node_modules/@nestjs/core/injector/instance-loader.js:68:13
+          at async Promise.all (index 0)
+      at TestingInstanceLoader.createInstancesOfControllers (../../../node_modules/@nestjs/core/injector/instance-loader.js:67:9)
+      at ../../../node_modules/@nestjs/core/injector/instance-loader.js:42:13
+          at async Promise.all (index 1)
+      at TestingInstanceLoader.createInstances (../../../node_modules/@nestjs/core/injector/instance-loader.js:39:9)
+      at TestingInstanceLoader.createInstancesOfDependencies (../../../node_modules/@nestjs/core/injector/instance-loader.js:22:13)
+      at TestingInstanceLoader.createInstancesOfDependencies (../../../node_modules/@nestjs/testing/testing-instance-loader.js:9:9)
+      at TestingModuleBuilder.createInstancesOfDependencies (../../../node_modules/@nestjs/testing/testing-module.builder.js:119:9)
+      at TestingModuleBuilder.compile (../../../node_modules/@nestjs/testing/testing-module.builder.js:74:9)
+      at Object.<anonymous> (auth/auth.controller.spec.ts:8:35)
+
+Test Suites: 1 failed, 5 passed, 6 total
+Tests:       1 failed, 12 passed, 13 total
+Snapshots:   0 total
+Time:        1.786 s, estimated 2 s
+Ran all test suites.
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/admin/repos/uctalents/uc-cross-border/apps/api
+npm error workspace @uc/api@0.0.1
+npm error location /Users/admin/repos/uctalents/uc-cross-border/apps/api
+npm error command failed
+npm error command sh -c jest
+
+
+> @uc/worker@0.0.1 test
+> jest
+
+PASS src/soroban-listener/event-consumer.service.spec.ts
+  EventConsumerService
+    ✓ should be defined (6 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       1 passed, 1 total
+Snapshots:   0 total
+Time:        0.567 s, estimated 1 s
+Ran all test suites.
+
+> @uc/banking@1.0.0 test
+> jest
+
+PASS src/services/ninepay-gateway.service.spec.ts
+PASS src/test/oracle.service.spec.ts
+  ● Console
+
+    console.log
+      [FX Oracle] Fetching from all sources (new algorithm)...
+
+      at OracleService.getSafeFxRate (services/oracle.service.ts:170:13)
+
+    console.log
+      ----------------------------------------------------
+
+      at OracleService.getSafeFxRate (services/oracle.service.ts:356:13)
+
+    console.log
+      [FX Oracle SEP-38] Execution Log
+
+      at OracleService.getSafeFxRate (services/oracle.service.ts:357:13)
+
+    console.log
+      - Peg used: 1
+
+      at OracleService.getSafeFxRate (services/oracle.service.ts:358:13)
+
+    console.log
+      - Raw Rates Fetched: { s1: 25000, s2: 25100, s3: 25200 }
+
+      at OracleService.getSafeFxRate (services/oracle.service.ts:359:13)
+
+    console.log
+      - Dropped Sources: []
+
+      at OracleService.getSafeFxRate (services/oracle.service.ts:360:13)
+
+    console.log
+      - Valid Sources Used: [ 's1', 's2', 's3' ]
+
+      at OracleService.getSafeFxRate (services/oracle.service.ts:361:13)
+
+    console.log
+      - Calculation Method: weighted_median of [25000, 25100, 25200]
+
+      at OracleService.getSafeFxRate (services/oracle.service.ts:362:13)
+
+    console.log
+      - FINAL Safe Rate: 25100 VND/USDC
+
+      at OracleService.getSafeFxRate (services/oracle.service.ts:363:13)
+
+    console.log
+      ----------------------------------------------------
+
+      at OracleService.getSafeFxRate (services/oracle.service.ts:364:13)
+
+    console.log
+      [FX Oracle] Fetching from all sources (new algorithm)...
+
+      at OracleService.getSafeFxRate (services/oracle.service.ts:170:13)
+
+    console.log
+      ----------------------------------------------------
+
+      at OracleService.getSafeFxRate (services/oracle.service.ts:356:13)
+
+    console.log
+      [FX Oracle SEP-38] Execution Log
+
+      at OracleService.getSafeFxRate (services/oracle.service.ts:357:13)
+
+    console.log
+      - Peg used: 1
+
+      at OracleService.getSafeFxRate (services/oracle.service.ts:358:13)
+
+    console.log
+      - Raw Rates Fetched: { s1: 25000, s2: 25100, s3: 25050, s4: 25150, s5: 50000 }
+
+      at OracleService.getSafeFxRate (services/oracle.service.ts:359:13)
+
+    console.log
+      - Dropped Sources: [ 'OUTLIER_A: s5 (50000, IQR bounds: 24900-25300)' ]
+
+      at OracleService.getSafeFxRate (services/oracle.service.ts:360:13)
+
+    console.log
+      - Valid Sources Used: [ 's1', 's2', 's3', 's4' ]
+
+      at OracleService.getSafeFxRate (services/oracle.service.ts:361:13)
+
+    console.log
+      - Calculation Method: weighted_median of [25000, 25100, 25050, 25150]
+
+      at OracleService.getSafeFxRate (services/oracle.service.ts:362:13)
+
+    console.log
+      - FINAL Safe Rate: 25075 VND/USDC
+
+      at OracleService.getSafeFxRate (services/oracle.service.ts:363:13)
+
+    console.log
+      ----------------------------------------------------
+
+      at OracleService.getSafeFxRate (services/oracle.service.ts:364:13)
+
+    console.log
+      [FX Oracle] Fetching from all sources (new algorithm)...
+
+      at OracleService.getSafeFxRate (services/oracle.service.ts:170:13)
+
+
+Test Suites: 2 passed, 2 total
+Tests:       5 passed, 5 total
+Snapshots:   0 total
+Time:        2.091 s
+Ran all test suites.

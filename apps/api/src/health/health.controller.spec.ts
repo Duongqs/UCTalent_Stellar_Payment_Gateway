@@ -1,16 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { HealthController } from './health.controller';
-import { DataSource } from 'typeorm';
 import { OracleService } from '@uc/banking';
+import { Sep31CoreService } from '@uc/core';
 
 describe('HealthController', () => {
   let controller: HealthController;
-  let mockDataSource: any;
+  let mockSep31CoreService: any;
   let mockOracleService: any;
 
   beforeEach(async () => {
-    mockDataSource = {
-      query: jest.fn().mockResolvedValue([{ '1': 1 }]),
+    mockSep31CoreService = {
+      dataSource: {
+        query: jest.fn().mockResolvedValue([{ '1': 1 }]),
+      }
     };
     mockOracleService = {
       getCircuitBreakerState: jest.fn().mockReturnValue('CLOSED'),
@@ -20,8 +22,8 @@ describe('HealthController', () => {
       controllers: [HealthController],
       providers: [
         {
-          provide: DataSource,
-          useValue: mockDataSource,
+          provide: Sep31CoreService,
+          useValue: mockSep31CoreService,
         },
         {
           provide: OracleService,
@@ -36,7 +38,7 @@ describe('HealthController', () => {
   it('should return live status without checking DB', () => {
     const res = controller.getLive();
     expect(res.status).toBe('ok');
-    expect(mockDataSource.query).not.toHaveBeenCalled();
+    expect(mockSep31CoreService.dataSource.query).not.toHaveBeenCalled();
   });
 
   it('should return healthy status when DB is up and circuit breaker is CLOSED', async () => {

@@ -7,7 +7,11 @@ export class Sep10Guard implements CanActivate {
   private readonly jwtSecret: string;
 
   constructor(private readonly envService: EnvService) {
-    this.jwtSecret = String(this.envService.get('JWT_SECRET') || 'super_secret_jwt_key_that_is_at_least_32_bytes_long!');
+    const secret = this.envService.get('JWT_SECRET');
+    if (!secret) {
+      throw new Error('JWT_SECRET is not configured');
+    }
+    this.jwtSecret = String(secret);
   }
 
   canActivate(context: ExecutionContext): boolean {

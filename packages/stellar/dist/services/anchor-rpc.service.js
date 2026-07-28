@@ -52,7 +52,12 @@ let AnchorRpcService = class AnchorRpcService {
                 await new Promise(resolve => setTimeout(resolve, 500));
                 return this.patchTransaction(id, updates, retryCount + 1);
             }
-            console.error(`Error in Anchor Platform API [PATCH /transactions]:`, error.response?.data || error.message);
+            if ((error.code === 'ECONNREFUSED' || error.code === 'ECONNABORTED' || (error.message && (error.message.includes('ECONNREFUSED') || error.message.includes('ECONNABORTED')))) &&
+                this.envService.get('USE_MOCK_IPN') === 'true') {
+                console.warn(`[Mock] Skipping Anchor Platform PATCH /transactions for ${id} due to mock mode.`);
+                return { mock: true };
+            }
+            console.error(`Error in Anchor Platform API [PATCH /transactions]:`, error.response?.data || error.message, error);
             throw error;
         }
     }

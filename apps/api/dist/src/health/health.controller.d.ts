@@ -1,9 +1,9 @@
-import { DataSource } from 'typeorm';
 import { OracleService } from '@uc/banking';
+import { Sep31CoreService } from '@uc/core';
 export declare class HealthController {
-    private readonly dataSource;
+    private readonly sep31CoreService;
     private readonly oracleService;
-    constructor(dataSource: DataSource, oracleService: OracleService);
+    constructor(sep31CoreService: Sep31CoreService, oracleService: OracleService);
     getLive(): {
         status: string;
         service: string;

@@ -12,11 +12,15 @@ export class NinePayGatewayService {
   ) {}
 
   private get merchantKey(): string {
-    return this.envService.get('NINEPAY_MERCHANT_KEY') || 'sandbox_merchant';
+    const key = this.envService.get('NINEPAY_MERCHANT_KEY');
+    if (!key) throw new Error('NINEPAY_MERCHANT_KEY is not configured');
+    return key;
   }
 
   private get secretKey(): string {
-    return this.envService.get('NINEPAY_SECRET_KEY') || 'sandbox_secret';
+    const key = this.envService.get('NINEPAY_SECRET_KEY');
+    if (!key) throw new Error('NINEPAY_SECRET_KEY is not configured');
+    return key;
   }
 
   private get apiUrl(): string {
