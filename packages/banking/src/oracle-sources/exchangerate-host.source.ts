@@ -9,6 +9,8 @@ const SOURCE_TIMEOUT_MS = 5_000;
 export class ExchangerateHostSource implements OracleSource {
   name = 'exchangerate_host';
   priority = 6;
+  category: 'A' = 'A';
+  weight = 1.5;
 
   constructor(private readonly envService: EnvService) {}
 

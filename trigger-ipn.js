@@ -2,9 +2,9 @@ const axios = require('axios');
 const crypto = require('crypto');
 
 async function run() {
-  const transactionId = '48133ba6-d34f-420c-ba94-66b869b696db';
-  const invoiceNo = '48133ba6-d34f-420c-ba94-66b869b696db';
-  const external_transaction_id = '527932726213689';
+  const transactionId = '816eb73e-8016-4664-8e70-b6a8ea4df00f';
+  const invoiceNo = '816eb73e-8016-4664-8e70-b6a8ea4df00f';
+  const external_transaction_id = '9PAY-MANUAL-' + Date.now();
   const checksumKey = 'LODYjQRPfDL751cXHAatxlNaaBOVij9s'; // from uc-cross-border/.env
 
   let truncatedTxId = transactionId.replace(/-/g, '').substring(0, 30);

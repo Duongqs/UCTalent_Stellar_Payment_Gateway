@@ -22,7 +22,7 @@ export class NinePayMockService {
         truncatedTxId = transactionId.replace(/-/g, '').substring(0, 27) + 'PIT';
       }
       const finalExternalTxId = external_transaction_id.startsWith('9PAY-FALLBACK') 
-        ? `9PAY-MOCK-${Date.now().toString().slice(-8)}` 
+        ? String(Math.floor(Math.random() * 1000000000000000))
         : external_transaction_id;
 
       const payload = {
@@ -40,7 +40,12 @@ export class NinePayMockService {
         .digest('hex')
         .toUpperCase();
 
-      const base = (this.envService.get('STELLAR_API_BASE_URL') || 'http://localhost:8081').replace(/\/+$/, '');
+      const stellarApiBase = this.envService.get('STELLAR_API_BASE_URL');
+      if (!stellarApiBase) {
+        console.error('[Mock 9Pay] STELLAR_API_BASE_URL is missing, cannot send IPN');
+        return;
+      }
+      const base = stellarApiBase.replace(/\/+$/, '');
       try {
         const res = await axios.post(`${base}/api/ipn`, {
           result: resultB64,

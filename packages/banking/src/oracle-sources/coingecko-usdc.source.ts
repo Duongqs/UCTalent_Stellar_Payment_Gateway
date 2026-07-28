@@ -9,6 +9,8 @@ export class CoinGeckoUsdcSource implements OracleSource {
   name = 'coingecko_usdc';
   isPrimary = true;
   priority = 8;
+  category: 'B' = 'B';
+  weight = 2.5;
 
   async fetch(): Promise<number> {
     const res = await axios.get(

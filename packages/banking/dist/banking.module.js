@@ -24,8 +24,15 @@ const exchange_rate_api_source_1 = require("./oracle-sources/exchange-rate-api.s
 const currency_api_source_1 = require("./oracle-sources/currency-api.source");
 const vietcombank_source_1 = require("./oracle-sources/vietcombank.source");
 const exchangerate_host_source_1 = require("./oracle-sources/exchangerate-host.source");
+const frankfurter_usd_source_1 = require("./oracle-sources/frankfurter-usd.source");
+const coinbase_peg_source_1 = require("./oracle-sources/coinbase-peg.source");
+const binance_peg_source_1 = require("./oracle-sources/binance-peg.source");
+const okx_peg_source_1 = require("./oracle-sources/okx-peg.source");
+const bidv_usd_source_1 = require("./oracle-sources/bidv-usd.source");
+const vietinbank_usd_source_1 = require("./oracle-sources/vietinbank-usd.source");
+const techcombank_usd_source_1 = require("./oracle-sources/techcombank-usd.source");
 let BankingModule = class BankingModule {
-    constructor(registry, coingeckoUsdc, coingeckoUsdt, exchangeRateApi, currencyApi, vietcombank, exchangerateHost) {
+    constructor(registry, coingeckoUsdc, coingeckoUsdt, exchangeRateApi, currencyApi, vietcombank, exchangerateHost, frankfurterUsd, coinbasePeg, binancePeg, okxPeg, bidv, vietinbank, techcombank) {
         this.registry = registry;
         this.coingeckoUsdc = coingeckoUsdc;
         this.coingeckoUsdt = coingeckoUsdt;
@@ -33,6 +40,13 @@ let BankingModule = class BankingModule {
         this.currencyApi = currencyApi;
         this.vietcombank = vietcombank;
         this.exchangerateHost = exchangerateHost;
+        this.frankfurterUsd = frankfurterUsd;
+        this.coinbasePeg = coinbasePeg;
+        this.binancePeg = binancePeg;
+        this.okxPeg = okxPeg;
+        this.bidv = bidv;
+        this.vietinbank = vietinbank;
+        this.techcombank = techcombank;
     }
     onModuleInit() {
         this.registry.registerAll([
@@ -42,6 +56,13 @@ let BankingModule = class BankingModule {
             this.currencyApi,
             this.vietcombank,
             this.exchangerateHost,
+            this.frankfurterUsd,
+            this.coinbasePeg,
+            this.binancePeg,
+            this.okxPeg,
+            this.bidv,
+            this.vietinbank,
+            this.techcombank,
         ]);
     }
 };
@@ -63,6 +84,13 @@ exports.BankingModule = BankingModule = __decorate([
             currency_api_source_1.CurrencyApiUsdSource,
             vietcombank_source_1.VietcombankSource,
             exchangerate_host_source_1.ExchangerateHostSource,
+            frankfurter_usd_source_1.FrankfurterUsdSource,
+            coinbase_peg_source_1.CoinbasePegSource,
+            binance_peg_source_1.BinancePegSource,
+            okx_peg_source_1.OkxPegSource,
+            bidv_usd_source_1.BidvUsdSource,
+            vietinbank_usd_source_1.VietinbankUsdSource,
+            techcombank_usd_source_1.TechcombankUsdSource,
         ],
         exports: [
             ninepay_gateway_service_1.NinePayGatewayService,
@@ -79,6 +107,13 @@ exports.BankingModule = BankingModule = __decorate([
         exchange_rate_api_source_1.ExchangeRateApiUsdSource,
         currency_api_source_1.CurrencyApiUsdSource,
         vietcombank_source_1.VietcombankSource,
-        exchangerate_host_source_1.ExchangerateHostSource])
+        exchangerate_host_source_1.ExchangerateHostSource,
+        frankfurter_usd_source_1.FrankfurterUsdSource,
+        coinbase_peg_source_1.CoinbasePegSource,
+        binance_peg_source_1.BinancePegSource,
+        okx_peg_source_1.OkxPegSource,
+        bidv_usd_source_1.BidvUsdSource,
+        vietinbank_usd_source_1.VietinbankUsdSource,
+        techcombank_usd_source_1.TechcombankUsdSource])
 ], BankingModule);
 //# sourceMappingURL=banking.module.js.map

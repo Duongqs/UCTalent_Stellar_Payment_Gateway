@@ -151,13 +151,16 @@ export class PendingClearingProcessorService {
     }
 
     // Apply PIT Tax calculation (10%)
-    const taxWithheld = Math.floor(grossVnd * 0.1);
+    const PIT_THRESHOLD_VND = Number(this.envService.get('PIT_THRESHOLD_VND' as any) || 2000000);
+    const taxWithheld = grossVnd >= PIT_THRESHOLD_VND ? Math.floor(grossVnd * 0.1) : 0;
     const netVnd = grossVnd - taxWithheld;
-    const taxCode = 'PIT-AFFILIATE-10%';
-    const complianceMeta = {
-      tax_withholding_code: taxCode,
+    const taxCode = taxWithheld > 0 ? 'PIT-AFFILIATE-10%' : undefined;
+    const complianceMeta: Record<string, string> = {
       onshore_contract_ref: `B2B-UNCHAIN-${txId.substring(0, 8)}`,
     };
+    if (taxCode) {
+      complianceMeta.tax_withholding_code = taxCode;
+    }
 
     console.log(
       `[Pending Clearing Processor] Disbursing ${netVnd} VND (Tax: ${taxWithheld}) for TX ${txId}`,

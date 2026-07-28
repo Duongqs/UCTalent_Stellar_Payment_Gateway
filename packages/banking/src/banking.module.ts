@@ -12,6 +12,13 @@ import { ExchangeRateApiUsdSource } from './oracle-sources/exchange-rate-api.sou
 import { CurrencyApiUsdSource } from './oracle-sources/currency-api.source';
 import { VietcombankSource } from './oracle-sources/vietcombank.source';
 import { ExchangerateHostSource } from './oracle-sources/exchangerate-host.source';
+import { FrankfurterUsdSource } from './oracle-sources/frankfurter-usd.source';
+import { CoinbasePegSource } from './oracle-sources/coinbase-peg.source';
+import { BinancePegSource } from './oracle-sources/binance-peg.source';
+import { OkxPegSource } from './oracle-sources/okx-peg.source';
+import { BidvUsdSource } from './oracle-sources/bidv-usd.source';
+import { VietinbankUsdSource } from './oracle-sources/vietinbank-usd.source';
+import { TechcombankUsdSource } from './oracle-sources/techcombank-usd.source';
 
 @Global()
 @Module({
@@ -29,6 +36,13 @@ import { ExchangerateHostSource } from './oracle-sources/exchangerate-host.sourc
     CurrencyApiUsdSource,
     VietcombankSource,
     ExchangerateHostSource,
+    FrankfurterUsdSource,
+    CoinbasePegSource,
+    BinancePegSource,
+    OkxPegSource,
+    BidvUsdSource,
+    VietinbankUsdSource,
+    TechcombankUsdSource,
   ],
   exports: [
     NinePayGatewayService,
@@ -48,6 +62,13 @@ export class BankingModule implements OnModuleInit {
     private readonly currencyApi: CurrencyApiUsdSource,
     private readonly vietcombank: VietcombankSource,
     private readonly exchangerateHost: ExchangerateHostSource,
+    private readonly frankfurterUsd: FrankfurterUsdSource,
+    private readonly coinbasePeg: CoinbasePegSource,
+    private readonly binancePeg: BinancePegSource,
+    private readonly okxPeg: OkxPegSource,
+    private readonly bidv: BidvUsdSource,
+    private readonly vietinbank: VietinbankUsdSource,
+    private readonly techcombank: TechcombankUsdSource,
   ) {}
 
   onModuleInit() {
@@ -58,6 +79,13 @@ export class BankingModule implements OnModuleInit {
       this.currencyApi,
       this.vietcombank,
       this.exchangerateHost,
+      this.frankfurterUsd,
+      this.coinbasePeg,
+      this.binancePeg,
+      this.okxPeg,
+      this.bidv,
+      this.vietinbank,
+      this.techcombank,
     ]);
   }
 }

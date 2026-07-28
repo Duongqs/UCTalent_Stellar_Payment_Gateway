@@ -9,6 +9,8 @@ export class VietcombankSource implements OracleSource {
   name = 'vietcombank';
   isPrimary = true;
   priority = 9;
+  category: 'A' = 'A';
+  weight = 3;
 
   async fetch(): Promise<number> {
     const res = await axios.get(

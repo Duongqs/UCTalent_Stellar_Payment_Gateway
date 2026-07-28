@@ -5,4 +5,8 @@ export interface OracleSource {
   priority?: number;
   /** true nếu source này là primary (CoinGecko, Vietcombank) */
   isPrimary?: boolean;
+  /** Category của source: 'A' = USD->VND, 'B' = USDC->VND direct, 'C' = peg sources */
+  category?: 'A' | 'B' | 'C';
+  /** Weight dùng trong weighted-median calculation (numeric) */
+  weight?: number;
 }

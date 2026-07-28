@@ -6,7 +6,7 @@ export interface OracleResult {
     usedSources: string[];
     droppedSources: string[];
     cachedAt: Date;
-    method: 'median' | 'single';
+    method: 'weighted_median' | 'single' | 'require_confirmation';
 }
 export declare class OracleService {
     private readonly envService;
@@ -14,9 +14,11 @@ export declare class OracleService {
     private cache;
     private circuitBreaker;
     constructor(envService: EnvService, registry: OracleSourceRegistry);
+    private emitAlert;
     private calculateMedian;
-    private detectOutliersThreshold;
+    private weightedMedian;
     private detectOutliersIQR;
+    private detectOutliersThreshold;
     getSafeFxRate(): Promise<OracleResult>;
     invalidateCache(): void;
     getCircuitBreakerState(): string;

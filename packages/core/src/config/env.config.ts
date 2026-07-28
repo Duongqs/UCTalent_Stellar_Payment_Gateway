@@ -26,6 +26,7 @@ export const envSchema = z.object({
   NINEPAY_API_URL: z.string().default('https://sand-payment.9pay.vn'),
   NINEPAY_MODE: z.enum(['mock', 'live']).default('mock'),
 
+  PIT_THRESHOLD_VND: z.coerce.number().default(2_000_000),
   PIT_BANK_CODE: z.string().optional(),
   PIT_ACCOUNT_NUMBER: z.string().optional(),
   PIT_ACCOUNT_NAME: z.string().optional(),
@@ -34,14 +35,24 @@ export const envSchema = z.object({
   ORACLE_SOURCES: z
     .string()
     .default(
-      'vietcombank,coingecko_usdc,coingecko_usdt,exchangerate_api_usd,currency_api_usd,exchangerate_host',
+      'vietcombank,bidv,vietinbank,techcombank,coingecko_usdc,coingecko_usdt,exchangerate_api_usd,currency_api_usd,exchangerate_host,frankfurter,coingecko_peg,coinbase_peg,binance_peg,okx_peg',
     ),
   ORACLE_OUTLIER_METHOD: z.enum(['iqr', 'threshold']).default('iqr'),
   ORACLE_OUTLIER_THRESHOLD_PCT: z.coerce.number().default(3),
-  ORACLE_MIN_VALID_SOURCES: z.coerce.number().default(3),
+  ORACLE_MIN_VALID_SOURCES: z.coerce.number().default(4),
   ORACLE_HARD_BOUND_MIN: z.coerce.number().default(23000),
   ORACLE_HARD_BOUND_MAX: z.coerce.number().default(28000),
-  ORACLE_SAFETY_SPREAD: z.coerce.number().default(0.99),
+  ORACLE_SAFETY_SPREAD: z.coerce.number().default(0.995),
+  ORACLE_PEG_DEVIATION_ALERT: z.coerce.number().default(0.005),
+  ORACLE_RATE_CHANGE_GUARD_PCT: z.coerce.number().default(0.03),
+  ORACLE_WEIGHT_BANK: z.coerce.number().default(3),
+  ORACLE_WEIGHT_CRYPTO_DIRECT: z.coerce.number().default(2.5),
+  ORACLE_WEIGHT_AGGREGATOR: z.coerce.number().default(1.5),
+  ORACLE_BANK_SOURCES: z.string().default('vietcombank,bidv,vietinbank,techcombank'),
+  ORACLE_PEG_SOURCES: z.string().default('coingecko_peg,coinbase_peg,binance_peg,okx_peg'),
+  ORACLE_CROSS_GROUP_MAX_DIFF: z.coerce.number().default(0.02),
+  ORACLE_CIRCUIT_FAILURE_THRESHOLD: z.coerce.number().default(3),
+  ORACLE_CIRCUIT_RECOVERY_MS: z.coerce.number().default(30000),
   ORACLE_CACHE_TTL_MS: z.coerce.number().default(60000),
 
   ENCRYPTION_SECRET: z
@@ -63,6 +74,7 @@ export const envSchema = z.object({
 
   ANCHOR_PLATFORM_URL: z.string().default('http://localhost:8082'),
   PLATFORM_SERVER_URL: z.string().default('http://localhost:8085'),
+  PLATFORM_TREASURY_ADDRESS: z.string().optional(),
 
   ALLOWED_WEBHOOK_IPS: z.string().default('127.0.0.1,::1,*'),
   USE_MOCK_NINEPAY: z.string().optional(),

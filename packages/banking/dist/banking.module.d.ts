@@ -6,6 +6,13 @@ import { ExchangeRateApiUsdSource } from './oracle-sources/exchange-rate-api.sou
 import { CurrencyApiUsdSource } from './oracle-sources/currency-api.source';
 import { VietcombankSource } from './oracle-sources/vietcombank.source';
 import { ExchangerateHostSource } from './oracle-sources/exchangerate-host.source';
+import { FrankfurterUsdSource } from './oracle-sources/frankfurter-usd.source';
+import { CoinbasePegSource } from './oracle-sources/coinbase-peg.source';
+import { BinancePegSource } from './oracle-sources/binance-peg.source';
+import { OkxPegSource } from './oracle-sources/okx-peg.source';
+import { BidvUsdSource } from './oracle-sources/bidv-usd.source';
+import { VietinbankUsdSource } from './oracle-sources/vietinbank-usd.source';
+import { TechcombankUsdSource } from './oracle-sources/techcombank-usd.source';
 export declare class BankingModule implements OnModuleInit {
     private readonly registry;
     private readonly coingeckoUsdc;
@@ -14,6 +21,13 @@ export declare class BankingModule implements OnModuleInit {
     private readonly currencyApi;
     private readonly vietcombank;
     private readonly exchangerateHost;
-    constructor(registry: OracleSourceRegistry, coingeckoUsdc: CoinGeckoUsdcSource, coingeckoUsdt: CoinGeckoUsdtSource, exchangeRateApi: ExchangeRateApiUsdSource, currencyApi: CurrencyApiUsdSource, vietcombank: VietcombankSource, exchangerateHost: ExchangerateHostSource);
+    private readonly frankfurterUsd;
+    private readonly coinbasePeg;
+    private readonly binancePeg;
+    private readonly okxPeg;
+    private readonly bidv;
+    private readonly vietinbank;
+    private readonly techcombank;
+    constructor(registry: OracleSourceRegistry, coingeckoUsdc: CoinGeckoUsdcSource, coingeckoUsdt: CoinGeckoUsdtSource, exchangeRateApi: ExchangeRateApiUsdSource, currencyApi: CurrencyApiUsdSource, vietcombank: VietcombankSource, exchangerateHost: ExchangerateHostSource, frankfurterUsd: FrankfurterUsdSource, coinbasePeg: CoinbasePegSource, binancePeg: BinancePegSource, okxPeg: OkxPegSource, bidv: BidvUsdSource, vietinbank: VietinbankUsdSource, techcombank: TechcombankUsdSource);
     onModuleInit(): void;
 }

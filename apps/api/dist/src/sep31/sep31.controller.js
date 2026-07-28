@@ -136,6 +136,9 @@ let Sep31Controller = class Sep31Controller {
                 msg.includes('socket hang up') ||
                 code === 'ECONNABORTED' ||
                 code === 'ECONNRESET';
+            const isConnectionRefused = msg.includes('ECONNREFUSED') ||
+                code === 'ECONNREFUSED' ||
+                msg.includes('Service unreachable');
             if (isAmbiguous) {
                 await this.sep31CoreService.update(tempId, {
                     status: 'error',
@@ -144,6 +147,13 @@ let Sep31Controller = class Sep31Controller {
                 throw new common_1.BadGatewayException({
                     error: 'ambiguous_timeout',
                     message: 'Transaction is in an ambiguous state due to network timeout. Please contact support.',
+                });
+            }
+            else if (isConnectionRefused) {
+                await this.sep31CoreService.delete(tempId);
+                throw new common_1.BadGatewayException({
+                    error: 'ap_service_unavailable',
+                    message: 'Anchor Platform service is currently unreachable.',
                 });
             }
             else {
@@ -178,7 +188,7 @@ let Sep31Controller = class Sep31Controller {
             throw new common_1.BadRequestException({ error: 'asset_not_supported', message: 'Only USDC is supported' });
         }
         if (asset_issuer) {
-            const expectedIssuer = this.envService.get('USDC_ISSUER') || 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5';
+            const expectedIssuer = this.envService.get('USDC_ISSUER');
             if (asset_issuer !== expectedIssuer) {
                 throw new common_1.BadRequestException({ error: 'invalid_asset_issuer', message: 'Unsupported asset issuer' });
             }
@@ -259,6 +269,9 @@ let Sep31Controller = class Sep31Controller {
                 msg.includes('socket hang up') ||
                 code === 'ECONNABORTED' ||
                 code === 'ECONNRESET';
+            const isConnectionRefused = msg.includes('ECONNREFUSED') ||
+                code === 'ECONNREFUSED' ||
+                msg.includes('Service unreachable');
             if (isAmbiguous) {
                 await this.sep31CoreService.update(tempId, {
                     status: 'error',
@@ -267,6 +280,13 @@ let Sep31Controller = class Sep31Controller {
                 throw new common_1.BadGatewayException({
                     error: 'ambiguous_timeout',
                     message: 'Transaction is in an ambiguous state due to network timeout. Please contact support.',
+                });
+            }
+            else if (isConnectionRefused) {
+                await this.sep31CoreService.delete(tempId);
+                throw new common_1.BadGatewayException({
+                    error: 'ap_service_unavailable',
+                    message: 'Anchor Platform service is currently unreachable.',
                 });
             }
             else {
@@ -302,7 +322,7 @@ let Sep31Controller = class Sep31Controller {
                 id: tx.id,
                 status: tx.status,
                 amount_in: tx.amountIn,
-                amount_in_asset: `stellar:${tx.assetCode}:${this.envService.get('USDC_ISSUER') || 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5'}`,
+                amount_in_asset: `stellar:${tx.assetCode}:${this.envService.get('USDC_ISSUER')}`,
                 amount_out: tx.vndAmount ? tx.vndAmount.toString() : undefined,
                 amount_out_asset: 'iso4217:VND',
                 stellar_account_id: tx.stellarAccount,

@@ -147,7 +147,31 @@ export class DisbursementPollerService {
         }
       }
     } catch (error: any) {
-      if (error.code !== 'ECONNREFUSED') {
+      if (
+        (error.code === 'ECONNREFUSED' || (error.message && error.message.includes('ECONNREFUSED'))) &&
+        this.envService.get('USE_MOCK_IPN') === 'true'
+      ) {
+        console.warn(`[Mock] Anchor Platform down. Simulating polling for mock transactions.`);
+        try {
+          const localTxs = await this.sep31Repo.find({ where: { status: 'pending_sender' } });
+          for (const tx of localTxs) {
+            try {
+              await this.processTransaction({
+                id: tx.id,
+                status: 'pending_receiver',
+                amount_in: { amount: tx.amountIn || '0' },
+                customers: {
+                  receiver: { id: tx.receiverId },
+                },
+              });
+            } catch (mockErr: any) {
+              console.error(`[Mock Poller] Failed TX ${tx.id}:`, mockErr.message);
+            }
+          }
+        } catch (dbErr: any) {
+          console.error(`[Mock Poller] DB Error:`, dbErr.message);
+        }
+      } else if (error.code !== 'ECONNREFUSED') {
         console.error('[Disbursement Poller] Poll error:', error.message);
       }
     } finally {
@@ -197,11 +221,19 @@ export class DisbursementPollerService {
         return;
       }
 
-      await this.anchorRpc.notifyOnchainFundsReceived(
-        txId,
-        amountIn,
-        stellarTxHash,
-      );
+      try {
+        await this.anchorRpc.notifyOnchainFundsReceived(
+          txId,
+          amountIn,
+          stellarTxHash,
+        );
+      } catch (rpcErr: any) {
+        if (this.envService.get('USE_MOCK_IPN') === 'true') {
+          console.warn(`[Mock] Ignored Anchor RPC error for TX ${txId}: ${rpcErr.message}`);
+        } else {
+          throw rpcErr;
+        }
+      }
       await this.sep31Repo.update(txId, { status: 'pending_receiver' });
       await this.auditLog.log(txId, 'onchain_received', {
         stellar_tx_hash: stellarTxHash,
@@ -293,13 +325,16 @@ export class DisbursementPollerService {
       });
     }
 
-    const taxWithheld = Math.floor(grossVnd * 0.1);
+    const PIT_THRESHOLD_VND = Number(this.envService.get('PIT_THRESHOLD_VND' as any) || 2000000);
+    const taxWithheld = grossVnd >= PIT_THRESHOLD_VND ? Math.floor(grossVnd * 0.1) : 0;
     const netVnd = grossVnd - taxWithheld;
-    const taxCode = 'PIT-AFFILIATE-10%';
-    const complianceMeta = {
-      tax_withholding_code: taxCode,
+    const taxCode = taxWithheld > 0 ? 'PIT-AFFILIATE-10%' : undefined;
+    const complianceMeta: Record<string, string> = {
       onshore_contract_ref: `B2B-UNCHAIN-${txId.substring(0, 8)}`,
     };
+    if (taxCode) {
+      complianceMeta.tax_withholding_code = taxCode;
+    }
 
     console.log(
       `[Disbursement Poller] Disbursing ${netVnd} VND (Tax: ${taxWithheld}) for TX ${txId}`,
@@ -359,7 +394,15 @@ export class DisbursementPollerService {
         console.warn(`[Disbursement Poller] WARNING: No payment_no from 9Pay for TX ${txId}. Using fallback: ${fallback}`);
         return fallback;
       })();
-    await this.anchorRpc.notifyOffchainFundsPending(txId, napasRef);
+    try {
+      await this.anchorRpc.notifyOffchainFundsPending(txId, napasRef);
+    } catch (rpcErr: any) {
+      if (this.envService.get('USE_MOCK_IPN') === 'true') {
+        console.warn(`[Mock] Ignored Anchor RPC error for TX ${txId}: ${rpcErr.message}`);
+      } else {
+        throw rpcErr;
+      }
+    }
 
     await this.sep31Repo.update(txId, {
       napasRefId: napasRef,

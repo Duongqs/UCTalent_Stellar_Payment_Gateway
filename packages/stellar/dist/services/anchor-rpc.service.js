@@ -21,7 +21,10 @@ let AnchorRpcService = class AnchorRpcService {
         this.envService = envService;
     }
     get platformUrl() {
-        return this.envService.get('PLATFORM_SERVER_URL') || this.envService.get('ANCHOR_PLATFORM_URL') || 'http://localhost:8085';
+        const url = this.envService.get('PLATFORM_SERVER_URL') || this.envService.get('ANCHOR_PLATFORM_URL');
+        if (!url)
+            throw new Error('PLATFORM_SERVER_URL is missing');
+        return url;
     }
     async patchTransaction(id, updates, retryCount = 0) {
         try {
@@ -54,7 +57,7 @@ let AnchorRpcService = class AnchorRpcService {
         }
     }
     async notifyOnchainFundsReceived(transactionId, amount_in, stellar_transaction_id) {
-        const usdcIssuer = this.envService.get('USDC_ISSUER') || 'G_DUMMY_ISSUER';
+        const usdcIssuer = this.envService.get('USDC_ISSUER');
         return this.patchTransaction(transactionId, {
             status: 'pending_receiver',
             stellar_transaction_id,

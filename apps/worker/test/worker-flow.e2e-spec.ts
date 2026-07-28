@@ -351,5 +351,61 @@ describe('Worker E2E / Integration Flow Tests', () => {
       expect(updated?.withheldTaxAmount).toBe(508000);
       expect(updated?.vndAmount).toBe(4572000);
     });
+
+    it('should NOT apply PIT tax when amount is below PIT_THRESHOLD_VND', async () => {
+      // Seed customer
+      const customer = new CustomerEntity();
+      customer.id = 'receiver-uuid-3';
+      customer.firstName = 'LE VAN C';
+      customer.customerType = 'sep31-receiver';
+      customer.status = 'ACCEPTED';
+      await customerRepo.save(customer);
+
+      // Seed bank profile
+      const profile = new BankProfileEntity();
+      profile.id = 'bank-profile-id-3';
+      profile.customerId = 'receiver-uuid-3';
+      profile.stellarWallet = '';
+      profile.beneficiaryRefId = 'ref-789';
+      profile.encryptedAccount = encryption.encrypt('1112223334');
+      profile.encryptedName = encryption.encrypt('LE VAN C');
+      profile.bankCode = '970415';
+      profile.isVerified = true;
+      profile.verifiedAt = new Date();
+      await bankProfileRepo.save(profile);
+
+      // Seed sep31 transaction in pending_clearing status
+      const transaction = new Sep31TransactionEntity();
+      transaction.id = 'tx-890';
+      transaction.amountIn = '39';
+      transaction.assetCode = 'USDC';
+      transaction.senderId = 'sender-uuid-3';
+      transaction.receiverId = 'receiver-uuid-3';
+      transaction.status = 'pending_clearing';
+      transaction.stellarTxHash = 'stellar-hash-ghi';
+      transaction.vndAmount = 1000000; // < 2M
+      await sep31Repo.save(transaction);
+
+      mockNinePayGateway.disburse.mockResolvedValue({ success: true });
+
+      await processorService.processPendingClearing();
+
+      // Should be disbursed in full (1000000), tax = 0
+      expect(mockNinePayGateway.disburse).toHaveBeenCalledWith(
+        1000000,
+        'tx-890',
+        '970415',
+        '1112223334',
+        expect.any(String),
+        'LE VAN C',
+        expect.any(Object),
+      );
+
+      const updated = await sep31Repo.findOne({ where: { id: 'tx-890' } });
+      expect(updated?.status).toBe('pending_external');
+      expect(updated?.withheldTaxAmount).toBe(0);
+      expect(updated?.vndAmount).toBe(1000000);
+      expect(updated?.taxCode).toBeNull();
+    });
   });
 });

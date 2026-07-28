@@ -29,8 +29,8 @@ class OracleCircuitBreaker {
         this.state = CircuitState.CLOSED;
         this.consecutiveFailures = 0;
         this.lastFailureAt = null;
-        this.FAILURE_THRESHOLD = 3;
-        this.RECOVERY_TIMEOUT_MS = 30_000;
+        this.FAILURE_THRESHOLD = Number(this.envService.get('ORACLE_CIRCUIT_FAILURE_THRESHOLD')) || 3;
+        this.RECOVERY_TIMEOUT_MS = Number(this.envService.get('ORACLE_CIRCUIT_RECOVERY_MS')) || 30_000;
     }
     isOpen() {
         if (this.state !== CircuitState.OPEN)
@@ -63,6 +63,11 @@ class OracleCircuitBreaker {
     getState() {
         return CircuitState[this.state];
     }
+    reset() {
+        this.state = CircuitState.CLOSED;
+        this.consecutiveFailures = 0;
+        this.lastFailureAt = null;
+    }
     emitAlert(type, payload) {
         console.error(`[ALERT:${type}]`, JSON.stringify(payload));
         const slackWebhook = this.envService.get('SLACK_ALERT_WEBHOOK');
@@ -80,6 +85,15 @@ let OracleService = class OracleService {
         this.cache = null;
         this.circuitBreaker = new OracleCircuitBreaker(this.envService);
     }
+    emitAlert(type, payload) {
+        console.error(`[ALERT:${type}]`, JSON.stringify(payload));
+        const slackWebhook = this.envService.get('SLACK_ALERT_WEBHOOK');
+        if (slackWebhook) {
+            axios_1.default.post(slackWebhook, {
+                text: `🚨 *${type}*\n\`\`\`${JSON.stringify(payload, null, 2)}\`\`\``,
+            }).catch(() => { });
+        }
+    }
     calculateMedian(values) {
         if (values.length === 0)
             return 0;
@@ -89,29 +103,32 @@ let OracleService = class OracleService {
             ? (sorted[mid - 1] + sorted[mid]) / 2
             : sorted[mid];
     }
-    detectOutliersThreshold(rates, thresholdPct) {
-        if (rates.length < 2)
-            return { valid: rates, outliers: [] };
-        const tempMedian = this.calculateMedian(rates.map(r => r.value));
-        const outliers = [];
-        const valid = [];
-        for (const r of rates) {
-            const diffPct = Math.abs(r.value - tempMedian) / tempMedian * 100;
-            if (diffPct > thresholdPct) {
-                outliers.push(`${r.name} (${r.value.toFixed(0)}, diff ${diffPct.toFixed(1)}%)`);
-            }
-            else {
-                valid.push(r);
+    weightedMedian(items) {
+        if (items.length === 0)
+            return 0;
+        const sorted = [...items].sort((a, b) => a.value - b.value);
+        const total = sorted.reduce((s, it) => s + (it.weight ?? 1), 0);
+        let acc = 0;
+        for (let i = 0; i < sorted.length; i++) {
+            const it = sorted[i];
+            acc += it.weight ?? 1;
+            if (acc > total / 2)
+                return it.value;
+            if (acc === total / 2) {
+                const next = sorted[i + 1];
+                if (next)
+                    return (it.value + next.value) / 2;
+                return it.value;
             }
         }
-        return valid.length === 0 ? { valid: rates, outliers: [] } : { valid, outliers };
+        return sorted[sorted.length - 1].value;
     }
     detectOutliersIQR(rates) {
         if (rates.length < 3)
             return { valid: rates, outliers: [] };
-        const sorted = [...rates].map(r => r.value).sort((a, b) => a - b);
-        const q1 = sorted[Math.floor(sorted.length * 0.25)];
-        const q3 = sorted[Math.floor(sorted.length * 0.75)];
+        const sortedVals = [...rates].map(r => r.value).sort((a, b) => a - b);
+        const q1 = sortedVals[Math.floor(sortedVals.length * 0.25)];
+        const q3 = sortedVals[Math.floor(sortedVals.length * 0.75)];
         const iqr = q3 - q1;
         const lower = q1 - 1.5 * iqr;
         const upper = q3 + 1.5 * iqr;
@@ -121,107 +138,188 @@ let OracleService = class OracleService {
             if (r.value < lower || r.value > upper) {
                 outliers.push(`${r.name} (${r.value.toFixed(0)}, IQR bounds: ${lower.toFixed(0)}-${upper.toFixed(0)})`);
             }
-            else {
+            else
                 valid.push(r);
-            }
+        }
+        return valid.length === 0 ? { valid: rates, outliers: [] } : { valid, outliers };
+    }
+    detectOutliersThreshold(rates, thresholdPct) {
+        if (rates.length < 2)
+            return { valid: rates, outliers: [] };
+        const tempMedian = this.calculateMedian(rates.map(r => r.value));
+        const valid = [];
+        const outliers = [];
+        for (const r of rates) {
+            const diffPct = Math.abs(r.value - tempMedian) / tempMedian;
+            if (diffPct > thresholdPct)
+                outliers.push(`${r.name} (${r.value.toFixed(0)}, diff ${(diffPct * 100).toFixed(2)}%)`);
+            else
+                valid.push(r);
         }
         return valid.length === 0 ? { valid: rates, outliers: [] } : { valid, outliers };
     }
     async getSafeFxRate() {
-        if (this.circuitBreaker.isOpen()) {
+        const cacheTtlMs = this.envService.get('ORACLE_CACHE_TTL_MS') ?? 60000;
+        if (this.circuitBreaker && this.circuitBreaker.isOpen()) {
             throw new Error('CIRCUIT_OPEN: FX Oracle unavailable. All disbursements halted for safety.');
         }
-        const cacheTtlMs = this.envService.get('ORACLE_CACHE_TTL_MS') ?? 60000;
-        if (this.cache && Date.now() - this.cache.cachedAt.getTime() < cacheTtlMs) {
+        if (this.cache && Date.now() - this.cache.cachedAt.getTime() < cacheTtlMs)
             return this.cache;
-        }
-        console.log('[FX Oracle] Fetching from all sources...');
-        const configuredSourcesEnv = this.envService.get('ORACLE_SOURCES') ?? 'vietcombank,coingecko_usdc,coingecko_usdt,exchangerate_api_usd,currency_api_usd,exchangerate_host';
-        const activeSourceNames = configuredSourcesEnv.split(',').map(s => s.trim().toLowerCase());
+        console.log('[FX Oracle] Fetching from all sources (new algorithm)...');
+        const configuredSourcesEnv = this.envService.get('ORACLE_SOURCES') ?? '';
+        const activeSourceNames = configuredSourcesEnv.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
         const allSources = this.registry.getSources();
         const activeSources = allSources.filter(s => activeSourceNames.includes(s.name.toLowerCase()));
-        if (activeSources.length === 0) {
+        if (activeSources.length === 0)
             throw new Error('No active oracle sources configured.');
-        }
-        const results = await Promise.allSettled(activeSources.map(async (s) => ({
-            name: s.name,
-            value: await s.fetch(),
-        })));
-        const bounds = {
-            MIN: this.envService.get('ORACLE_HARD_BOUND_MIN') ?? 23000,
-            MAX: this.envService.get('ORACLE_HARD_BOUND_MAX') ?? 28000,
-        };
-        const safetySpread = this.envService.get('ORACLE_SAFETY_SPREAD') ?? 0.99;
-        const minValidSources = this.envService.get('ORACLE_MIN_VALID_SOURCES') ?? 3;
+        const results = await Promise.allSettled(activeSources.map(s => s.fetch().then(value => ({ name: s.name, value, source: s }))));
         const rawRates = {};
-        const successRates = [];
         const droppedSources = [];
+        const catA = [];
+        const catB = [];
+        const catC = [];
+        const boundsMin = this.envService.get('ORACLE_HARD_BOUND_MIN') ?? 23000;
+        const boundsMax = this.envService.get('ORACLE_HARD_BOUND_MAX') ?? 28000;
+        const safetySpread = this.envService.get('ORACLE_SAFETY_SPREAD') ?? 0.995;
+        const minValidSources = this.envService.get('ORACLE_MIN_VALID_SOURCES') ?? 4;
+        const outlierMethod = this.envService.get('ORACLE_OUTLIER_METHOD') ?? 'iqr';
+        const outlierThreshold = this.envService.get('ORACLE_OUTLIER_THRESHOLD_PCT') ?? 3;
+        const pegAlertPct = this.envService.get('ORACLE_PEG_DEVIATION_ALERT') ?? 0.005;
+        const rateChangeGuard = this.envService.get('ORACLE_RATE_CHANGE_GUARD_PCT') ?? 0.03;
+        const crossGroupMaxDiff = this.envService.get('ORACLE_CROSS_GROUP_MAX_DIFF') ?? 0.02;
         for (let i = 0; i < results.length; i++) {
-            const result = results[i];
-            const sourceName = activeSources[i].name;
-            if (result.status === 'fulfilled') {
-                const rate = result.value.value;
-                rawRates[sourceName] = rate;
-                if (rate < bounds.MIN || rate > bounds.MAX) {
-                    droppedSources.push(`${sourceName} (${rate.toFixed(0)}, out of bounds)`);
+            const res = results[i];
+            const src = activeSources[i];
+            const name = src.name;
+            if (res.status === 'fulfilled') {
+                const val = res.value.value;
+                rawRates[name] = val;
+                const cat = (src.category ?? 'A');
+                if ((cat === 'A' || cat === 'B') && (val < boundsMin || val > boundsMax)) {
+                    droppedSources.push(`${name} (${val.toFixed(0)}, out of bounds)`);
                 }
                 else {
-                    successRates.push({ name: sourceName, value: rate });
+                    if (cat === 'A')
+                        catA.push({ name, value: val, source: src });
+                    else if (cat === 'B')
+                        catB.push({ name, value: val, source: src });
+                    else if (cat === 'C')
+                        catC.push({ name, value: val, source: src });
                 }
             }
             else {
-                rawRates[sourceName] = null;
-                droppedSources.push(`${sourceName} (ERROR: ${result.reason?.message ?? 'unknown'})`);
+                rawRates[name] = null;
+                droppedSources.push(`${name} (ERROR: ${res.reason?.message ?? 'unknown'})`);
             }
         }
-        if (successRates.length === 0) {
-            this.circuitBreaker.recordFailure();
+        const fulfilledCount = results.filter(r => r.status === 'fulfilled').length;
+        if (fulfilledCount === 0) {
+            try {
+                this.circuitBreaker.recordFailure();
+            }
+            catch { }
             throw new Error('ALL_SOURCES_FAILED: No valid oracle data. Disbursement halted.');
         }
-        this.circuitBreaker.recordSuccess();
-        let valid = successRates;
-        let outliers = [];
-        const outlierMethod = this.envService.get('ORACLE_OUTLIER_METHOD') ?? 'iqr';
-        if (successRates.length >= minValidSources) {
-            if (outlierMethod === 'iqr') {
-                const iqrResult = this.detectOutliersIQR(successRates);
-                valid = iqrResult.valid;
-                outliers = iqrResult.outliers;
+        try {
+            this.circuitBreaker.recordSuccess();
+        }
+        catch { }
+        let peg = 1.0;
+        if (catC.length > 0) {
+            const pegValues = catC.map(c => c.value);
+            const pegMedian = this.calculateMedian(pegValues);
+            if (pegMedian >= 0.995 && pegMedian <= 1.005) {
+                peg = pegMedian;
             }
             else {
-                const thresholdPct = this.envService.get('ORACLE_OUTLIER_THRESHOLD_PCT') ?? 3;
-                const thresholdResult = this.detectOutliersThreshold(successRates, thresholdPct);
-                valid = thresholdResult.valid;
-                outliers = thresholdResult.outliers;
+                this.emitAlert('peg_deviation', { pegMedian, message: 'Peg deviates >0.5% from 1.0' });
+                peg = pegMedian;
             }
         }
         else {
-            console.warn(`[FX Oracle] Only ${successRates.length} valid sources available (min: ${minValidSources}). Bypassing outlier detection.`);
+            peg = 1.0;
         }
-        if (outliers.length > 0) {
-            console.warn('[FX Oracle] Outliers dropped:', outliers);
-            droppedSources.push(...outliers.map(o => `OUTLIER: ${o}`));
+        const processCategory = (items) => {
+            const simple = items.map(i => ({ name: i.name, value: i.value }));
+            let valid = simple;
+            let outliers = [];
+            if (simple.length >= (outlierMethod === 'iqr' ? 3 : 2)) {
+                if (outlierMethod === 'iqr') {
+                    const r = this.detectOutliersIQR(simple);
+                    valid = r.valid;
+                    outliers = r.outliers;
+                }
+                else {
+                    const r = this.detectOutliersThreshold(simple, outlierThreshold / 100);
+                    valid = r.valid;
+                    outliers = r.outliers;
+                }
+            }
+            return { valid, outliers };
+        };
+        const aResult = processCategory(catA);
+        const bResult = processCategory(catB);
+        if (aResult.outliers.length > 0)
+            droppedSources.push(...aResult.outliers.map(o => `OUTLIER_A: ${o}`));
+        if (bResult.outliers.length > 0)
+            droppedSources.push(...bResult.outliers.map(o => `OUTLIER_B: ${o}`));
+        const aValid = catA.filter(c => aResult.valid.find(v => v.name === c.name));
+        const bValid = catB.filter(c => bResult.valid.find(v => v.name === c.name));
+        const combinedItems = [];
+        const resolveWeight = (src) => {
+            if (typeof src.weight === 'number')
+                return src.weight;
+            const cat = (src.category ?? 'A');
+            if (cat === 'A')
+                return this.envService.get('ORACLE_WEIGHT_BANK') ?? this.envService.get('ORACLE_WEIGHT_AGGREGATOR') ?? 3;
+            if (cat === 'B')
+                return this.envService.get('ORACLE_WEIGHT_CRYPTO_DIRECT') ?? 2.5;
+            return this.envService.get('ORACLE_WEIGHT_AGGREGATOR') ?? 1.5;
+        };
+        for (const s of aValid) {
+            combinedItems.push({ value: s.value * peg, weight: resolveWeight(s.source), name: s.name });
         }
-        if (valid.length === 0) {
-            valid = successRates;
+        for (const s of bValid) {
+            combinedItems.push({ value: s.value, weight: resolveWeight(s.source), name: s.name });
         }
-        const validRates = valid.map(r => r.value);
-        const usedSources = valid.map(r => r.name);
-        let method;
-        let finalRate;
-        if (validRates.length === 1) {
-            finalRate = validRates[0];
-            method = 'single';
+        if (combinedItems.length < minValidSources) {
+            this.emitAlert('insufficient_consensus', { available: combinedItems.length, required: minValidSources });
+            try {
+                this.circuitBreaker.recordFailure();
+            }
+            catch { }
+            throw new Error('INSUFFICIENT_CONSENSUS: Not enough valid sources to produce a safe rate');
         }
-        else {
-            finalRate = this.calculateMedian(validRates);
-            method = 'median';
+        if (aValid.length > 0 && bValid.length > 0) {
+            const aMedian = this.calculateMedian(aValid.map(v => v.value)) * peg;
+            const bMedian = this.calculateMedian(bValid.map(v => v.value));
+            const diff = Math.abs(aMedian - bMedian) / ((aMedian + bMedian) / 2);
+            if (diff > crossGroupMaxDiff) {
+                this.emitAlert('cross_group_divergence', { aMedian, bMedian, diff });
+            }
         }
-        finalRate = finalRate * safetySpread;
-        if (finalRate < bounds.MIN || finalRate > bounds.MAX) {
-            throw new Error(`[FX Oracle] Final rate ${finalRate.toFixed(0)} out of safe bounds after spread. Disbursement halted.`);
+        const wmItems = combinedItems.map(i => ({ value: i.value, weight: i.weight }));
+        const finalRateRaw = this.weightedMedian(wmItems);
+        let finalRate = finalRateRaw * (safetySpread ?? 0.995);
+        let method = 'weighted_median';
+        if (this.cache) {
+            const prev = this.cache.rate;
+            const change = Math.abs(finalRate - prev) / prev;
+            if (change > rateChangeGuard) {
+                this.emitAlert('rate_change_guard', { previous: prev, proposed: finalRate, change });
+                if (change > 0.10) {
+                    throw new Error('RATE_CHANGE_REQUIRES_CONFIRMATION');
+                }
+                console.warn('[FX Oracle] Large rate change detected, invalidating cache for re-check', { previous: prev, proposed: finalRate, change });
+                this.invalidateCache();
+                method = 'require_confirmation';
+            }
         }
-        const oracleResult = {
+        if (finalRate < boundsMin || finalRate > boundsMax) {
+            throw new Error('[FX Oracle] Final rate out of safe bounds after spread. Disbursement halted.');
+        }
+        const usedSources = combinedItems.map(i => i.name);
+        const result = {
             rate: Math.floor(finalRate),
             rawRates,
             usedSources,
@@ -229,28 +327,35 @@ let OracleService = class OracleService {
             cachedAt: new Date(),
             method,
         };
-        this.cache = oracleResult;
+        this.cache = result;
         console.log('----------------------------------------------------');
-        console.log(`[FX Oracle SEP-38] Execution Log`);
+        console.log('[FX Oracle SEP-38] Execution Log');
+        console.log(`- Peg used: ${peg}`);
         console.log(`- Raw Rates Fetched:`, rawRates);
         console.log(`- Dropped Sources:`, droppedSources);
         console.log(`- Valid Sources Used:`, usedSources);
-        console.log(`- Calculation Method: ${method} of [${validRates.join(', ')}]`);
-        console.log(`- FINAL Safe Rate: ${oracleResult.rate} VND/USDC`);
+        console.log(`- Calculation Method: ${method} of [${wmItems.map(i => i.value).join(', ')}]`);
+        console.log(`- FINAL Safe Rate: ${result.rate} VND/USDC`);
         console.log('----------------------------------------------------');
-        return oracleResult;
+        return result;
     }
     invalidateCache() {
         this.cache = null;
         console.log('[FX Oracle] Cache invalidated.');
     }
     getCircuitBreakerState() {
-        return this.circuitBreaker.getState();
+        try {
+            return this.circuitBreaker.getState();
+        }
+        catch {
+            return 'UNKNOWN';
+        }
     }
     resetCircuitBreaker() {
-        this.circuitBreaker.state = 0;
-        this.circuitBreaker.consecutiveFailures = 0;
-        this.circuitBreaker.lastFailureAt = null;
+        try {
+            this.circuitBreaker.reset();
+        }
+        catch { }
     }
 };
 exports.OracleService = OracleService;

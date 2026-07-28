@@ -8,6 +8,8 @@ const SOURCE_TIMEOUT_MS = 5_000;
 export class ExchangeRateApiUsdSource implements OracleSource {
   name = 'exchangerate_api_usd';
   priority = 6;
+  category: 'A' = 'A';
+  weight = 1.5;
 
   async fetch(): Promise<number> {
     const res = await axios.get(
@@ -16,8 +18,6 @@ export class ExchangeRateApiUsdSource implements OracleSource {
     );
     const rate = res.data?.rates?.VND;
     if (!rate || typeof rate !== 'number') throw new Error('Invalid response');
-    // Maintain the 1.015 multiplier from the old code if required, or is it needed?
-    // The prompt says "Refactor... Giữ 4 source hiện có", which means maintain their logic.
-    return rate * 1.015;
+    return rate;
   }
 }

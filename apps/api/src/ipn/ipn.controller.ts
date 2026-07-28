@@ -103,10 +103,14 @@ export class IpnController {
         case 'SUCCESS':
           // Notify Platform first (only if not an off-platform transaction)
           if (!realTxId.startsWith('ucttx')) {
-            await this.anchorRpc.notifyOffchainFundsAvailable(
-              realTxId,
-              realPaymentNo,
-            );
+            try {
+              await this.anchorRpc.notifyOffchainFundsAvailable(
+                realTxId,
+                realPaymentNo,
+              );
+            } catch (err: any) {
+              console.warn(`[IPN] Failed to notify Anchor Platform (may be mocked/down):`, err.message);
+            }
           }
 
           // Atomic DB transaction
@@ -136,10 +140,14 @@ export class IpnController {
             );
           } else {
             if (!realTxId.startsWith('ucttx')) {
-              await this.anchorRpc.notifyTransactionError(
-                realTxId,
-                `Disbursement failed after 3 retries`,
-              );
+              try {
+                await this.anchorRpc.notifyTransactionError(
+                  realTxId,
+                  `Disbursement failed after 3 retries`,
+                );
+              } catch (err: any) {
+                console.warn(`[IPN] Failed to notify Anchor Platform error (may be mocked/down):`, err.message);
+              }
             }
             await this.sep31CoreService.failDisbursement(realTxId);
             console.error(
@@ -240,7 +248,7 @@ export class IpnController {
     }
   }
 
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  @Cron(CronExpression.EVERY_30_SECONDS)
   async pollPendingExternal() {
     try {
       console.log(

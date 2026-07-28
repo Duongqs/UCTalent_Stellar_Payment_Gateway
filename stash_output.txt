@@ -1,0 +1,60 @@
+On branch stellar-normal-job
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   apps/api/dist/src/sep31/sep31.controller.js
+	modified:   apps/api/dist/src/sep31/sep31.controller.js.map
+	modified:   apps/api/dist/tsconfig.build.tsbuildinfo
+	modified:   apps/api/src/ipn/ipn.controller.ts
+	modified:   apps/api/src/main.ts
+	modified:   apps/api/src/sep31/sep31.controller.ts
+	modified:   apps/worker/dist/tsconfig.build.tsbuildinfo
+	modified:   apps/worker/src/disbursement/disbursement-poller.service.ts
+	modified:   apps/worker/src/disbursement/pending-clearing-processor.service.ts
+	modified:   apps/worker/src/main.ts
+	modified:   apps/worker/test/worker-flow.e2e-spec.ts
+	modified:   packages/banking/dist/banking.module.d.ts
+	modified:   packages/banking/dist/banking.module.js
+	modified:   packages/banking/dist/banking.module.js.map
+	modified:   packages/banking/dist/services/ninepay-mock.service.js
+	modified:   packages/banking/dist/services/ninepay-mock.service.js.map
+	modified:   packages/banking/dist/services/oracle.service.d.ts
+	modified:   packages/banking/dist/services/oracle.service.js
+	modified:   packages/banking/dist/services/oracle.service.js.map
+	modified:   packages/banking/src/banking.module.ts
+	modified:   packages/banking/src/oracle-sources/coingecko-usdc.source.ts
+	modified:   packages/banking/src/oracle-sources/coingecko-usdt.source.ts
+	modified:   packages/banking/src/oracle-sources/currency-api.source.ts
+	modified:   packages/banking/src/oracle-sources/exchange-rate-api.source.ts
+	modified:   packages/banking/src/oracle-sources/exchangerate-host.source.ts
+	modified:   packages/banking/src/oracle-sources/oracle-source.interface.ts
+	modified:   packages/banking/src/oracle-sources/vietcombank.source.ts
+	modified:   packages/banking/src/services/ninepay-mock.service.ts
+	modified:   packages/banking/src/services/oracle.service.ts
+	modified:   packages/banking/tsconfig.tsbuildinfo
+	modified:   packages/core/src/config/env.config.ts
+	modified:   packages/core/tsconfig.tsbuildinfo
+	modified:   packages/stellar/dist/services/anchor-rpc.service.js
+	modified:   packages/stellar/dist/services/anchor-rpc.service.js.map
+	modified:   packages/stellar/dist/services/sep31-transaction.service.js
+	modified:   packages/stellar/dist/services/sep31-transaction.service.js.map
+	modified:   packages/stellar/src/services/anchor-rpc.service.ts
+	modified:   packages/stellar/src/services/sep31-transaction.service.ts
+	modified:   packages/stellar/tsconfig.tsbuildinfo
+	modified:   trigger-ipn.js
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	merge_output.txt
+	packages/banking/src/oracle-sources/bidv-usd.source.ts
+	packages/banking/src/oracle-sources/binance-peg.source.ts
+	packages/banking/src/oracle-sources/coinbase-peg.source.ts
+	packages/banking/src/oracle-sources/frankfurter-usd.source.ts
+	packages/banking/src/oracle-sources/okx-peg.source.ts
+	packages/banking/src/oracle-sources/techcombank-usd.source.ts
+	packages/banking/src/oracle-sources/vietinbank-usd.source.ts
+	stash_output.txt
+	test-typeorm.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+Dropped refs/stash@{0} (d7a354d0aa88c671edb57406e6c452ccd9618f0d)

@@ -158,6 +158,10 @@ export class Sep31Controller {
         msg.includes('socket hang up') ||
         code === 'ECONNABORTED' ||
         code === 'ECONNRESET';
+      const isConnectionRefused =
+        msg.includes('ECONNREFUSED') ||
+        code === 'ECONNREFUSED' ||
+        msg.includes('Service unreachable');
 
       if (isAmbiguous) {
         await this.sep31CoreService.update(tempId, {
@@ -168,6 +172,12 @@ export class Sep31Controller {
           error: 'ambiguous_timeout',
           message:
             'Transaction is in an ambiguous state due to network timeout. Please contact support.',
+        });
+      } else if (isConnectionRefused) {
+        await this.sep31CoreService.delete(tempId);
+        throw new BadGatewayException({
+          error: 'ap_service_unavailable',
+          message: 'Anchor Platform service is currently unreachable.',
         });
       } else {
         await this.sep31CoreService.delete(tempId);
@@ -211,7 +221,7 @@ export class Sep31Controller {
     }
     
     if (asset_issuer) {
-      const expectedIssuer = this.envService.get('USDC_ISSUER') || 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5';
+      const expectedIssuer = this.envService.get('USDC_ISSUER');
       if (asset_issuer !== expectedIssuer) {
         throw new BadRequestException({ error: 'invalid_asset_issuer', message: 'Unsupported asset issuer' });
       }
@@ -298,6 +308,10 @@ export class Sep31Controller {
         msg.includes('socket hang up') ||
         code === 'ECONNABORTED' ||
         code === 'ECONNRESET';
+      const isConnectionRefused =
+        msg.includes('ECONNREFUSED') ||
+        code === 'ECONNREFUSED' ||
+        msg.includes('Service unreachable');
 
       if (isAmbiguous) {
         await this.sep31CoreService.update(tempId, {
@@ -307,6 +321,12 @@ export class Sep31Controller {
         throw new BadGatewayException({
           error: 'ambiguous_timeout',
           message: 'Transaction is in an ambiguous state due to network timeout. Please contact support.',
+        });
+      } else if (isConnectionRefused) {
+        await this.sep31CoreService.delete(tempId);
+        throw new BadGatewayException({
+          error: 'ap_service_unavailable',
+          message: 'Anchor Platform service is currently unreachable.',
         });
       } else {
         await this.sep31CoreService.delete(tempId);
@@ -348,7 +368,7 @@ export class Sep31Controller {
         id: tx.id,
         status: tx.status,
         amount_in: tx.amountIn,
-        amount_in_asset: `stellar:${tx.assetCode}:${this.envService.get('USDC_ISSUER') || 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5'}`,
+        amount_in_asset: `stellar:${tx.assetCode}:${this.envService.get('USDC_ISSUER')}`,
         amount_out: tx.vndAmount ? tx.vndAmount.toString() : undefined,
         amount_out_asset: 'iso4217:VND',
         stellar_account_id: tx.stellarAccount,

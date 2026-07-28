@@ -7,7 +7,9 @@ export class AnchorRpcService {
   constructor(private readonly envService: EnvService) {}
 
   private get platformUrl(): string {
-    return this.envService.get('PLATFORM_SERVER_URL') || this.envService.get('ANCHOR_PLATFORM_URL') || 'http://localhost:8085';
+    const url = this.envService.get('PLATFORM_SERVER_URL') || this.envService.get('ANCHOR_PLATFORM_URL');
+    if (!url) throw new Error('PLATFORM_SERVER_URL is missing');
+    return url;
   }
 
   private async patchTransaction(id: string, updates: any, retryCount = 0): Promise<any> {
@@ -39,13 +41,20 @@ export class AnchorRpcService {
         return this.patchTransaction(id, updates, retryCount + 1);
       }
       
-      console.error(`Error in Anchor Platform API [PATCH /transactions]:`, error.response?.data || error.message);
+      if (
+        (error.code === 'ECONNREFUSED' || error.code === 'ECONNABORTED' || (error.message && (error.message.includes('ECONNREFUSED') || error.message.includes('ECONNABORTED')))) &&
+        this.envService.get('USE_MOCK_IPN') === 'true'
+      ) {
+        console.warn(`[Mock] Skipping Anchor Platform PATCH /transactions for ${id} due to mock mode.`);
+        return { mock: true };
+      }
+      console.error(`Error in Anchor Platform API [PATCH /transactions]:`, error.response?.data || error.message, error);
       throw error;
     }
   }
 
   async notifyOnchainFundsReceived(transactionId: string, amount_in: string, stellar_transaction_id: string) {
-    const usdcIssuer = this.envService.get('USDC_ISSUER') || 'G_DUMMY_ISSUER';
+    const usdcIssuer = this.envService.get('USDC_ISSUER');
     return this.patchTransaction(transactionId, {
       status: 'pending_receiver',
       stellar_transaction_id,

@@ -8,6 +8,8 @@ const SOURCE_TIMEOUT_MS = 5_000;
 export class CoinGeckoUsdtSource implements OracleSource {
   name = 'coingecko_usdt';
   priority = 5;
+  category: 'B' = 'B';
+  weight = 2.5;
 
   async fetch(): Promise<number> {
     const res = await axios.get(
