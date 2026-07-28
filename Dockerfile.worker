@@ -49,4 +49,4 @@ COPY --from=builder /app/packages/core/dist ./packages/core/dist
 COPY --from=builder /app/packages/stellar/dist ./packages/stellar/dist
 COPY --from=builder /app/packages/banking/dist ./packages/banking/dist
 
-CMD ["node", "apps/worker/dist/src/main.js"]
+CMD ["node", "apps/worker/dist/main.js"]
