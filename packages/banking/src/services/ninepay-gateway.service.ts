@@ -42,12 +42,10 @@ export class NinePayGatewayService {
     if (httpQuery) {
       message += '\n' + httpQuery;
     }
-    console.log(`[9Pay Signature Debug] Message to sign for ${path}:\n---\n${message}\n---`);
     const sig = crypto
       .createHmac('sha256', this.secretKey)
       .update(message, 'utf8')
       .digest('base64');
-    console.log(`[9Pay Signature Debug] Computed Signature: ${sig}`);
     return sig;
   }
 
@@ -86,16 +84,14 @@ export class NinePayGatewayService {
       config.params = params;
     } else {
       config.data = new URLSearchParams(params).toString();
-      console.log(`[9Pay HTTP Request Debug] Body sent for ${path}:\n---\n${config.data}\n---`);
     }
 
     try {
       const response = await axios(config);
-      console.log(`[9Pay HTTP Response Debug] ${path}:`, JSON.stringify(response.data));
       return response.data;
     } catch (error: any) {
       if (error.response) {
-         console.error(`[9Pay HTTP Request Error] ${error.response.status} - Data:`, JSON.stringify(error.response.data));
+         console.error(`[9Pay HTTP Request Error] ${error.response.status}`);
       }
       throw error;
     }

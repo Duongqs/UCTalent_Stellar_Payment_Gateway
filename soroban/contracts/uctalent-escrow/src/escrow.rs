@@ -464,6 +464,10 @@ pub fn withdraw_to_anchor(env: &Env, platform: Address, index: u32) -> i128 {
             env.events().publish((Symbol::new(env, "error"), Symbol::new(env, "not_deposited")), ());
             panic!("Not deposited");
         }
+        if !status.platform_fee_released {
+            env.events().publish((Symbol::new(env, "error"), Symbol::new(env, "fee_not_released")), ());
+            panic!("Platform fee not released");
+        }
         if status.is_cancelled {
             env.events().publish((Symbol::new(env, "error"), Symbol::new(env, "already_cancelled")), ());
             panic!("Already cancelled");
@@ -627,7 +631,7 @@ pub fn cancel_remaining(env: &Env) {
         if m.is_disputed {
             panic!("Cannot cancel while a milestone is disputed");
         }
-        if !m.is_completed { unreleased += m.amount; }
+        if !m.is_completed || !m.is_withdrawn { unreleased += m.amount; }
     }
     if unreleased <= 0 { panic!("All milestones already released"); }
 

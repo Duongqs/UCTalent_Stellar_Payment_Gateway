@@ -29,6 +29,7 @@
     "@uc/banking": "*",
     "@uc/core": "*",
     "@uc/stellar": "*",
+    "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",

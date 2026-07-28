@@ -9,7 +9,7 @@ export const envSchema = z.object({
   POSTGRES_HOST: z.string().default('localhost'),
   POSTGRES_PORT: z.coerce.number().default(5432),
   POSTGRES_USER: z.string().default('postgres'),
-  POSTGRES_PASSWORD: z.string().default('password'),
+  POSTGRES_PASSWORD: z.string().min(1, 'POSTGRES_PASSWORD is required'),
   POSTGRES_DB: z.string().default('uct_cross_border_dev'),
   POSTGRES_DB_TEST: z.string().default('uct_cross_border_dev_test'),
 
@@ -23,7 +23,7 @@ export const envSchema = z.object({
   NINEPAY_MERCHANT_KEY: z.string().optional(),
   NINEPAY_SECRET_KEY: z.string().optional(),
   NINEPAY_CHECKSUM_KEY: z.string().optional(),
-  NINEPAY_API_URL: z.string().default('https://sand-payment.9pay.vn'),
+  NINEPAY_API_URL: z.string().url('NINEPAY_API_URL must be a valid URL'),
   NINEPAY_MODE: z.enum(['mock', 'live']).default('mock'),
 
   PIT_THRESHOLD_VND: z.coerce.number().default(2_000_000),
@@ -57,14 +57,13 @@ export const envSchema = z.object({
 
   ENCRYPTION_SECRET: z
     .string()
-    .min(32, 'ENCRYPTION_SECRET must be at least 32 chars')
-    .default('a_very_secure_secret_key_that_is_at_least_32_bytes_long!'),
+    .min(32, 'ENCRYPTION_SECRET must be at least 32 chars'),
 
   UCTALENT_BACKEND_WEBHOOK_URL: z
     .string()
     .default('http://localhost:3000/api/v2/cross-border/settlement-callback'),
-  WEBHOOK_SECRET: z.string().default('uctalent-dev-secret'),
-  CROSS_BORDER_WEBHOOK_SECRET: z.string().default('uctalent-dev-secret'),
+  WEBHOOK_SECRET: z.string().min(1, 'WEBHOOK_SECRET is required'),
+  CROSS_BORDER_WEBHOOK_SECRET: z.string().min(1, 'CROSS_BORDER_WEBHOOK_SECRET is required'),
   SEP31_WEBHOOK_URL: z
     .string()
     .default('http://localhost:4000/api/anchor/disburse'),
@@ -75,23 +74,23 @@ export const envSchema = z.object({
   ANCHOR_PLATFORM_URL: z.string().default('http://localhost:8082'),
   PLATFORM_SERVER_URL: z.string().default('http://localhost:8085'),
   PLATFORM_TREASURY_ADDRESS: z.string().optional(),
+  ALLOWED_ORIGINS: z.string().default('*'),
 
-  ALLOWED_WEBHOOK_IPS: z.string().default('127.0.0.1,::1,*'),
+  ALLOWED_WEBHOOK_IPS: z.string().min(1, 'ALLOWED_WEBHOOK_IPS is required'),
   USE_MOCK_NINEPAY: z.string().optional(),
   USE_MOCK_IPN: z.string().optional(),
   SLACK_ALERT_WEBHOOK: z.string().optional(),
   ESCROW_CONTRACT_ID: z.string().optional(),
   FUNDING_SECRET: z
     .string()
-    .default(''),
+    .min(1, 'FUNDING_SECRET is required'),
   ANCHOR_SIGNING_KEY: z.string().optional(),
   ANCHOR_SIGNING_SECRET: z.string().optional(),
   PLATFORM_SECRET_KEY: z.string().optional(),
   WEB_AUTH_ENDPOINT: z.string().default('http://localhost:4000/auth'),
   JWT_SECRET: z
     .string()
-    .min(32, 'JWT_SECRET must be at least 32 chars')
-    .default('super_secret_jwt_key_that_is_at_least_32_bytes_long!'),
+    .min(32, 'JWT_SECRET must be at least 32 chars'),
 
   // Run scripts/migrations/*.sql on API boot (tracked in uc_stellar_schema_migrations)
   // NOTE: do NOT use Rails table name "schema_migrations" on shared DBs

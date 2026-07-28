@@ -46,9 +46,10 @@ exports.EncryptionService = void 0;
 const common_1 = require("@nestjs/common");
 const crypto = __importStar(require("crypto"));
 const env_service_1 = require("../config/env.service");
-const ALGORITHM = 'aes-256-cbc';
+const ALGORITHM_V1 = 'aes-256-cbc';
+const ALGORITHM_V2 = 'aes-256-gcm';
 const MIN_SECRET_LENGTH = 32;
-const CURRENT_VERSION = 'v1';
+const CURRENT_VERSION = 'v2';
 function getSecretFallback() {
     const secret = process.env.ENCRYPTION_SECRET;
     if (!secret) {
@@ -78,29 +79,42 @@ let EncryptionService = class EncryptionService {
     }
     encrypt(plaintext) {
         const salt = crypto.randomBytes(16);
-        const iv = crypto.randomBytes(16);
+        const iv = crypto.randomBytes(12);
         const key = this.deriveKey(salt);
-        const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
+        const cipher = crypto.createCipheriv(ALGORITHM_V2, key, iv);
         const encrypted = Buffer.concat([
             cipher.update(plaintext, 'utf8'),
             cipher.final(),
         ]);
-        return `${CURRENT_VERSION}:${salt.toString('hex')}:${iv.toString('hex')}:${encrypted.toString('hex')}`;
+        const authTag = cipher.getAuthTag();
+        return `${CURRENT_VERSION}:${salt.toString('hex')}:${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted.toString('hex')}`;
     }
     decrypt(token) {
         const parts = token.split(':');
-        if (parts.length !== 4) {
-            throw new Error('Invalid encrypted token format');
+        const version = parts[0];
+        if (version === 'v1') {
+            if (parts.length !== 4)
+                throw new Error('Invalid v1 encrypted token format');
+            const [, saltHex, ivHex, cipherHex] = parts;
+            const salt = Buffer.from(saltHex, 'hex');
+            const iv = Buffer.from(ivHex, 'hex');
+            const key = this.deriveKey(salt);
+            const decipher = crypto.createDecipheriv(ALGORITHM_V1, key, iv);
+            return decipher.update(cipherHex, 'hex', 'utf8') + decipher.final('utf8');
         }
-        const [version, saltHex, ivHex, cipherHex] = parts;
-        if (version !== 'v1') {
-            throw new Error(`Unsupported encryption version: ${version}. Key rotation may be needed.`);
+        if (version === 'v2') {
+            if (parts.length !== 5)
+                throw new Error('Invalid v2 encrypted token format');
+            const [, saltHex, ivHex, authTagHex, cipherHex] = parts;
+            const salt = Buffer.from(saltHex, 'hex');
+            const iv = Buffer.from(ivHex, 'hex');
+            const authTag = Buffer.from(authTagHex, 'hex');
+            const key = this.deriveKey(salt);
+            const decipher = crypto.createDecipheriv(ALGORITHM_V2, key, iv);
+            decipher.setAuthTag(authTag);
+            return decipher.update(cipherHex, 'hex', 'utf8') + decipher.final('utf8');
         }
-        const salt = Buffer.from(saltHex, 'hex');
-        const iv = Buffer.from(ivHex, 'hex');
-        const key = this.deriveKey(salt);
-        const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-        return decipher.update(cipherHex, 'hex', 'utf8') + decipher.final('utf8');
+        throw new Error(`Unsupported encryption version: ${version}. Key rotation may be needed.`);
     }
     createBeneficiaryRefId(stellarWallet, accountNumber) {
         const hmac = crypto.createHmac('sha256', this.getSecret());

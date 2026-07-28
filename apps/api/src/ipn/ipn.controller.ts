@@ -50,13 +50,24 @@ export class IpnController {
     const resultB64 = body.result;
     const receivedChecksum = body.checksum;
 
+    const checksumKey = this.envService.get('NINEPAY_CHECKSUM_KEY');
+    if (!checksumKey) {
+      throw new InternalServerErrorException('NINEPAY_CHECKSUM_KEY is not configured');
+    }
+
     const expectedChecksum = crypto
       .createHash('sha256')
-      .update(resultB64 + (this.envService.get('NINEPAY_CHECKSUM_KEY') || ''))
+      .update(resultB64 + checksumKey)
       .digest('hex')
       .toUpperCase();
 
-    if (receivedChecksum !== expectedChecksum) {
+    const expectedChecksumBuffer = Buffer.from(expectedChecksum);
+    const receivedChecksumBuffer = Buffer.from(receivedChecksum || '');
+
+    if (
+      expectedChecksumBuffer.length !== receivedChecksumBuffer.length ||
+      !crypto.timingSafeEqual(expectedChecksumBuffer, receivedChecksumBuffer)
+    ) {
       console.error('[IPN] Invalid checksum');
       throw new UnauthorizedException('Invalid checksum');
     }
@@ -225,9 +236,10 @@ export class IpnController {
     }
 
     const callbackPayloadString = JSON.stringify(callbackPayload);
-    const secret =
-      this.envService.get('CROSS_BORDER_WEBHOOK_SECRET') ||
-      'uctalent-dev-secret';
+    const secret = this.envService.get('CROSS_BORDER_WEBHOOK_SECRET');
+    if (!secret) {
+      throw new InternalServerErrorException('CROSS_BORDER_WEBHOOK_SECRET is not configured');
+    }
     const signature = crypto
       .createHmac('sha256', secret)
       .update(callbackPayloadString)
@@ -290,7 +302,7 @@ export class IpnController {
                       status: 'SUCCESS',
                     }),
                   ).toString('base64') +
-                    (this.envService.get('NINEPAY_CHECKSUM_KEY') || ''),
+                    (this.envService.get('NINEPAY_CHECKSUM_KEY')),
                 )
                 .digest('hex')
                 .toUpperCase(),
@@ -320,7 +332,7 @@ export class IpnController {
                       status: 'FAILED',
                     }),
                   ).toString('base64') +
-                    (this.envService.get('NINEPAY_CHECKSUM_KEY') || ''),
+                    (this.envService.get('NINEPAY_CHECKSUM_KEY')),
                 )
                 .digest('hex')
                 .toUpperCase(),
