@@ -57,10 +57,16 @@ let NinePayGatewayService = class NinePayGatewayService {
         this.nameMatchingService = nameMatchingService;
     }
     get merchantKey() {
-        return this.envService.get('NINEPAY_MERCHANT_KEY') || 'sandbox_merchant';
+        const key = this.envService.get('NINEPAY_MERCHANT_KEY');
+        if (!key)
+            throw new Error('NINEPAY_MERCHANT_KEY is not configured');
+        return key;
     }
     get secretKey() {
-        return this.envService.get('NINEPAY_SECRET_KEY') || 'sandbox_secret';
+        const key = this.envService.get('NINEPAY_SECRET_KEY');
+        if (!key)
+            throw new Error('NINEPAY_SECRET_KEY is not configured');
+        return key;
     }
     get apiUrl() {
         return (this.envService.get('NINEPAY_API_URL') || 'https://sand-payment.9pay.vn').replace(/\/+$/, '');
@@ -80,12 +86,10 @@ let NinePayGatewayService = class NinePayGatewayService {
         if (httpQuery) {
             message += '\n' + httpQuery;
         }
-        console.log(`[9Pay Signature Debug] Message to sign for ${path}:\n---\n${message}\n---`);
         const sig = crypto
             .createHmac('sha256', this.secretKey)
             .update(message, 'utf8')
             .digest('base64');
-        console.log(`[9Pay Signature Debug] Computed Signature: ${sig}`);
         return sig;
     }
     buildAuthHeader(signature) {
@@ -120,16 +124,14 @@ let NinePayGatewayService = class NinePayGatewayService {
         }
         else {
             config.data = new URLSearchParams(params).toString();
-            console.log(`[9Pay HTTP Request Debug] Body sent for ${path}:\n---\n${config.data}\n---`);
         }
         try {
             const response = await (0, axios_1.default)(config);
-            console.log(`[9Pay HTTP Response Debug] ${path}:`, JSON.stringify(response.data));
             return response.data;
         }
         catch (error) {
             if (error.response) {
-                console.error(`[9Pay HTTP Request Error] ${error.response.status} - Data:`, JSON.stringify(error.response.data));
+                console.error(`[9Pay HTTP Request Error] ${error.response.status}`);
             }
             throw error;
         }
