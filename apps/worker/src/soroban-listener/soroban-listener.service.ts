@@ -67,9 +67,11 @@ export class SorobanListenerService implements OnModuleInit {
   }
 
   async onModuleInit() {
-    this.rpcUrl =
-      this.envService.get('SOROBAN_RPC_URL') ||
-      'https://rpc-testnet.stellar.org';
+    this.rpcUrl = this.envService.get('SOROBAN_RPC_URL') || '';
+    if (!this.rpcUrl) {
+      console.error('❌ SOROBAN_RPC_URL is not set in env config — cannot connect to Soroban RPC.');
+      return;
+    }
     this.contractId = this.envService.get('ESCROW_CONTRACT_ID') || '';
 
     if (!this.contractId) {

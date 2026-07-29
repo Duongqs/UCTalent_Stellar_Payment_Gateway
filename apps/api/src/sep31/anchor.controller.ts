@@ -7,7 +7,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { Sep31CoreService, CustomerService } from '@uc/core';
+import { Sep31CoreService, CustomerService, EnvService } from '@uc/core';
 import { AnchorWebhookGuard } from './guards/anchor-webhook.guard';
 import { DisburseDto } from './dtos/disburse.dto';
 import { randomUUID } from 'crypto';
@@ -19,6 +19,7 @@ export class AnchorController {
   constructor(
     private readonly sep31CoreService: Sep31CoreService,
     private readonly customerService: CustomerService,
+    private readonly envService: EnvService,
   ) {}
 
   @Post('disburse')
@@ -83,12 +84,15 @@ export class AnchorController {
         }
       }
 
+      const sep31SenderId = this.envService.get('SEP31_SENDER_ID' as any);
+      if (!sep31SenderId) throw new Error('SEP31_SENDER_ID is not configured');
+
       // Save a Sep31TransactionEntity record to the DB
       const tx = this.sep31CoreService.create({
         id: txId,
         amountIn: amountUsdc.toString(),
         assetCode: 'USDC',
-        senderId: 'GLOBAL_PLATFORM_SENDER_ID',
+        senderId: sep31SenderId,
         receiverId: resolvedKycId || 'SYSTEM',
         status: party === 'platform' ? 'usdc_retained' : 'pending_clearing',
         stellarTxHash,
