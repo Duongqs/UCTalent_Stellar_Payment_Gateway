@@ -13,8 +13,8 @@ export const envSchema = z.object({
   POSTGRES_DB: z.string().default('uct_cross_border_dev'),
   POSTGRES_DB_TEST: z.string().default('uct_cross_border_dev_test'),
 
-  SOROBAN_RPC_URL: z.string().default('https://soroban-testnet.stellar.org'),
-  NETWORK_PASSPHRASE: z.string().default('Test SDF Network ; September 2015'),
+  SOROBAN_RPC_URL: z.string(),
+  NETWORK_PASSPHRASE: z.string().default('Public Global Stellar Network ; September 2015'),
   USDC_ISSUER: z.string(),
   TOKEN_DECIMALS: z.coerce.number().default(7),
   POLL_INTERVAL_MS: z.coerce.number().default(5000),
@@ -85,12 +85,14 @@ export const envSchema = z.object({
     .string()
     .min(1, 'FUNDING_SECRET is required'),
   ANCHOR_SIGNING_KEY: z.string().optional(),
-  ANCHOR_SIGNING_SECRET: z.string().optional(),
+  ANCHOR_SIGNING_SECRET: z.string().min(1, 'ANCHOR_SIGNING_SECRET is required'),
   PLATFORM_SECRET_KEY: z.string().optional(),
   WEB_AUTH_ENDPOINT: z.string().default('http://localhost:4000/auth'),
   JWT_SECRET: z
     .string()
     .min(32, 'JWT_SECRET must be at least 32 chars'),
+
+  SEP31_SENDER_ID: z.string().uuid('SEP31_SENDER_ID must be a valid UUID').optional(),
 
   // Run scripts/migrations/*.sql on API boot (tracked in uc_stellar_schema_migrations)
   // NOTE: do NOT use Rails table name "schema_migrations" on shared DBs

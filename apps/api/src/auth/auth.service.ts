@@ -11,14 +11,16 @@ export class AuthService {
   private readonly serverDomain: string;
 
   constructor(private readonly envService: EnvService) {
-    const secretKeyStr = String(this.envService.get('ANCHOR_SIGNING_SECRET') || this.envService.get('PLATFORM_SECRET_KEY') || '');
+    const secretKeyStr = String(this.envService.get('ANCHOR_SIGNING_SECRET') || '');
     if (!secretKeyStr) {
-      throw new Error('ANCHOR_SIGNING_SECRET or PLATFORM_SECRET_KEY must be set in environment variables');
+      throw new Error('ANCHOR_SIGNING_SECRET must be set in environment variables');
     }
     const secretKey = secretKeyStr;
     this.anchorKeypair = Keypair.fromSecret(secretKey);
-    this.networkPassphrase = String(this.envService.get('NETWORK_PASSPHRASE') || Networks.TESTNET);
-    this.jwtSecret = String(this.envService.get('JWT_SECRET') || 'super_secret_jwt_key_that_is_at_least_32_bytes_long!');
+    this.networkPassphrase = String(this.envService.get('NETWORK_PASSPHRASE') || Networks.PUBLIC);
+    const jwtSecretVal = this.envService.get('JWT_SECRET');
+    if (!jwtSecretVal) throw new Error('JWT_SECRET must be set in environment variables');
+    this.jwtSecret = String(jwtSecretVal);
     const urlStr = String(this.envService.get('WEB_AUTH_ENDPOINT') || 'http://localhost:4000/auth');
     let domain = 'localhost:4000';
     try {
