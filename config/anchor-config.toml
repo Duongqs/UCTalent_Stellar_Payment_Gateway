@@ -1,16 +1,16 @@
 # Stellar SEP-1 & SEP-31 configuration
 # .well-known/stellar.toml
 
-NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
+NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015"
 DIRECT_PAYMENT_SERVER="https://bridge.uctalent.dev/sep31"
 WEB_AUTH_ENDPOINT="https://bridge.uctalent.dev/auth"
 
 [[CURRENCIES]]
 code="USDC"
-issuer="GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
+issuer="GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
 status="live"
 is_asset_anchored=true
-desc="USD Coin on Stellar Testnet"
+desc="USD Coin (Circle) on Stellar Mainnet"
 
 [[CURRENCIES]]
 code="VND"

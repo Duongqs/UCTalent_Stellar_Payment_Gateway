@@ -43,7 +43,8 @@ export class EventConsumerService {
       // 1. Dispatch to local AnchorController.disburse
       const localApiPort = this.envService.get('PORT') || 8081;
       const localDisburseUrl = `http://localhost:${localApiPort}/api/anchor/disburse`;
-      const localSecret = this.envService.get('WEBHOOK_SECRET') || 'uctalent-dev-secret';
+      const localSecret = this.envService.get('WEBHOOK_SECRET');
+      if (!localSecret) throw new Error('WEBHOOK_SECRET is not configured');
       const localSignature = 'sha256=' + crypto
         .createHmac('sha256', localSecret)
         .update(payloadString)
@@ -77,7 +78,8 @@ export class EventConsumerService {
         targetBackendUrl = 'http://localhost:4000/api/v2/cross-border/webhook';
       }
 
-      const backendSecret = this.envService.get('CROSS_BORDER_WEBHOOK_SECRET') || 'uctalent-dev-secret';
+      const backendSecret = this.envService.get('CROSS_BORDER_WEBHOOK_SECRET');
+      if (!backendSecret) throw new Error('CROSS_BORDER_WEBHOOK_SECRET is not configured');
       const backendSig = crypto
         .createHmac('sha256', backendSecret)
         .update(payloadString)

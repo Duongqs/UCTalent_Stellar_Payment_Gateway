@@ -24,7 +24,9 @@ export class NinePayGatewayService {
   }
 
   private get apiUrl(): string {
-    return (this.envService.get('NINEPAY_API_URL') || 'https://sand-payment.9pay.vn').replace(/\/+$/, '');
+    const url = this.envService.get('NINEPAY_API_URL');
+    if (!url) throw new Error('NINEPAY_API_URL is not configured');
+    return url.replace(/\/+$/, '');
   }
 
   private buildCanonicalQuery(params: Record<string, string>): string {

@@ -69,7 +69,10 @@ let NinePayGatewayService = class NinePayGatewayService {
         return key;
     }
     get apiUrl() {
-        return (this.envService.get('NINEPAY_API_URL') || 'https://sand-payment.9pay.vn').replace(/\/+$/, '');
+        const url = this.envService.get('NINEPAY_API_URL');
+        if (!url)
+            throw new Error('NINEPAY_API_URL is not configured');
+        return url.replace(/\/+$/, '');
     }
     buildCanonicalQuery(params) {
         if (!params || Object.keys(params).length === 0)

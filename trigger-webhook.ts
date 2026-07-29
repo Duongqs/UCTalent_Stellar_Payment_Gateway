@@ -20,7 +20,8 @@ async function run() {
   };
 
   const callbackPayloadString = JSON.stringify(callbackPayload);
-  const secret = process.env.CROSS_BORDER_WEBHOOK_SECRET || 'uctalent-dev-secret';
+  const secret = process.env.CROSS_BORDER_WEBHOOK_SECRET;
+  if (!secret) throw new Error('CROSS_BORDER_WEBHOOK_SECRET is not configured');
   const signature = crypto
     .createHmac('sha256', secret)
     .update(callbackPayloadString)

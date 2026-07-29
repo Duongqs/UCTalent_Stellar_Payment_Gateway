@@ -67,7 +67,8 @@ export class DisbursementPollerService {
     const url = this.getBackendRevertUrl();
     const payload = { distributionId };
     const payloadString = JSON.stringify(payload);
-    const secret = this.envService.get('CROSS_BORDER_WEBHOOK_SECRET') || 'uctalent-dev-secret';
+    const secret = this.envService.get('CROSS_BORDER_WEBHOOK_SECRET');
+    if (!secret) throw new Error('CROSS_BORDER_WEBHOOK_SECRET is not configured');
     const signature = 'sha256=' + crypto.createHmac('sha256', secret).update(payloadString).digest('hex');
 
     try {
@@ -355,9 +356,12 @@ export class DisbursementPollerService {
 
       if (taxWithheld > 0) {
         try {
-          const pitBankCode = this.envService.get('PIT_BANK_CODE') || 'BIDV';
-          const pitAccountNumber = this.envService.get('PIT_ACCOUNT_NUMBER') || '96311300000170179';
-          const pitAccountName = this.envService.get('PIT_ACCOUNT_NAME') || 'UCTALENT PLATFORM';
+          const pitBankCode = this.envService.get('PIT_BANK_CODE');
+          if (!pitBankCode) throw new Error('PIT_BANK_CODE is not configured');
+          const pitAccountNumber = this.envService.get('PIT_ACCOUNT_NUMBER');
+          if (!pitAccountNumber) throw new Error('PIT_ACCOUNT_NUMBER is not configured');
+          const pitAccountName = this.envService.get('PIT_ACCOUNT_NAME');
+          if (!pitAccountName) throw new Error('PIT_ACCOUNT_NAME is not configured');
           
           console.log(`[Disbursement Poller] Disbursing PIT ${taxWithheld} VND to Platform for TX ${txId}`);
           await this.ninePayGateway.disburse(

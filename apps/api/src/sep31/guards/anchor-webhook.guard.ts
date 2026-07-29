@@ -15,11 +15,11 @@ export class AnchorWebhookGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const signature = (request.headers['x-uctalent-signature'] as string) || '';
     const payload = request.body;
-    const webhookSecret =
-      this.envService.get('WEBHOOK_SECRET') || 'uctalent-dev-secret';
+    const webhookSecret = this.envService.get('WEBHOOK_SECRET');
+    if (!webhookSecret) throw new UnauthorizedException('WEBHOOK_SECRET is not configured');
 
-    const allowedWebhookIps =
-      this.envService.get('ALLOWED_WEBHOOK_IPS') || '127.0.0.1,::1,*';
+    const allowedWebhookIps = this.envService.get('ALLOWED_WEBHOOK_IPS');
+    if (!allowedWebhookIps) throw new UnauthorizedException('ALLOWED_WEBHOOK_IPS is not configured');
     const ipWhitelist = allowedWebhookIps
       .split(',')
       .map((ip: string) => ip.trim().toLowerCase());
