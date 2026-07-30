@@ -9,13 +9,11 @@ soroban-sdk = "21.6.0"
 
 [profile.release]
 opt-level = "z"
-overflow-checks = true
-debug = 0
-strip = "symbols"
-debug-assertions = false
-panic = "abort"
-codegen-units = 1
 lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
+overflow-checks = true
 
 # For more information about this profile see https://developers.stellar.org/docs/build/smart-contracts/example-contracts/logging#cargotoml-profile
 [profile.release-with-logs]

@@ -40,9 +40,12 @@ echo "🔮 Oracle  : $ORACLE_ADDR"
 echo ""
 
 # 3. Build & Deploy Factory
+echo "🔨 Building..."
+stellar contract build --optimize
+
 echo "🚀 Uploading WASM and Deploying Factory Contract to Live Testnet..."
-WASM_HASH=$(stellar contract install --wasm target/wasm32v1-none/release/uctalent_escrow.wasm --source alice --network testnet)
-FACTORY_ID=$(stellar contract deploy --wasm target/wasm32v1-none/release/uctalent_escrow.wasm --source alice --network testnet)
+WASM_HASH=$(stellar contract upload --wasm target/wasm32v1-none/release/uctalent_escrow.wasm --source alice --network testnet)
+FACTORY_ID=$(stellar contract deploy --wasm-hash "$WASM_HASH" --source alice --network testnet)
 echo "✅ Factory Deployed Successfully!"
 echo "📜 Factory ID: $FACTORY_ID"
 echo "📦 WASM Hash: $WASM_HASH"

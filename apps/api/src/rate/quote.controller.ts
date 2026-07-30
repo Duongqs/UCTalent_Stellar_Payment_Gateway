@@ -51,22 +51,22 @@ export class QuoteController {
       );
     }
 
-    const price = (1 / baseRate).toFixed(10).replace(/\.?0+$/, '');
     let sellAmountStr = '';
     let buyAmountStr = '';
 
     if (body.sell_amount) {
-      sellAmountStr = body.sell_amount;
       buyAmountStr = Math.floor(
         parseFloat(body.sell_amount) * baseRate,
       ).toString();
+      sellAmountStr = body.sell_amount;
     } else if (body.buy_amount) {
-      buyAmountStr = body.buy_amount;
       sellAmountStr = (parseFloat(body.buy_amount) / baseRate)
         .toFixed(7)
         .replace(/\.?0+$/, '');
+      buyAmountStr = body.buy_amount;
     }
 
+    const price = (parseFloat(sellAmountStr) / parseFloat(buyAmountStr)).toFixed(15).replace(/\.?0+$/, '');
     const quoteId = uuidv4();
     const expiresAt = body.expire_after 
       ? new Date(body.expire_after) 

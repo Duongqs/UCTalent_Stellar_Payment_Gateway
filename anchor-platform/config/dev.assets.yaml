@@ -1,7 +1,7 @@
 items:
   - id: stellar:USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN
     distribution_account: GBLSAHONJRODSFTLOV225NZR4LHICH63RIFQTQN37L5CRTR2IMQ5UEK7
-    significant_decimals: 2
+    significant_decimals: 7
     sep31:
       enabled: true
       receive:

@@ -102,11 +102,17 @@ export class RateController {
       rateObj.buy_amount = Math.floor(
         parseFloat(sell_amount) * baseRate,
       ).toString();
+      rateObj.price = (
+        parseFloat(rateObj.sell_amount) / parseFloat(rateObj.buy_amount)
+      ).toFixed(15).replace(/\.?0+$/, '');
     } else if (buy_amount) {
       rateObj.buy_amount = buy_amount;
       rateObj.sell_amount = (parseFloat(buy_amount) / baseRate)
         .toFixed(7)
         .replace(/\.?0+$/, '');
+      rateObj.price = (
+        parseFloat(rateObj.sell_amount) / parseFloat(rateObj.buy_amount)
+      ).toFixed(15).replace(/\.?0+$/, '');
     } else {
       throw new BadRequestException(
         'Either sell_amount or buy_amount must be provided',
