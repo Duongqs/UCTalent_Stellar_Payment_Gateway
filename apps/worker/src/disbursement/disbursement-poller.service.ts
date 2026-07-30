@@ -352,19 +352,27 @@ export class DisbursementPollerService {
       `[Disbursement Poller] Disbursing ${netVnd} VND (Tax: ${taxWithheld}) for TX ${txId}`,
     );
 
-    let description = 'UCTalent Freelance Disbursement';
+    let rawDescription = 'UCTalent Freelance Disbursement';
     if (txRecord?.jobName) {
       if (txRecord.paymentType === 'escrow_release' || txRecord.paymentType === 'milestone_release') {
-        description = `UCTalent thanh toan chi phi cong viec ${txRecord.jobName}`;
+        rawDescription = `UCTalent thanh toan chi phi cong viec ${txRecord.jobName}`;
         if (txRecord.milestoneIndex != null) {
-           description += ` (Milestone ${txRecord.milestoneIndex + 1})`;
+           rawDescription += ` Milestone ${txRecord.milestoneIndex + 1}`;
         }
       } else if (txRecord.paymentType === 'referral_success') {
-        description = `UCTalent thanh toan hoa hong gioi thieu job ${txRecord.jobName}`;
+        rawDescription = `UCTalent thanh toan hoa hong gioi thieu job ${txRecord.jobName}`;
       } else {
-        description = `UCTalent thanh toan job ${txRecord.jobName}`;
+        rawDescription = `UCTalent thanh toan job ${txRecord.jobName}`;
       }
     }
+
+    const description = rawDescription
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9 ]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .substring(0, 100);
 
     let disburseResult: any;
     try {
