@@ -168,37 +168,21 @@ export class NinePayGatewayService {
 
       const result = await this.request('POST', '/disbursement/create', params);
 
-      // Handle 702 Duplicate Request ID or creation error
       if ((result.status === 4 || result.status === 6) && String(result.error_code) === '702') {
-        console.log(`[9Pay Disburse] 702 Duplicate/Error for ${shortInvoiceNo}, recovering status via checkStatus...`);
-        const checkRes = await this.checkStatus(shortInvoiceNo);
-        if (checkRes && (checkRes.status === 2 || checkRes.status === 5 || checkRes.status === 1 || checkRes.status === 3 || checkRes.status === 6)) {
-          console.log(`[9Pay Disburse] Recovered 702 transaction! payment_no: ${checkRes.payment_no}, status: ${checkRes.status}`);
-          return {
-            ...checkRes,
-            paymentNo: checkRes.payment_no ? String(checkRes.payment_no) : undefined,
-            requestId: shortInvoiceNo,
-          };
-        } else {
-          throw new Error(`9Pay Disbursement Failed (702 Recovery): [${checkRes?.error_code || '404'}] ${checkRes?.message || 'Transaction not found in 9Pay'}`);
-        }
+        console.log(`[9Pay Disburse] 702 Duplicate/Error for ${shortInvoiceNo}. Assuming previous request succeeded. Transitioning to pending_external...`);
+        return {
+          status: 5,
+          message: 'Recovered duplicate request',
+          paymentNo: undefined,
+          requestId: shortInvoiceNo,
+        };
       }
 
-      if (result.status === 2 || result.status === 5 || result.status === 1 || result.status === 3 || result.status === 6) {
+      if (result.status === 2 || result.status === 5 || result.status === 1 || result.status === 3) {
         let paymentNo = result.payment_no ? String(result.payment_no) : undefined;
         
-        if (!paymentNo && (result.status === 6 || result.status === 5)) {
-           console.log(`[9Pay Disburse] Status ${result.status} received for ${shortInvoiceNo}, fetching real payment_no via checkStatus in 2s...`);
-           await new Promise(resolve => setTimeout(resolve, 2000));
-           const checkRes = await this.checkStatus(shortInvoiceNo);
-           if (checkRes && checkRes.payment_no) {
-             paymentNo = String(checkRes.payment_no);
-             console.log(`[9Pay Disburse] Recovered real payment_no: ${paymentNo} via checkStatus`);
-           }
-        }
-
-        if (!paymentNo && result.status === 6) {
-          throw new Error(`9Pay Disbursement Failed: Transaction failed (status 6) and no payment_no could be recovered.`);
+        if (!paymentNo && result.status === 5) {
+           console.log(`[9Pay Disburse] Status ${result.status} received for ${shortInvoiceNo}, payment_no will be provided via webhook.`);
         }
 
         console.log(`[9Pay Disburse] Success/Pending for ${shortInvoiceNo}, payment_no: ${paymentNo}, status: ${result.status}`);

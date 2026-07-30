@@ -115,13 +115,16 @@ export class DisbursementPollerService {
             error: txError.message,
           });
 
+          const isPermanentError = txError.message?.includes('9Pay Disbursement Failed') || txError.message?.includes('RECONCILIATION_FAILED') || txError.message?.includes('expired');
+
           try {
             await this.sep31Repo
               .createQueryBuilder()
               .update(Sep31TransactionEntity)
               .set({
-                status:
-                  tx.status === 'pending_receiver'
+                status: isPermanentError
+                  ? 'error'
+                  : tx.status === 'pending_receiver'
                     ? 'pending_receiver'
                     : 'pending_sender',
                 errorMessage: txError.message,
@@ -132,6 +135,14 @@ export class DisbursementPollerService {
               })
               .execute();
           } catch (e) {}
+
+          if (isPermanentError) {
+             try {
+               await this.anchorRpc.notifyTransactionError(tx.id, txError.message);
+             } catch(rpcErr: any) {
+               console.error(`[Disbursement Poller] Failed to notify anchor of error:`, rpcErr.message);
+             }
+          }
 
           try {
             const txRecord = await this.sep31Repo.findOne({
