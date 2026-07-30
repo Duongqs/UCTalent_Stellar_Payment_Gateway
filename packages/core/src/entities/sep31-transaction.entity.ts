@@ -73,4 +73,16 @@ export class Sep31TransactionEntity extends BaseEntity {
 
   @Column({ name: 'callback_url', type: 'varchar', nullable: true })
   callbackUrl: string;
+
+  @Column({ name: 'job_name', type: 'varchar', nullable: true })
+  jobName: string;
+
+  @Column({ name: 'payment_type', type: 'varchar', nullable: true })
+  paymentType: string;
+
+  @Column({ name: 'milestone_index', type: 'int', nullable: true })
+  milestoneIndex: number;
+
+  @Column({ name: 'recipient_user_id', type: 'varchar', nullable: true })
+  recipientUserId: string;
 }

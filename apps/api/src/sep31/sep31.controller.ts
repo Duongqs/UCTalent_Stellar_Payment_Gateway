@@ -55,7 +55,7 @@ export class Sep31Controller {
   @UseGuards(AnchorWebhookGuard)
   @HttpCode(HttpStatus.OK)
   async initiateDisbursement(@Body() body: InitiateDisbursementDto) {
-    const { amount, sender_id, receiver_id, quote_id, idempotency_key, distribution_id } = body;
+    const { amount, sender_id, receiver_id, quote_id, idempotency_key, distribution_id, job_name, payment_type, milestone_index, recipient_user_id } = body;
 
     if (quote_id) {
       const quote = await this.firmQuoteService.findById(quote_id);
@@ -83,7 +83,11 @@ export class Sep31Controller {
         idempotencyKey: idempotency_key || undefined,
         distributionId: distribution_id || (idempotency_key ? idempotency_key.substring(0, idempotency_key.lastIndexOf('-')) : undefined) || undefined,
         quoteId: quote_id || undefined,
-      });
+        jobName: job_name,
+        paymentType: payment_type,
+        milestoneIndex: milestone_index,
+        recipientUserId: recipient_user_id,
+      } as any);
       await this.sep31CoreService.insert(tx);
     } catch (error: any) {
       const isUniqueConstraint =

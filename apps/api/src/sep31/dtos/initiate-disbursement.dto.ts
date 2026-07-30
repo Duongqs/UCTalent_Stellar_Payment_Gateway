@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsNumber } from 'class-validator';
 
 export class InitiateDisbursementDto {
   @IsString()
@@ -24,4 +24,20 @@ export class InitiateDisbursementDto {
   @IsString()
   @IsOptional()
   distribution_id?: string;
+
+  @IsString()
+  @IsOptional()
+  job_name?: string;
+
+  @IsString()
+  @IsOptional()
+  payment_type?: string;
+
+  @IsNumber()
+  @IsOptional()
+  milestone_index?: number;
+
+  @IsString()
+  @IsOptional()
+  recipient_user_id?: string;
 }
