@@ -297,7 +297,7 @@ substitutions:
   _NETWORK_PASSPHRASE: 'Public Global Stellar Network ; September 2015'
 
   # ===== 9PAY =====
-  _NINEPAY_API_URL: 'https://payment.9pay.vn'
+  _NINEPAY_API_URL: 'https://sand-payment.9pay.vn'
   _NINEPAY_MODE: 'live'
 
   # ===== ORACLE =====
