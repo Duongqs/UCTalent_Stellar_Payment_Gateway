@@ -8,21 +8,21 @@
 
 | Contract | Network | Address |
 |---|---|---|
-| `uctalent-escrow` (Soroban milestone escrow) | Stellar Testnet | [`CBGJF7VDW7ZVTKWSQVIY2SJW5ZQHMH2OZQVPC7SQNJVIQURG66HZNY5K`](https://stellar.expert/explorer/testnet/contract/CBGJF7VDW7ZVTKWSQVIY2SJW5ZQHMH2OZQVPC7SQNJVIQURG66HZNY5K) |
+| `uctalent-escrow` (Soroban milestone escrow) | Stellar Mainnet | [`CBDQLAH4HWHISURZ657SX4JWFACUKJS6ISOXUWQULOVWFXMKVHYSDTFS`](https://stellar.expert/explorer/public/contract/CBDQLAH4HWHISURZ657SX4JWFACUKJS6ISOXUWQULOVWFXMKVHYSDTFS) |
 
 ## 🚀 Live Demo
 
-No sign-up wall — pick an app and run the flow end to end on **Stellar testnet**:
+No sign-up wall — pick an app and run the flow end to end on **Stellar mainnet**:
 
 [![Open Talent app](https://img.shields.io/badge/Open%20Talent%20app-0f172a?style=for-the-badge&logo=stellar&logoColor=white)](https://stellar.uctalent.io) [![Open ATS app](https://img.shields.io/badge/Open%20ATS%20app-1f2937?style=for-the-badge&logo=stellar&logoColor=white)](https://business.stellar.uctalent.io)
 
-You'll need the [Freighter](https://www.freighter.app/) wallet set to **Testnet**.
+You'll need the [Freighter](https://www.freighter.app/) wallet set to **Mainnet**.
 
 ## 🎬 Demo Walkthrough (6 steps)
 
 Six steps from posting a job to money landing in a local bank account. Each step maps to the exact on-chain action and Stellar SEP standard behind it:
 
-1. **Connect wallet** — connect your Freighter wallet on Stellar testnet (**SEP-10** auth).
+1. **Connect wallet** — connect your Freighter wallet on Stellar mainnet (**SEP-10** auth).
 2. **Post & deposit** — employer posts a job and deposits into escrow: pay **USDC** directly, or send **XLM** and let **Path Payment** auto-swap it to USDC at the best on-chain rate.
 3. **Escrow lock & deliver** — the deposit is held in the **Soroban milestone escrow contract**; the candidate applies and ships the milestone.
 4. **Release** — employer approves the milestone; the escrow releases the deposit.
@@ -110,8 +110,8 @@ npm run start:worker
 cd soroban
 ./build-and-test.sh
 
-# Deploy to testnet
-./run_testnet.sh
+# Deploy to mainnet
+PLATFORM_SECRET_KEY=... ./deploy_mainnet.sh
 ```
 
 ### Run with Docker
