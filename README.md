@@ -14,8 +14,7 @@
 
 No sign-up wall — pick an app and run the flow end to end on **Stellar testnet**:
 
-- **Talent app** (candidate & employer): https://stellar.uctalent.io
-- **ATS app** (business / hiring workspace): https://business.stellar.uctalent.io
+[![Open Talent app](https://img.shields.io/badge/Open%20Talent%20app-0f172a?style=for-the-badge&logo=stellar&logoColor=white)](https://stellar.uctalent.io) [![Open ATS app](https://img.shields.io/badge/Open%20ATS%20app-1f2937?style=for-the-badge&logo=stellar&logoColor=white)](https://business.stellar.uctalent.io)
 
 You'll need the [Freighter](https://www.freighter.app/) wallet set to **Testnet**.
 
