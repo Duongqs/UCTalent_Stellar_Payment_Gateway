@@ -15,7 +15,7 @@
 No sign-up wall — pick an app and run the flow end to end on **Stellar testnet**:
 
 - **Talent app** (candidate & employer): https://stellar.uctalent.io
-- **ATS app** (business / hiring workspace): https://stellar.business.uctalent.io
+- **ATS app** (business / hiring workspace): https://business.stellar.uctalent.io
 
 You'll need the [Freighter](https://www.freighter.app/) wallet set to **Testnet**.
 
@@ -39,7 +39,7 @@ Six steps from posting a job to money landing in a local bank account. Each step
 | **Payment Gateway** (this repo) | 🌐 Public | The open engine: Soroban escrow contract, SEP-31 anchor gateway (KYC, exchange rate, banking IPN) and the Stellar/banking packages |
 | Talent Backend Service | 🔒 Private | Core product backend (jobs, payments, disbursement orchestration) |
 | Talent Web App | 🔒 Private | Candidate & employer web experience powering stellar.uctalent.io |
-| ATS Business App | 🔒 Private | Applicant-tracking & hiring workspace behind stellar.business.uctalent.io |
+| ATS Business App | 🔒 Private | Applicant-tracking & hiring workspace behind business.stellar.uctalent.io |
 
 ### What's inside this repo
 
